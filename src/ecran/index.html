@@ -22,7 +22,11 @@ body{font:14.5px/1.45 Arial,Helvetica,sans-serif;color:var(--text);background-co
   background-size:auto,720px 480px,auto,auto;background-position:center,40px 10px,center,center;display:flex;flex-direction:column;overflow:hidden}
 h1,h2,h3,p{margin:0}
 button,input,textarea{font:inherit;color:inherit}
-.banner{height:64px;flex:none;background:#000 url("bandeau.jpg") center 45%/cover no-repeat}
+/* The site's banner as a thin band, its title always whole: the picture keeps its proportions (cropped to the
+   title's height, bandeau.jpg), left-aligned when the window is narrow, centred with a blurred fill when wide. */
+.banner{position:relative;flex:none;height:clamp(56px,8.3vw,120px);overflow:hidden;background:#070a0c}
+.banner::before{content:"";position:absolute;inset:-20px;background:url("bandeau.jpg") center/cover;filter:blur(16px) brightness(.5)}
+.banner i{position:absolute;top:0;bottom:0;left:max(0px,calc(50% - 6.03 * clamp(56px,8.3vw,120px)));aspect-ratio:2048/170;background:url("bandeau.jpg") center/cover}
 .stripes{height:5px;flex:none;display:grid;grid-template-columns:1.35fr .72fr .72fr .55fr}
 .stripes i:nth-child(1){background:linear-gradient(90deg,#3bbcc4,#78dce0)}.stripes i:nth-child(2){background:linear-gradient(90deg,#d9433a,#f05b42)}
 .stripes i:nth-child(3){background:linear-gradient(90deg,#dfa63e,#efca70)}.stripes i:nth-child(4){background:#1c2427}
@@ -129,7 +133,7 @@ details label{display:flex;gap:8px;align-items:center;font-size:13.5px;padding:2
 </style>
 </head>
 <body>
-<div class="banner" role="img" aria-label="Endurance Manager"></div>
+<div class="banner" role="img" aria-label="Endurance Manager"><i></i></div>
 <div class="stripes" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 <div class="shell">
 <nav aria-label="Menu du plugin" id="nav"></nav>
