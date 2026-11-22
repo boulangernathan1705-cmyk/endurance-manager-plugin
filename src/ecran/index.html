@@ -77,9 +77,12 @@ h1{font-size:30px;line-height:1.15;margin-top:4px;color:var(--cream)}
 .pill{font-weight:700;font-size:12px;border-radius:999px;padding:2px 9px;white-space:nowrap;background:rgba(255,255,255,.06);color:var(--muted)}
 .pill.team{color:var(--accent);background:rgba(89,211,216,.10)}
 .pill.on{color:var(--ok);background:rgba(62,207,142,.12)}
-.state{background-color:var(--panel);border:1px solid var(--line);border-left:3px solid var(--muted);border-radius:9px;padding:11px 14px;display:flex;align-items:center;gap:10px;min-width:0}
+.state{background-color:var(--panel);border:1px solid var(--line);border-left:3px solid var(--muted);border-radius:9px;padding:11px 14px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.state .top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.state .sub{font-size:13px;color:var(--muted)}
+.state .btn{align-self:flex-start;margin-top:6px}
 .state.ok{border-left-color:var(--ok)}.state.wait{border-left-color:var(--warn)}.state.bad{border-left-color:var(--danger)}
-.state .t{flex:1;min-width:0}.state .t div{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+
 .st{font-weight:700;font-size:13.5px;white-space:nowrap}.st.ok{color:var(--ok)}.st.wait{color:var(--warn)}.st.bad{color:var(--danger-text)}.st.idle{color:var(--muted)}
 .kv{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--line2);font-size:14px}
 .kv span{color:var(--muted)}.kv b{text-align:right}
@@ -215,7 +218,7 @@ const head = (key, title, lead) => {
     <span class="swl">${S.modules[key] ? 'Activé' : 'Coupé'}</span>${sw(key, 'Activer ' + m.name)}</div>`;
 };
 const plain = (eb, title, lead) => `<div class="head"><div><div class="eb">${eb}</div><h1>${esc(title)}</h1>${lead ? `<p class="lead">${lead}</p>` : ''}</div></div>`;
-const stateCard = (title, sub, cls, text, extra) => `<div class="state ${cls}"><div class="t"><b>${esc(title)}</b><div>${sub}</div></div>${extra || ''}<b class="st ${cls}">${cls === 'ok' ? '✓ ' : ''}${esc(text)}</b></div>`;
+const stateCard = (title, sub, cls, text, extra) => `<div class="state ${cls}"><div class="top"><b>${esc(title)}</b><b class="st ${cls}">${cls === 'ok' ? '✓ ' : ''}${esc(text)}</b></div><div class="sub">${sub}</div>${extra || ''}</div>`;
 
 // ── Menu ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 function renderNav() {
@@ -235,7 +238,7 @@ const PAGES = {
       <div class="mut small">${esc(MOD[key].line)}</div></div>${sw(key)}</div>`;
     return `<div class="page">
       <div class="head"><div><div class="eb">SimHub · Le Mans Ultimate</div><h1>Accueil</h1></div><button type="button" class="btn s" data-guide>Refaire le guide</button></div>
-      ${S.update ? `<div class="state wait"><div class="t"><b>Nouvelle version ${esc(S.update)}</b><div>Tu as la ${esc(S.version)}.</div></div><button type="button" class="btn p s" data-go="maj">Mettre à jour</button></div>` : ''}
+      ${S.update ? stateCard('Nouvelle version ' + S.update, 'Tu as la ' + esc(S.version) + '.', 'wait', 'Disponible', '<button type="button" class="btn p s" data-go="maj">Mettre à jour</button>') : ''}
       <div class="grid g3">
         ${stateCard('SimHub', 'Plugin ' + esc(S.version), 'ok', 'Chargé')}
         ${stateCard('Le Mans Ultimate', esc(game.detail), game.state, game.title)}
@@ -311,7 +314,7 @@ const PAGES = {
   bb() {
     const b = S.bb;
     return `<div class="page">${head('bb', '', 'Les réglages de la voiture et le menu des stands sur ton volant ou ton Stream Deck.')}
-      ${b.pending ? `<div class="state wait"><div class="t"><b>Au prochain lancement de SimHub</b><div>${S.modules.bb ? 'Le module démarre quand SimHub redémarre.' : 'Le module s’arrête quand SimHub redémarre.'}</div></div></div>` : ''}
+      ${b.pending ? stateCard('Au prochain lancement de SimHub', S.modules.bb ? 'Le module démarre quand SimHub redémarre.' : 'Le module s\u2019arrête quand SimHub redémarre.', 'wait', 'En attente') : ''}
       <section class="card" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
         <div style="flex:1;min-width:260px"><h2>Mes boutons</h2><p class="mut small">${esc(b.status)}</p></div>
         <button type="button" class="btn p" data-act="companion" ${b.running ? '' : 'disabled'}>Régler mes boutons</button>

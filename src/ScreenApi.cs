@@ -36,7 +36,7 @@ namespace EnduranceManager.SimHub
 
             (string state, string title, string detail) site;
             if (!plugin.TeamOn) site = ("off", "Pas utilisé", "Aucun module d'équipe allumé." + kept);
-            else if (code == null) site = ("wait", "Pas encore relié", "Sur le site : Fiches combo, « Relier SimHub », « Créer mon code ». Le plugin le trouve tout seul.");
+            else if (code == null) site = ("wait", "Pas encore relié", "Copie ton code sur le site (Fiches combo, Relier SimHub) : le plugin le trouve tout seul.");
             else if (uploader?.Refused is string refused) site = ("bad", "Liaison refusée", refused + kept);
             else if (uploader?.Reached == false) site = ("wait", "Injoignable", "Nouvel essai dans une minute." + kept);
             else if (uploader?.Reached == true) site = ("ok", "Relié", host + (uploader.LastSent is DateTime last ? $" · dernier envoi à {last:HH:mm}" : ""));
