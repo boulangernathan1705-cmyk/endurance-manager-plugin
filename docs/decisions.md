@@ -32,12 +32,18 @@ Ce que Nathan a décidé, avec la date. Les idées refusées ne sont pas à repr
 - 19/11/2026 : FMT companion doit être dans le plugin, entier, comme un module qu'on coupe. Les commandes refaites
   doivent être identiques à la 0.5, jamais simplifiées.
 - 19/11/2026 : l'écran des profils doit être simple (pas de tableau des rôles TC+/TC−).
+- 22/11/2026 : profils = 1er appui sur le bouton, un popup montre ce qui change ; 2e appui dans les 5 s, appliqué ;
+  appui de 2 s, mémorisé. Le popup se place où on veut (« Placer le popup »).
+- 22/11/2026 : version renumérotée 0.1 (un début, beaucoup de travail à venir).
 - Pas de barre de défilement horizontale (tables lisibles à 390 px de large). Textes d'explication au minimum, pas de
   « il y a X s ».
 
 ## Mur des stands
 
-- Pour les coéquipiers qui regardent, et lisible par le pilote en roulant (le dash SimHub). Écran 2560 × 1440.
+- Pour les coéquipiers qui regardent, et lisible par le pilote en roulant. Écran 2560 × 1440.
+- 22/11/2026 : plus de Dash Studio (trop dur à rendre fidèle). Le mur est une page ouverte par le plugin dans une fenêtre
+  qu'on place et redimensionne où on veut (15″ à 27″), et la même adresse sur tablette. Disposition fixe, réduite à la
+  taille de la fenêtre comme un dash, jamais réarrangée. Mêmes données que SimHub.
 - Alertes : seul le cadre concerné clignote, jamais de fenêtre ou de message qui masque le reste.
 - Piste à plat sur une seule ligne (pas une ligne par catégorie), notre voiture plus grosse au milieu. Trois couleurs
   fixes par secteur : S1 citron vert `#c6ff00`, S2 blanc `#ffffff`, S3 menthe `#1de9b6`.

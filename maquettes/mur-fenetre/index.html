@@ -1,0 +1,117 @@
+<title>Fenêtre du mur</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one column, the plugin card first, then one big screen preview with a size picker. Single dark look, the plugin's own. */
+@font-face { font-family: "Chakra Petch"; font-weight: 600; src: url("fonts/chakra-petch-600.woff2") format("woff2"); }
+@font-face { font-family: "Chakra Petch"; font-weight: 700; src: url("fonts/chakra-petch-700.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-weight: 400 700; src: url("fonts/jetbrains-mono.woff2") format("woff2"); }
+:root {
+  color-scheme: dark;
+  --bg: #0b0e15; --card: #121722; --inset: #0d111a; --line: #222a3b; --text: #e8ecf4; --text2: #8b95ab;
+  --cyan: #00e5ff; --green: #00e676; --desk: #05070b;
+  --display: "Chakra Petch", system-ui, sans-serif; --body: system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+body { background: var(--bg); color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+main { max-width: 1180px; margin: 0 auto; padding-block: 28px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 28px; }
+h1, h2 { font-family: var(--display); text-wrap: balance; margin: 0; }
+h1 { font-size: 26px; letter-spacing: .02em; }
+h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: var(--text2); }
+p { margin: 0; max-width: 65ch; color: var(--text2); }
+section { display: grid; gap: 12px; min-width: 0; }
+
+/* The plugin card, as it would sit on the plugin's home page in SimHub */
+.plug { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 14px; max-width: 560px; }
+.plug-head { display: flex; align-items: center; gap: 10px; }
+.plug-head b { font-family: var(--display); font-size: 18px; }
+.pill { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--green); border: 1px solid rgba(0,230,118,.4); border-radius: 999px; padding: 2px 10px; }
+.btns { display: flex; flex-wrap: wrap; gap: 10px; }
+button { font: 600 15px var(--display); letter-spacing: .03em; border-radius: 8px; padding: 10px 18px; cursor: pointer; border: 1px solid var(--line); background: var(--inset); color: var(--text); }
+button.main { background: var(--cyan); border-color: var(--cyan); color: #03141a; }
+button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.addr { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; background: var(--inset); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.addr span { color: var(--text2); font-size: 13px; }
+.addr code { font-family: var(--mono); font-size: 16px; color: var(--cyan); user-select: all; }
+.addr button { margin-left: auto; padding: 4px 12px; font-size: 13px; }
+
+/* Size picker and the screen */
+.sizes { display: flex; flex-wrap: wrap; gap: 8px; }
+.sizes button[aria-pressed="true"] { border-color: var(--cyan); color: var(--cyan); background: rgba(0,229,255,.08); }
+.stage { background: var(--desk); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; justify-items: center; overflow: hidden; }
+.screenbox { position: relative; }
+.screen { position: absolute; left: 0; top: 0; transform-origin: 0 0; background: #1a2030; border-radius: 6px; overflow: hidden; }
+.screen .other { position: absolute; display: grid; place-items: center; background: #151a26; color: #3d4760; font: 700 60px var(--display); }
+.win { position: absolute; display: flex; flex-direction: column; background: #000; box-shadow: 0 0 0 2px #2b3448, 0 20px 60px rgba(0,0,0,.6); }
+.bar { height: 44px; flex: none; display: flex; align-items: center; gap: 16px; padding: 0 18px; background: #1b2131; color: #c9d1e2; font: 600 20px var(--body); }
+.bar i { margin-left: auto; font-style: normal; letter-spacing: 26px; color: #8b95ab; }
+.bar.tab { background: #20263a; justify-content: center; font-family: var(--mono); font-size: 22px; color: #9fb0cc; }
+.win iframe { flex: 1; border: 0; width: 100%; background: #0b0e15; }
+.caption { color: var(--text2); font-size: 14px; }
+.caption b { color: var(--text); }
+</style>
+
+<main>
+  <header>
+    <h1>Mur des stands : la fenêtre</h1>
+  </header>
+
+  <section>
+    <h2>Dans SimHub</h2>
+    <div class="plug">
+      <div class="plug-head"><b>Mur des stands</b><span class="pill">Données reçues</span></div>
+      <div class="btns">
+        <button class="main" type="button" id="open">Ouvrir le mur</button>
+        <button type="button" id="full">Plein écran</button>
+      </div>
+      <div class="addr"><span>Tablette ou téléphone, même wifi</span><code id="url">http://192.168.1.20:8686</code><button type="button" id="copy">Copier</button></div>
+    </div>
+    <p>La fenêtre se rouvre à la place et à la taille où tu l'as laissée.</p>
+  </section>
+
+  <section>
+    <h2>Le même mur à toutes les tailles</h2>
+    <div class="sizes" role="group" aria-label="Taille d'écran">
+      <button type="button" data-k="full27" aria-pressed="true">27″ plein écran</button>
+      <button type="button" data-k="half27" aria-pressed="false">27″ moitié d'écran</button>
+      <button type="button" data-k="lap15" aria-pressed="false">Portable 15″</button>
+      <button type="button" data-k="tab" aria-pressed="false">Tablette</button>
+    </div>
+    <div class="stage" id="stage"><div class="screenbox" id="box"><div class="screen" id="screen"></div></div></div>
+    <p class="caption" id="cap"></p>
+  </section>
+</main>
+
+<script>
+// Screen sizes in Windows pixels (after display scaling). Window rect: x, y, w, h.
+const SIZES = {
+  full27: { W: 2560, H: 1440, win: [0, 0, 2560, 1440], bar: false, cap: '<b>27″ plein écran.</b> Le mur à sa taille de référence.' },
+  half27: { W: 2560, H: 1440, win: [0, 0, 1280, 1440], bar: true, other: 'LMU', cap: '<b>Fenêtre sur la moitié d\u2019un 27″.</b> Le même mur, en plus petit. Le reste de la fenêtre reste noir.' },
+  lap15: { W: 1536, H: 864, win: [0, 0, 1536, 864], bar: true, cap: '<b>Portable 15″.</b> Le même mur, réduit à la taille de l\u2019écran.' },
+  tab: { W: 1180, H: 820, win: [0, 0, 1180, 820], bar: 'tab', cap: '<b>Tablette à l\u2019horizontale.</b> Le même mur, réduit à la taille de l\u2019écran.' },
+};
+const $ = id => document.getElementById(id);
+let current = 'full27';
+function render() {
+  const s = SIZES[current], stageW = $('stage').clientWidth - 32;
+  const maxH = Math.min(innerHeight * 0.78, 900);
+  const k = Math.min(stageW / s.W, maxH / s.H);
+  $('box').style.width = s.W * k + 'px'; $('box').style.height = s.H * k + 'px';
+  const [x, y, w, h] = s.win;
+  const bar = s.bar === 'tab' ? '<div class="bar tab">192.168.1.20:8686</div>' : s.bar ? '<div class="bar">Mur des stands<i>–□×</i></div>' : '';
+  const other = s.other ? `<div class="other" style="left:${w}px;top:0;width:${s.W - w}px;height:${s.H}px">${s.other}</div>` : '';
+  $('screen').style.cssText = `width:${s.W}px;height:${s.H}px;transform:scale(${k})`;
+  $('screen').innerHTML = other + `<div class="win" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px">${bar}<iframe src="mur.html" title="Mur des stands"></iframe></div>`;
+  $('cap').innerHTML = s.cap;
+}
+document.querySelectorAll('.sizes button').forEach(b => b.addEventListener('click', () => {
+  current = b.dataset.k;
+  document.querySelectorAll('.sizes button').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
+  render();
+}));
+let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(render, 150); });
+$('open').addEventListener('click', () => { document.querySelector('[data-k="half27"]').click(); $('stage').scrollIntoView({ behavior: 'smooth' }); });
+$('full').addEventListener('click', () => { document.querySelector('[data-k="full27"]').click(); $('stage').scrollIntoView({ behavior: 'smooth' }); });
+$('copy').addEventListener('click', () => {
+  navigator.clipboard.writeText($('url').textContent).then(() => { $('copy').textContent = 'Copiée'; }, () => getSelection().selectAllChildren($('url')));
+});
+render();
+</script>
