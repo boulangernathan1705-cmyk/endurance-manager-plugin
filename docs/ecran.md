@@ -20,5 +20,12 @@ crème, petits titres or, fond à motif circuit, 4 bandes sous le bandeau, bouto
   (`SettingsControl`, `Guide`). La page Guide a aussi un bouton « Ouvrir l'ancien écran ».
 - **Black box sur boutons** : pour l'instant, « Régler mes boutons » ouvre l'écran de FMT companion dans une fenêtre.
   À refaire dans la page (onglets Préparation / Commandes, voir la maquette) quand FMT companion sera réécrit.
+- **Mise à jour** (maquette validée le 22/11/2026 : https://claude.ai/artifact/EBBcKtQ7X3TLY8bgNhRLZo) : une petite
+  fenêtre par-dessus SimHub (`UpdateWindow.cs`, la même page avec `?fenetre=maj` ou `?fenetre=installee`). Elle s'ouvre
+  au démarrage ou quand une version sort, une fois par version et par lancement, jamais en piste. Ce qui change vient de
+  `plugin.json` (`src/changements.json`) ; « Voir » ouvre la page dans l'écran du plugin (`go` dans `/etat`).
+  « Mettre à jour » (`Update.cs`) : télécharge la DLL, vérifie taille et empreinte, renomme la DLL chargée en `.old` et
+  met la nouvelle (droits administrateur demandés par Windows seulement si le dossier l'exige), puis SimHub se ferme et
+  un PowerShell caché le relance. Plus d'installeur en fenêtre noire.
 - **Photos** : `tests/Preview` les fait avec Edge sans fenêtre (`#profils`, `#guide:1`… ouvrent une page).
 - **Non vérifié sur un vrai PC** : présence de WebView2 dans le dossier de SimHub, rendu dans l'onglet du plugin.

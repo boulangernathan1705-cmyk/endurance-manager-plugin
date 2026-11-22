@@ -204,24 +204,13 @@ namespace EnduranceManager.SimHub
 
         void Say(string text, Brush color) { message.Text = text; message.Foreground = color; message.Visibility = Visibility.Visible; }
 
-        // Never while driving: the installer closes SimHub. Fetched aside, so the screen never freezes.
+        // Never while driving: SimHub restarts. Done aside (Update.cs), so the screen never freezes.
         void StartUpdate()
         {
-            var code = plugin.Link;
-            if (plugin.GameState == "track") { updateText.Text = "Termine d'abord ta séance : la mise à jour ferme et relance SimHub."; return; }
+            if (plugin.GameState == "track") { updateText.Text = "Termine d'abord ta séance : la mise à jour redémarre SimHub."; return; }
             update.IsEnabled = false;
-            updateText.Text = "Téléchargement de l'installeur…";
-            System.Threading.ThreadPool.QueueUserWorkItem(_ =>
-            {
-                string error = plugin.Updater.Start(code);
-                Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    update.IsEnabled = true;
-                    updateText.Text = error ?? "SimHub se ferme : l'installeur met la nouvelle version et le relance. Tes réglages sont gardés.";
-                    // SimHub closes itself, as from its own menu (settings saved), so the installer has nothing to wait for.
-                    if (error == null) Dispatcher.BeginInvoke(new Action(() => Application.Current?.Shutdown()), System.Windows.Threading.DispatcherPriority.Background);
-                }));
-            });
+            updateText.Text = "Téléchargement de la nouvelle version…";
+            plugin.Updater.Install(plugin.Link, () => Dispatcher.BeginInvoke(new Action(() => Application.Current?.Shutdown())));
         }
 
         void Refresh()
@@ -252,6 +241,7 @@ namespace EnduranceManager.SimHub
             {
                 if (updateBox.Visibility != Visibility.Visible) updateText.Text = "Une nouvelle version du plugin est prête (" + available.ToString(3) + ", tu as la " + Updater.Current.ToString(3) + ").";
                 updateBox.Visibility = Visibility.Visible;
+                if (plugin.Updater.Error is string failed && plugin.Updater.Phase == null && !update.IsEnabled) { updateText.Text = failed; update.IsEnabled = true; }
             }
             else updateBox.Visibility = Visibility.Collapsed;
 

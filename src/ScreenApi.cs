@@ -61,6 +61,9 @@ namespace EnduranceManager.SimHub
                 version = Updater.Current.ToString(3),
                 build = Updater.Build,
                 update = plugin.Updater.Available?.ToString(3),
+                upd = new { changes = Lines(plugin.Updater.Changes), phase = plugin.Updater.Phase, error = plugin.Updater.Error },
+                installed = plugin.Updater.Installed() is var done && done != null ? Lines(done.Value.Changes) : null,
+                go = new { n = plugin.GoCount, page = plugin.GoPage },
                 guideDone = s.GuideDone,
                 site = new { site.state, site.title, site.detail, linked = saved != null, origin = code?.Origin },
                 game = new { game.state, game.title, game.detail },
@@ -132,6 +135,8 @@ namespace EnduranceManager.SimHub
                     case "paste": { string said = null; OnScreen(() => said = Paste(false)); return new { ok = said == null, message = said ?? "Code enregistré. Tes séances partiront dans la minute." }; }
                     case "site": return OpenSite((string)a["path"] ?? "/");
                     case "update": return Update();
+                    case "later": UpdateWindow.Close(); return Ok();
+                    case "see": plugin.See((string)a["page"] ?? "home"); return Ok();
                     case "wall": plugin.OpenWall(on); return Ok();
                     case "copyWall": { var url = plugin.WallServer?.NetworkUrl; if (url != null) OnScreen(() => Clipboard.SetText(url)); return Ok(); }
                     case "popup": plugin.PlacePopup(); return Ok();
@@ -191,12 +196,12 @@ namespace EnduranceManager.SimHub
         // Never while driving: the installer closes SimHub.
         object Update()
         {
-            if (plugin.GameState == "track") return new { ok = false, message = "Termine d'abord ta séance : la mise à jour ferme et relance SimHub." };
-            string error = plugin.Updater.Start(plugin.Link);
-            if (error != null) return new { ok = false, message = error };
-            OnScreen(() => Application.Current?.Dispatcher.BeginInvoke(new Action(() => Application.Current?.Shutdown()), System.Windows.Threading.DispatcherPriority.Background), wait: false);
-            return Ok("SimHub se ferme : l'installeur met la nouvelle version et le relance. Tes réglages sont gardés.");
+            if (plugin.GameState == "track") return new { ok = false, message = "Termine d'abord ta séance : la mise à jour redémarre SimHub." };
+            plugin.Updater.Install(plugin.Link, () => OnScreen(() => Application.Current?.Shutdown(), wait: false));
+            return Ok();
         }
+
+        static object Lines(List<Updater.Change> changes) => (changes ?? new List<Updater.Change>()).Select(c => new { type = c.Type, text = c.Text, page = c.Page }).ToList();
 
         object Rename(int i, string name)
         {

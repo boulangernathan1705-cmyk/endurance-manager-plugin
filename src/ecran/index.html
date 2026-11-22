@@ -120,6 +120,16 @@ details label{display:flex;gap:8px;align-items:center;font-size:13.5px;padding:2
 .foot{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line2);padding-top:14px}
 .ghost{background:transparent!important;border-color:transparent!important;color:var(--muted)!important}
 .empty{color:var(--muted);text-align:center;padding:30px}
+/* The small update window (UpdateWindow.cs, ?fenetre=maj or installee): no banner, no menu. */
+body.win .banner,body.win nav{display:none}
+body.win main{padding:22px 26px 20px}
+.wbox{display:flex;flex-direction:column;gap:16px;min-height:100%}
+.wbox h1{font-size:26px;line-height:1.2;color:var(--cream);margin-top:6px}
+.chg{display:flex;align-items:center;gap:12px;padding:11px 14px}
+.chg b{color:var(--cream)}
+.tag{font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;margin-right:6px;white-space:nowrap}
+.tag.nouveau{background:rgba(89,211,216,.14);color:var(--accent)}.tag.mieux{background:rgba(231,182,83,.14);color:var(--warn)}.tag.corrige{background:rgba(238,243,242,.10);color:var(--text)}
+.where{font-size:12.5px;color:var(--muted);margin-top:3px}
 @media (max-width:1100px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.duo{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:900px){
   nav{width:64px;padding:14px 8px}
@@ -177,6 +187,9 @@ let S = null, last = '';
 const UI = { page: load('page') || 'home', tip: null, guide: false, step: 0 };
 // #profils opens a page, #guide:2 the guide at a step (the pictures made by the CI, tests/Preview).
 (() => { const [pg, st] = location.hash.slice(1).split(':'); if (pg === 'guide') { UI.guide = true; UI.step = +st || 0; UI.seenGuide = true; } else if (pg) { UI.page = pg; UI.seenGuide = true; } })();
+// ?fenetre=maj / ?fenetre=installee: the small update window (UpdateWindow.cs).
+const WIN = new URLSearchParams(location.search).get('fenetre');
+if (WIN) { document.body.classList.add('win'); UI.seenGuide = true; }
 function load(k) { try { return localStorage.getItem('em.' + k); } catch { return null; } }
 function save(k, v) { try { localStorage.setItem('em.' + k, v); } catch {} }
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -188,7 +201,11 @@ async function poll() {
       const r = await fetch('/etat', { headers: { 'X-EM': '1' }, cache: 'no-store' });
       if (r.ok) {
         const text = await r.text();
-        if (text !== last) { last = text; S = JSON.parse(text); if (!S.guideDone && !UI.seenGuide) { UI.guide = true; UI.seenGuide = true; } render(); }
+        if (text !== last) {
+          last = text; S = JSON.parse(text);
+          // « Voir » in the update window: this screen opens that page.
+          if (!WIN && S.go) { if (UI.goN !== undefined && S.go.n !== UI.goN && S.go.page) { UI.page = S.go.page; save('page', UI.page); } UI.goN = S.go.n; }
+          if (!S.guideDone && !UI.seenGuide) { UI.guide = true; UI.seenGuide = true; } render(); }
       }
     } catch {}
   }
@@ -223,6 +240,29 @@ const head = (key, title, lead) => {
 };
 const plain = (eb, title, lead) => `<div class="head"><div><div class="eb">${eb}</div><h1>${esc(title)}</h1>${lead ? `<p class="lead">${lead}</p>` : ''}</div></div>`;
 const stateCard = (title, sub, cls, text, extra) => `<div class="state ${cls}"><div class="top"><b>${esc(title)}</b><b class="st ${cls}">${cls === 'ok' ? '✓ ' : ''}${esc(text)}</b></div><div class="sub">${sub}</div>${extra || ''}</div>`;
+
+// ── What a version changes (Update.cs, src/changements.json) ─────────────────────────────────────────────────────
+const TAG = { nouveau: 'Nouveau', mieux: 'Mieux', corrige: 'Corrigé' };
+const PLACE = { home: 'Accueil', guide: 'Assistance › Guide', souci: 'Assistance › Signaler un souci', maj: 'Assistance › Mises à jour' };
+const where = (p) => (MOD[p] ? MOD[p].group + ' › ' + MOD[p].name : PLACE[p] || '');
+const changeList = (list, see) => (list || []).map((c) => `<div class="card chg"><div style="flex:1;min-width:0"><div><span class="tag ${esc(c.type)}">${esc(TAG[c.type] || c.type)}</span><b>${esc(c.text)}</b></div>`
+  + `${where(c.page) ? `<div class="where">${esc(where(c.page))}</div>` : ''}</div>${see && where(c.page) ? `<button type="button" class="btn s" data-see="${esc(c.page)}">Voir</button>` : ''}</div>`).join('');
+const updateLabel = () => ({ telechargement: 'Téléchargement…', redemarrage: 'SimHub redémarre…' })[S.upd.phase] || 'Mettre à jour';
+
+function renderWin() {
+  if (WIN === 'installee' || !S.update) {
+    const list = WIN === 'installee' ? S.installed || [] : [];
+    return `<div class="wbox"><div><div class="eb">${WIN === 'installee' ? 'C’est fait' : 'Mise à jour'}</div><h1>Tu as la version ${esc(S.version)}</h1>${list.length ? '<p class="lead">Voici où trouver les nouveautés.</p>' : ''}</div>
+      ${list.length ? `<div class="stack" style="gap:8px">${changeList(list, true)}</div>` : ''}<span style="flex:1"></span>
+      <button type="button" class="btn p" data-later>OK</button><p class="mut small" style="text-align:center">Toujours dans Assistance › Mises à jour.</p></div>`;
+  }
+  const busy = !!S.upd.phase, track = S.game.state === 'ok';
+  return `<div class="wbox"><div><div class="eb">Mise à jour</div><h1>Version ${esc(S.update)} disponible</h1><p class="lead">Tu as la ${esc(S.version)}.</p></div>
+    ${S.upd.changes.length ? `<div class="stack" style="gap:8px"><div class="cap">Ce qui change</div>${changeList(S.upd.changes, false)}</div>` : ''}<span style="flex:1"></span>
+    ${S.upd.error ? `<p class="note" role="alert">${esc(S.upd.error)}</p>` : track ? '<p class="note">Termine d’abord ta séance : la mise à jour redémarre SimHub.</p>' : ''}
+    <div class="btns"><button type="button" class="btn p" style="flex:1" data-act="update" ${busy || track ? 'disabled' : ''}>${updateLabel()}</button><button type="button" class="btn" data-later ${busy ? 'disabled' : ''}>Plus tard</button></div>
+    <p class="mut small" style="text-align:center">SimHub redémarre tout seul. Tes réglages sont gardés.</p></div>`;
+}
 
 // ── Menu ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 function renderNav() {
@@ -380,10 +420,14 @@ const PAGES = {
   },
 
   maj() {
+    const busy = S.update && !!S.upd.phase;
     return `<div class="page" style="max-width:720px">${plain('Assistance', 'Mises à jour')}
       <section class="card" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="flex:1"><div class="cap">Version installée</div><div style="font-size:22px;font-weight:700">${esc(S.build)}</div></div>
-        ${S.update ? `<span class="pill team">${esc(S.update)} disponible</span><button type="button" class="btn p" data-act="update">Mettre à jour</button>` : '<span class="pill on">✓ À jour</span>'}</section>
-      ${S.update ? '<p class="mut small">SimHub se ferme, l’installeur met la nouvelle version et le relance. Tes réglages sont gardés.</p>' : ''}</div>`;
+        ${S.update ? `<span class="pill team">${esc(S.update)} disponible</span><button type="button" class="btn p" data-act="update" ${busy ? 'disabled' : ''}>${updateLabel()}</button>` : '<span class="pill on">✓ À jour</span>'}</section>
+      ${S.update && S.upd.error ? `<p class="note" role="alert" style="margin-top:12px">${esc(S.upd.error)}</p>` : ''}
+      ${S.update && S.upd.changes.length ? `<div class="stack" style="gap:8px;margin-top:18px"><div class="cap">Ce qui change dans la ${esc(S.update)}</div>${changeList(S.upd.changes, false)}</div>` : ''}
+      ${!S.update && S.installed && S.installed.length ? `<div class="stack" style="gap:8px;margin-top:18px"><div class="cap">Nouveautés de ta version</div>${changeList(S.installed, true)}</div>` : ''}
+      ${S.update ? '<p class="mut small" style="margin-top:12px">SimHub redémarre tout seul. Tes réglages sont gardés.</p>' : ''}</div>`;
   },
 };
 
@@ -412,6 +456,7 @@ function renderGuide() {
 // ── Render ───────────────────────────────────────────────────────────────────────────────────────────────────────
 function render() {
   if (!S) return;
+  if (WIN) { $('main').innerHTML = renderWin(); return; }
   if (!PAGES[UI.page]) UI.page = 'home';
   renderNav();
   // Never redrawn under the pilot's typing.
@@ -426,6 +471,8 @@ document.addEventListener('click', async (e) => {
   const d = t.dataset;
   if (d.tip) { UI.tip = UI.tip === d.tip ? null : d.tip; render(); return; }
   if (UI.tip) UI.tip = null;
+  if (d.later !== undefined) { act({ do: 'later' }, true); return; }
+  if (d.see) { if (WIN) act({ do: 'see', page: d.see }, true); else { UI.page = d.see; save('page', d.see); render(); } return; }
   if (d.go) { UI.page = d.go; save('page', d.go); $('main').scrollTop = 0; render(); return; }
   if (d.module) { S.modules[d.module] = !S.modules[d.module]; render(); await act({ do: 'module', key: d.module, on: S.modules[d.module] }); return; }
   if (d.laps) { S.laps = Math.max(1, Math.min(60, S.laps + +d.laps)); render(); act({ do: 'laps', value: S.laps }, true); return; }

@@ -52,6 +52,8 @@ namespace EnduranceManager.SimHub
         public bool Report { get; set; } = false;
         // The guided path (Guide.cs) was gone through or skipped: the plugin's screen opens on its modules.
         public bool GuideDone { get; set; } = false;
+        // The version the pilot was told about (Update.cs): after an update, the window « Tu as la version… » shows once.
+        public string SeenVersion { get; set; }
         [Newtonsoft.Json.JsonIgnore] public bool CompanionOn => Companion ?? System.IO.File.Exists(EnduranceManager.SimHub.Companion.Kept);
     }
 
@@ -231,6 +233,58 @@ namespace EnduranceManager.SimHub
             ThreadPool.QueueUserWorkItem(_ => Dashes.Install(home));
             if (Settings.CompanionOn) Companion.Start(pluginManager);
             EnduranceManager.SimHub.Report.State("fmt companion", Companion.Status);
+            // Updates (Update.cs, UpdateWindow.cs): looked for at the start then every hour, shown in a small window.
+            Updater.Tidy();
+            updateTimer = new Timer(_ => UpdateTick(), null, 8000, 30000);
+        }
+
+        Timer updateTimer;
+        bool installedShown;
+        Version shownFor;
+        void UpdateTick()
+        {
+            try
+            {
+                string current = Updater.Current.ToString(3);
+                if (!installedShown)
+                {
+                    installedShown = true;
+                    if (Settings.SeenVersion != current)
+                    {
+                        // A first install says nothing; an update shows what it brought.
+                        bool updated = Settings.SeenVersion != null && updater.Installed() != null;
+                        Settings.SeenVersion = current;
+                        this.SaveCommonSettings("GeneralSettings", Settings);
+                        if (updated) { UpdateWindow.Show(this, "installee"); return; }
+                    }
+                }
+                updater.Check(Link);
+                // Once per version and per SimHub start (« Plus tard »: at the next start), never on track.
+                var available = updater.Available;
+                if (available != null && !available.Equals(shownFor) && GameState != "track")
+                {
+                    shownFor = available;
+                    UpdateWindow.Show(this, "maj");
+                }
+            }
+            catch (Exception e) { EnduranceManager.SimHub.Report.Error("Mise à jour", e); }
+        }
+
+        // « Voir » in the update window: the plugin's screen opens that page (index.html reads Go), SimHub comes to the front.
+        public int GoCount;
+        public string GoPage;
+        public void See(string page)
+        {
+            GoPage = page;
+            GoCount++;
+            UpdateWindow.Close();
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                var main = System.Windows.Application.Current.MainWindow;
+                if (main == null) return;
+                if (main.WindowState == System.Windows.WindowState.Minimized) main.WindowState = System.Windows.WindowState.Normal;
+                main.Activate();
+            }));
         }
 
         // The plugin's screen without SimHub (tests/Preview, the pictures of the screen made on GitHub): what Init makes,
@@ -270,6 +324,7 @@ namespace EnduranceManager.SimHub
         public void End(PluginManager pluginManager)
         {
             running = false;
+            updateTimer?.Dispose();
             try { popup?.Stop(); } catch { }
             try { wallServer?.Stop(); } catch { }
             live?.Stop();

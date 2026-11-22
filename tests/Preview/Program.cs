@@ -120,18 +120,27 @@ namespace EnduranceManager.SimHub.Preview
                 string browser = WallServer.Browser();
                 if (browser == null) Console.WriteLine("Pas d'Edge ni de Chrome : pas de photos de l'écran web.");
                 else
-                    foreach (var (name, hash, w) in new[] { ("ecran-accueil", "home", 1280), ("ecran-reglages-voiture", "profils", 1280), ("ecran-mur-des-stands", "mur", 1280),
-                        ("ecran-overlay-relais", "relais", 1280), ("ecran-guide-modules", "guide:1", 1280), ("ecran-etroit", "home", 860) })
+                {
+                    // The update window (UpdateWindow.cs): a version as if the site gave it, and the one just installed.
+                    var changes = Updater.Read(Newtonsoft.Json.Linq.JArray.Parse("[{type:'nouveau',text:'Le mur des stands solo',page:'mur'},{type:'mieux',text:'Profils : appliquer en un appui',page:'profils'},{type:'corrige',text:'Le popup restait affiché en sortant des stands'}]"));
+                    plugin.Updater.Pretend(new Version(9, 9, 0), changes);
+                    string kept = Path.Combine(Path.GetTempPath(), "EnduranceManagerPreview", "update");
+                    Directory.CreateDirectory(kept);
+                    File.WriteAllText(Path.Combine(kept, "changements.json"), new Newtonsoft.Json.Linq.JObject { ["version"] = Updater.Current.ToString(3), ["changes"] = Newtonsoft.Json.Linq.JArray.Parse("[{type:'nouveau',text:'Le nouvel écran du plugin',page:'home'},{type:'nouveau',text:'Un guide pour bien démarrer',page:'guide'}]") }.ToString());
+                    foreach (var (name, hash, w, h) in new[] { ("ecran-accueil", "#home", 1280, 820), ("ecran-reglages-voiture", "#profils", 1280, 820), ("ecran-mur-des-stands", "#mur", 1280, 820),
+                        ("ecran-overlay-relais", "#relais", 1280, 820), ("ecran-guide-modules", "#guide:1", 1280, 820), ("ecran-etroit", "#home", 860, 820), ("ecran-mises-a-jour", "#maj", 1280, 820),
+                        ("fenetre-maj", "?fenetre=maj", 520, 600), ("fenetre-installee", "?fenetre=installee", 520, 600) })
                     {
                         string file = Path.GetFullPath(Path.Combine(dir, name + ".png"));
                         var run = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(browser,
-                            $"--headless=new --disable-gpu --hide-scrollbars --no-first-run --user-data-dir=\"{Path.Combine(Path.GetTempPath(), "em-ecran-photos")}\" --window-size={w},820 --force-device-scale-factor=1.5 --virtual-time-budget=4000 --screenshot=\"{file}\" {server.ScreenUrl}#{hash}")
+                            $"--headless=new --disable-gpu --hide-scrollbars --no-first-run --user-data-dir=\"{Path.Combine(Path.GetTempPath(), "em-ecran-photos")}\" --window-size={w},{h} --force-device-scale-factor=1.5 --virtual-time-budget=4000 --screenshot=\"{file}\" {server.ScreenUrl}{hash}")
                             { UseShellExecute = false, CreateNoWindow = true });
                         run.WaitForExit(30000);
                         bool ok = File.Exists(file);
                         if (ok) shots++;
                         Console.WriteLine((ok ? "OK    " : "ÉCHEC ") + name);
                     }
+                }
                 server.Stop();
             }
             catch (Exception e) { Console.WriteLine("ÉCHEC écran web : " + e.Message); }
