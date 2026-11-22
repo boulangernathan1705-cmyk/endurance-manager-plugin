@@ -1,0 +1,8 @@
+bin/
+obj/
+out/
+site/
+replay-out/
+apercus/
+zip/
+*.zip

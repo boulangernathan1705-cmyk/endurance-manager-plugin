@@ -3,8 +3,13 @@
 // changements, nettoyage, historique, écarts), et ressortent comme une page ou le mur dans SimHub les reçoit
 // (hello, puis patch) dans <nom>.room.jsonl.
 //   node room-bridge.mjs <entrée.plugin.jsonl> <sortie.room.jsonl>
+// shared/live.mjs vient du dépôt du site (app-endurance-manager, public) : la CI le récupère dans site/ à la racine ;
+// ailleurs, EM_SITE donne le dossier du site.
 import {readFileSync, writeFileSync} from 'node:fs';
-import {cleanSnapshot, diff, ingest, mergeSnapshot, publicFeed, raceGaps, DELTA_VERSION, LIVE_FOR} from '../../../shared/live.mjs';
+import {resolve} from 'node:path';
+import {pathToFileURL} from 'node:url';
+const site = process.env.EM_SITE || resolve(import.meta.dirname, '..', 'site');
+const {cleanSnapshot, diff, ingest, mergeSnapshot, publicFeed, raceGaps, DELTA_VERSION, LIVE_FOR} = await import(pathToFileURL(resolve(site, 'shared', 'live.mjs')).href);
 
 const [input, output] = process.argv.slice(2);
 const feeds = {}, trails = new Map(), sent = new Map(), pilot = {id:'pilote', name:'Pilote', color:'#45d4d0'};

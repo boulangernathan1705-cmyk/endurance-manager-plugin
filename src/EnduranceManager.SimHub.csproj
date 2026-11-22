@@ -1,12 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!-- Plugin SimHub des fiches combo d'Endurance Manager. Se compile sur un PC Windows où SimHub est installé :
        dotnet build -c Release   (ou -p:SimHubDir="D:\SimHub" si SimHub est ailleurs).
-       La DLL produite se copie dans le dossier de SimHub (voir README.md). -->
+       La DLL produite se copie dans le dossier de SimHub (voir README.md à la racine du dépôt). -->
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <UseWPF Condition="'$(OS)' == 'Windows_NT'">true</UseWPF>
     <AssemblyName>EnduranceManager.SimHub</AssemblyName>
-    <!-- The plugin's version: raised for each new build given to the pilots (release/plugin.json, README.md). -->
+    <!-- The plugin's version: raised for each new build given to the pilots (docs/publier.md). -->
     <Version>2.6.0</Version>
     <!-- The commit in the build's identity (2.6.0+sha, shown « 2.6.0 (abc1234) » on the plugin's screen). -->
     <SourceRevisionId Condition="'$(GITHUB_SHA)' != ''">$(GITHUB_SHA)</SourceRevisionId>
@@ -27,8 +27,8 @@
     <Reference Include="Newtonsoft.Json"><HintPath>$(SimHubDir)\Newtonsoft.Json.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
   <ItemGroup Condition="'$(UseSimHubFacade)' == 'true'">
-    <ProjectReference Include="reference\SimHub.Plugins\SimHub.Plugins.csproj" Private="false" />
-    <ProjectReference Include="reference\GameReaderCommon\GameReaderCommon.csproj" Private="false" />
+    <ProjectReference Include="..\reference\SimHub.Plugins\SimHub.Plugins.csproj" Private="false" />
+    <ProjectReference Include="..\reference\GameReaderCommon\GameReaderCommon.csproj" Private="false" />
     <!-- La version que SimHub fournit (13.0.0.0, comme la sienne) ; la DLL n'est pas copiée. -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" ExcludeAssets="runtime" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
@@ -40,8 +40,8 @@
   </ItemGroup>
   <!-- Les tests et la façade ont leurs propres projets : pas compilés dans la DLL du plugin. -->
   <ItemGroup>
-    <Compile Remove="reference\**;tests\**;bin\**;obj\**" />
-    <None Remove="reference\**;tests\**" />
+    <Compile Remove="bin\**;obj\**" />
+    
   </ItemGroup>
   <ItemGroup>
     <!-- L'installeur en double-clic, à donner aux pilotes avec la DLL. -->

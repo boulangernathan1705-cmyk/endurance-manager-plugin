@@ -11,7 +11,7 @@
     <AssemblyName>Preview</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="EnduranceManager.SimHub"><HintPath>..\..\bin\Release\EnduranceManager.SimHub.dll</HintPath></Reference>
+    <Reference Include="EnduranceManager.SimHub"><HintPath>..\..\src\bin\Release\EnduranceManager.SimHub.dll</HintPath></Reference>
     <ProjectReference Include="..\..\reference\SimHub.Plugins\SimHub.Plugins.csproj" />
     <ProjectReference Include="..\..\reference\GameReaderCommon\GameReaderCommon.csproj" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
