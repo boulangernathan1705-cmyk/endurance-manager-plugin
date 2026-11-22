@@ -4,11 +4,25 @@ Deux murs, mêmes règles de calcul :
 
 | | Mur des stands (Pour moi) | Mur des stands équipages (Avec mon équipe) |
 | --- | --- | --- |
-| Où | Dash « Endurance Manager · Mur » dans SimHub (2560 × 1440, 2ᵉ écran) | Page « Mur des stands » du site (`mur.html`), PC et téléphone |
+| Où | Fenêtre ouverte par le plugin (« Ouvrir le mur ») et tablette sur le wifi : page `src/mur/index.html` servie par `WallServer.cs`, port 8686 | Page « Mur des stands » du site (`mur.html`), PC et téléphone |
 | Données | Ce PC seul : `LocalRoom.cs` refait le salon du site en C# | Le plugin envoie au site (`LiveShare.cs`), un salon Cloudflare Durable Object par équipe |
-| Fichiers | `Wall.cs`, `WallDash.cs`, `WallProperties.cs`, `LocalRoom.cs` | `LiveShare.cs` ; côté site `server/live.mjs`, `shared/live.mjs`, `front/pit-wall.mjs` |
+| Fichiers | `Wall.cs`, `WallServer.cs`, `src/mur/`, `LocalRoom.cs` (l'ancien dash : `WallDash.cs`, `WallProperties.cs`) | `LiveShare.cs` ; côté site `server/live.mjs`, `shared/live.mjs`, `front/pit-wall.mjs` |
 
 Le rejeu vérifie que le mur solo est identique au mur passé par le salon du site (voir [tests-et-ci.md](tests-et-ci.md)).
+
+## La fenêtre du mur (22/11/2026)
+
+Plus de Dash Studio. Le plugin sert la page du mur (rangée dans la DLL) sur ce PC et sur le wifi :
+- « Ouvrir le mur » lance Edge (sinon Chrome, sinon le navigateur par défaut) en mode application, sans barre, avec son
+  propre profil (`%LOCALAPPDATA%\EnduranceManager\Combos\fenetre-mur`). La page renvoie sa place et sa taille
+  (`/place`, seulement depuis ce PC) : la fenêtre se rouvre au même endroit. « Plein écran » ajoute `--start-fullscreen`.
+- Tablette ou téléphone sur le même réseau : l'adresse affichée sur l'onglet (`http://<IP du PC>:8686/`). Windows
+  demande une fois d'autoriser SimHub dans le pare-feu.
+- La page lit `/vue` quatre fois par seconde (`{ vue: WallView, profil }`), rien quand elle est cachée. Le mur complet
+  change une fois par seconde (Wall.cs), les entrées à chaque lecture du jeu.
+- Disposition fixe 2560 × 1440 réduite à la taille de la fenêtre en gardant ses proportions, jamais réarrangée
+  (Nathan). Maquette : `maquettes/mur-fenetre/`.
+- Le rejeu vérifie que `/vue` répond avec le mur du rejeu et l'écrit dans `<séance>.vue.json`.
 
 ## Le dash SimHub validé (18/11/2026)
 

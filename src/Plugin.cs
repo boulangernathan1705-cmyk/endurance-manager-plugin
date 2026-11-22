@@ -38,6 +38,11 @@ namespace EnduranceManager.SimHub
         // Where the profiles' popup shows (ProfilePopup.cs), chosen with « Placer le popup ». Empty: top centre of the main screen.
         public double? PopupLeft { get; set; }
         public double? PopupTop { get; set; }
+        // The mur's window (WallServer.cs): where and how big it was left, in the browser's pixels. Empty: the browser chooses.
+        public int? MurX { get; set; }
+        public int? MurY { get; set; }
+        public int? MurW { get; set; }
+        public int? MurH { get; set; }
         // Mur des stands (Wall.cs): our car on the dash « Endurance Manager · Mur », from this PC alone. Off by default.
         public bool Wall { get; set; } = false;
         // FMT companion, whole, run by this plugin (Companion.cs). Not chosen yet: on when the installer put its DLL in
@@ -87,6 +92,14 @@ namespace EnduranceManager.SimHub
         public LiveShare Live => live;
         public Wall Wall => wall;
         Wall wall;
+        WallServer wallServer;
+        public WallServer WallServer => wallServer;
+        // « Ouvrir le mur » / « Plein écran » on the mur's tab.
+        public void OpenWall(bool fullScreen)
+        {
+            try { wallServer?.Open(home, Settings.MurX, Settings.MurY, Settings.MurW, Settings.MurH, fullScreen); }
+            catch (Exception e) { EnduranceManager.SimHub.Report.Error("Mur", e); }
+        }
         public Practice Practice { get; } = new Practice();
         // The race figures a dashboard reads (Course.cs), and the game's pit menu they come with.
         public Course Course { get; } = new Course();
@@ -126,6 +139,14 @@ namespace EnduranceManager.SimHub
             updater = new Updater(home);
             live = new LiveShare(() => Link);
             wall = new Wall();
+            // The mur's page, on this PC and the network while the module is on (WallServer.cs).
+            wallServer = new WallServer(() => new { vue = wall.View, profil = Settings.Profiles ? Profiles?.Active : null }, (x, y, w, h) =>
+            {
+                if (Settings.MurX == x && Settings.MurY == y && Settings.MurW == w && Settings.MurH == h) return;
+                Settings.MurX = x; Settings.MurY = y; Settings.MurW = w; Settings.MurH = h;
+                this.SaveCommonSettings("GeneralSettings", Settings);
+            });
+            if (Settings.Wall) wallServer.Start();
             foreach (var (name, get) in WallProperties.All) this.AttachDelegate(name, () => get(wall.View));
             lovely = new Lovely(home);
             standings = new Standings(() => Reading && GameState == "track", Path.Combine(home, "api", "ws-LiveStandings.json"));
@@ -240,6 +261,7 @@ namespace EnduranceManager.SimHub
         {
             running = false;
             try { popup?.Stop(); } catch { }
+            try { wallServer?.Stop(); } catch { }
             live?.Stop();
             standings?.Stop();
             pluginManager.InputToActionTriggered -= DashButton;
@@ -299,7 +321,7 @@ namespace EnduranceManager.SimHub
         public void SetWall(bool on)
         {
             Settings.Wall = on;
-            if (!on) wall.Clear();
+            if (!on) { wall.Clear(); wallServer?.Stop(); } else wallServer?.Start();
             this.SaveCommonSettings("GeneralSettings", Settings);
         }
 
@@ -399,6 +421,8 @@ namespace EnduranceManager.SimHub
                                 try { var snap = live.Local(buffer, sample, recorder, api, Computed); if (snap != null) wall.Local(snap, new object[] { Math.Round(sample.LapDist), Math.Round(sample.Speed, 1), Math.Round(sample.Throttle * 100), Math.Round(sample.BrakePedal * 100), Math.Round(sample.Steer * 100), sample.Gear }); }
                                 catch (Exception e) { EnduranceManager.SimHub.Report.Error("Mur", e); }
                             else if (!driving && Settings.Wall && tick % 10 == 0) wall.Pause();
+                            // The mur's inputs at each reading (10 a second), between the full updates.
+                            if (driving && Settings.Wall && tick % 10 != 0) wall.Inputs(sample.Speed, sample.Throttle * 100, sample.BrakePedal * 100, sample.Steer * 100, sample.Gear);
                             if (driving && CourseOn && tick % 10 == 0) try { Course.Update(buffer, sample, recorder.Current, api.Service, Menu, Game, api.Refuel, standings, lovely); } catch (Exception e) { EnduranceManager.SimHub.Report.Error("Course", e); }
                             if (driving && CourseOn && tick % 20 == 5 && !Menu.Busy) ThreadPool.QueueUserWorkItem(_ => Menu.Read());
                             // The game's state, its estimate of the stop and the car's condition, what is due each second.

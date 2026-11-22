@@ -188,6 +188,25 @@ namespace EnduranceManager.SimHub.Replay
                 File.WriteAllText(Path.Combine(outDir, f.File + ".mur-solo.json"), JsonConvert.SerializeObject(WallProperties.All.ToDictionary(x => x.Name, x => x.Get(run.Solo.View)), Formatting.Indented));
                 var differ = viaSite.Keys.Where(k => viaSite[k] != solo[k] && !Inputs.Any(k.Contains)).ToList();
                 r.Is(differ.Count == 0, "Mur solo différent du mur par le site : " + string.Join(", ", differ.Take(8).Select(k => $"{k} {solo[k]} au lieu de {viaSite[k]}")));
+                // The mur's page (WallServer.cs) answers /vue with this wall, as the window and a tablet read it.
+                var server = new WallServer(() => new { vue = run.Solo.View, profil = "Sec" }, (x, y, w, h) => { });
+                server.Start();
+                r.Is(server.Running, "Page du mur : serveur pas lancé (" + server.Error + ")");
+                if (server.Running)
+                    try
+                    {
+                        using (var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(5) })
+                        {
+                            string json = http.GetStringAsync(server.LocalUrl + "vue").GetAwaiter().GetResult();
+                            File.WriteAllText(Path.Combine(outDir, f.File + ".vue.json"), json);
+                            var page = JObject.Parse(json);
+                            r.Is((string)page["vue"]?["Track"] == f.Track, "Page du mur : circuit « " + (string)page["vue"]?["Track"] + " »");
+                            r.Is((string)page["vue"]?["LastLap"] == lap, "Page du mur : dernier tour « " + (string)page["vue"]?["LastLap"] + " »");
+                            r.Is((string)page["profil"] == "Sec", "Page du mur : profil absent");
+                        }
+                    }
+                    catch (Exception e) { r.Is(false, "Page du mur : " + e.Message); }
+                    finally { server.Stop(); }
             }
             finally { Tape.Clock = null; }
         }

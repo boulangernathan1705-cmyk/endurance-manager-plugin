@@ -105,6 +105,15 @@ namespace EnduranceManager.SimHub
 
         public void Clear() { View = new WallView(); Status = "Coupé"; }
 
+        // Our car's pedals, steering, gear and speed now, for the mur's page between two full updates.
+        public void Inputs(double speed, double throttle, double brake, double steer, int gear)
+        {
+            var v = View;
+            if (!v.Live) return;
+            v.Speed = Math.Round(speed).ToString(CultureInfo.InvariantCulture); v.Throttle = Math.Round(throttle); v.Brake = Math.Round(brake); v.Steer = Math.Round(steer);
+            v.Gear = gear < 0 ? "R" : gear == 0 ? "N" : gear.ToString(CultureInfo.InvariantCulture);
+        }
+
         // hello: every feed; feed: one complete; patch: what changed in one; fast: our car's last frames. The room's
         // messages as the site sends them to a page: kept for the tests (tests/Replay), which check the same wall made
         // both ways.

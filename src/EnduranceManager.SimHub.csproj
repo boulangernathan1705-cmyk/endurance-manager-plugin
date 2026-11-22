@@ -41,6 +41,8 @@
   <!-- Les tests et la façade ont leurs propres projets : pas compilés dans la DLL du plugin. -->
   <ItemGroup>
     <Compile Remove="bin\**;obj\**" />
+    <!-- The mur's page, served by WallServer.cs from the DLL. -->
+    <EmbeddedResource Include="mur\**\*" LogicalName="mur/%(RecursiveDir)%(Filename)%(Extension)" />
     
   </ItemGroup>
   <ItemGroup>
