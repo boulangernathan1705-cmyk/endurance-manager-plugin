@@ -80,9 +80,27 @@ namespace EnduranceManager.SimHub.Preview
                 card.HorizontalAlignment = HorizontalAlignment.Left; card.VerticalAlignment = VerticalAlignment.Top;
                 return card;
             });
+            // The mur's page is in the DLL: its files answer (WallServer.cs).
+            bool page = false;
+            try
+            {
+                var server = new WallServer(() => new { vue = new WallView() }, (x, y, w, h) => { });
+                server.Start();
+                using (var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(5) })
+                {
+                    string html = http.GetStringAsync(server.LocalUrl).GetAwaiter().GetResult();
+                    var css = http.GetAsync(server.LocalUrl + "pit-wall.css").GetAwaiter().GetResult();
+                    var font = http.GetAsync(server.LocalUrl + "fonts/jetbrains-mono.woff2").GetAwaiter().GetResult();
+                    string vue = http.GetStringAsync(server.LocalUrl + "vue").GetAwaiter().GetResult();
+                    page = html.Contains("<title>Mur des stands</title>") && css.IsSuccessStatusCode && font.IsSuccessStatusCode && vue.Contains("\"vue\"");
+                    Console.WriteLine((page ? "OK    " : "ÉCHEC ") + $"page du mur : html {html.Length} o, css {(int)css.StatusCode}, police {(int)font.StatusCode}");
+                }
+                server.Stop();
+            }
+            catch (Exception e) { Console.WriteLine("ÉCHEC page du mur : " + e.Message); }
             Console.WriteLine(made + " photos dans " + Path.GetFullPath(dir));
             // The plugin's threads (sharing, updates) must not keep the program open.
-            Environment.Exit(made == 12 ? 0 : 1);
+            Environment.Exit(made == 12 && page ? 0 : 1);
             return 0;
         }
 
