@@ -98,9 +98,46 @@ namespace EnduranceManager.SimHub.Preview
                 server.Stop();
             }
             catch (Exception e) { Console.WriteLine("ÉCHEC page du mur : " + e.Message); }
-            Console.WriteLine(made + " photos dans " + Path.GetFullPath(dir));
+            // The plugin's screen as a web page (src/ecran/, ScreenApi.cs): /etat answers this PC's page only, and Edge
+            // (headless) takes its pictures, page by page.
+            bool screen = false;
+            int shots = 0;
+            try
+            {
+                var plugin = WithProfiles();
+                var server = plugin.WallServer;
+                server.Start(false);
+                using (var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(10) })
+                {
+                    string html = http.GetStringAsync(server.ScreenUrl).GetAwaiter().GetResult();
+                    var refused = http.GetAsync(server.LocalUrl + "etat").GetAwaiter().GetResult();
+                    var ask = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, server.LocalUrl + "etat");
+                    ask.Headers.Add("X-EM", "1");
+                    string state = http.SendAsync(ask).GetAwaiter().GetResult().Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                    screen = html.Contains("<title>Endurance Manager</title>") && (int)refused.StatusCode == 403 && state.Contains("\"modules\"") && state.Contains("Porsche 963");
+                    Console.WriteLine((screen ? "OK    " : "ÉCHEC ") + $"écran web : html {html.Length} o, /etat sans en-tête {(int)refused.StatusCode}, /etat {state.Length} o");
+                }
+                string browser = WallServer.Browser();
+                if (browser == null) Console.WriteLine("Pas d'Edge ni de Chrome : pas de photos de l'écran web.");
+                else
+                    foreach (var (name, hash, w) in new[] { ("ecran-accueil", "home", 1280), ("ecran-reglages-voiture", "profils", 1280), ("ecran-mur-des-stands", "mur", 1280),
+                        ("ecran-overlay-relais", "relais", 1280), ("ecran-guide-modules", "guide:1", 1280), ("ecran-etroit", "home", 860) })
+                    {
+                        string file = Path.GetFullPath(Path.Combine(dir, name + ".png"));
+                        var run = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(browser,
+                            $"--headless=new --disable-gpu --hide-scrollbars --no-first-run --user-data-dir=\"{Path.Combine(Path.GetTempPath(), "em-ecran-photos")}\" --window-size={w},820 --force-device-scale-factor=1.5 --virtual-time-budget=4000 --screenshot=\"{file}\" {server.ScreenUrl}#{hash}")
+                            { UseShellExecute = false, CreateNoWindow = true });
+                        run.WaitForExit(30000);
+                        bool ok = File.Exists(file);
+                        if (ok) shots++;
+                        Console.WriteLine((ok ? "OK    " : "ÉCHEC ") + name);
+                    }
+                server.Stop();
+            }
+            catch (Exception e) { Console.WriteLine("ÉCHEC écran web : " + e.Message); }
+            Console.WriteLine(made + shots + " photos dans " + Path.GetFullPath(dir));
             // The plugin's threads (sharing, updates) must not keep the program open.
-            Environment.Exit(made == 12 && page ? 0 : 1);
+            Environment.Exit(made == 12 && page && screen ? 0 : 1);
             return 0;
         }
 

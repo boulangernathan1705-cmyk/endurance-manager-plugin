@@ -25,7 +25,20 @@ namespace EnduranceManager.SimHub
             this.plugin = plugin;
             Theme.Apply(this);
             Content = host;
-            if (plugin.Settings.GuideDone) ShowModules(); else ShowGuide();
+            if (!ShowPage()) ShowWpf();
+        }
+
+        void ShowWpf() { if (plugin.Settings.GuideDone) ShowModules(); else ShowGuide(); }
+
+        // The screen as a web page (src/ecran/, WebScreen.cs); false when it cannot show, the WPF screen then.
+        bool ShowPage()
+        {
+            var server = plugin.WallServer;
+            if (server == null || !server.Running) return false;
+            var page = WebScreen.Make(server.ScreenUrl, () => Dispatcher.BeginInvoke(new Action(ShowWpf)));
+            if (page == null) return false;
+            host.Child = page;
+            return true;
         }
 
         public UIElement Page => host.Child;

@@ -6,6 +6,7 @@
 | --- | --- |
 | [modules.md](modules.md) | Les 7 modules (Pour moi / Avec mon équipe), ce que fait chacun, ses fichiers, son état |
 | [decisions.md](decisions.md) | Les choix de Nathan et les idées refusées (à ne pas reproposer) |
+| [ecran.md](ecran.md) | L'écran du plugin en page web (menu à gauche, charte du site), ses données, son secours WPF |
 | [limites-simhub.md](limites-simhub.md) | Ce que l'écran d'un plugin SimHub et Dash Studio peuvent faire ou non |
 | [reglages-voiture.md](reglages-voiture.md) | Module Réglages voiture en course (profils de black box) et Black box sur boutons (FMT companion) |
 | [mur-des-stands.md](mur-des-stands.md) | Le mur des stands : dans SimHub (solo) et sur le site (équipage) |

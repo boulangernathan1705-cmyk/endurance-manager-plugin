@@ -139,14 +139,10 @@ namespace EnduranceManager.SimHub
             updater = new Updater(home);
             live = new LiveShare(() => Link);
             wall = new Wall();
-            // The mur's page, on this PC and the network while the module is on (WallServer.cs).
-            wallServer = new WallServer(() => new { vue = wall.View, profil = Settings.Profiles ? Profiles?.Active : null }, (x, y, w, h) =>
-            {
-                if (Settings.MurX == x && Settings.MurY == y && Settings.MurW == w && Settings.MurH == h) return;
-                Settings.MurX = x; Settings.MurY = y; Settings.MurW = w; Settings.MurH = h;
-                this.SaveCommonSettings("GeneralSettings", Settings);
-            });
-            if (Settings.Wall) wallServer.Start();
+            // The mur's page and the plugin's screen: always on this PC (the screen), on the network too while the mur
+            // module is on (WallServer.cs, ScreenApi.cs).
+            MakeServer();
+            wallServer.Start(Settings.Wall);
             foreach (var (name, get) in WallProperties.All) this.AttachDelegate(name, () => get(wall.View));
             lovely = new Lovely(home);
             standings = new Standings(() => Reading && GameState == "track", Path.Combine(home, "api", "ws-LiveStandings.json"));
@@ -249,6 +245,20 @@ namespace EnduranceManager.SimHub
             live = new LiveShare(() => Link);
             wall = new Wall();
             Profiles = new Profiles(home, () => null, () => PluginManager, () => Settings.Profiles);
+            MakeServer();
+        }
+
+        ScreenApi screenApi;
+        public ScreenApi ScreenApi => screenApi;
+        void MakeServer()
+        {
+            screenApi = new ScreenApi(this);
+            wallServer = new WallServer(() => new { vue = wall.View, profil = Settings.Profiles ? Profiles?.Active : null }, (x, y, w, h) =>
+            {
+                if (Settings.MurX == x && Settings.MurY == y && Settings.MurW == w && Settings.MurH == h) return;
+                Settings.MurX = x; Settings.MurY = y; Settings.MurW = w; Settings.MurH = h;
+                this.SaveCommonSettings("GeneralSettings", Settings);
+            }, () => screenApi.State(), body => screenApi.Act(body));
         }
 
         // The profiles' popup on screen now, or null.
@@ -277,7 +287,9 @@ namespace EnduranceManager.SimHub
         // thirty times while a teammate watches the wall).
         public void DataUpdate(PluginManager pluginManager, ref GameData data) => Companion.DataUpdate(pluginManager, ref data);
 
-        public System.Windows.Controls.Control GetWPFSettingsControl(PluginManager pluginManager) => new Shell(this);
+        // The screen SimHub shows (Guide.cs): the page src/ecran/ when WebView2 is there, else the WPF screen.
+        public Shell Shell;
+        public System.Windows.Controls.Control GetWPFSettingsControl(PluginManager pluginManager) => Shell = new Shell(this);
 
         // A module « Avec mon équipe » is on: the site is used (no switch of its own any more).
         public bool TeamOn => Settings.Enabled || Settings.Share || Settings.Report;
@@ -321,7 +333,9 @@ namespace EnduranceManager.SimHub
         public void SetWall(bool on)
         {
             Settings.Wall = on;
-            if (!on) { wall.Clear(); wallServer?.Stop(); } else wallServer?.Start();
+            // Off: the page leaves the network but stays on this PC for the plugin's screen.
+            if (!on) wall.Clear();
+            wallServer?.Start(on);
             this.SaveCommonSettings("GeneralSettings", Settings);
         }
 

@@ -43,6 +43,8 @@
     <Compile Remove="bin\**;obj\**" />
     <!-- The mur's page, served by WallServer.cs from the DLL. -->
     <EmbeddedResource Include="mur\**\*" LogicalName="mur/%(RecursiveDir)%(Filename)%(Extension)" />
+    <!-- The plugin's screen as a web page (ScreenApi.cs, WebScreen.cs), served under /ecran/. -->
+    <EmbeddedResource Include="ecran\**\*" LogicalName="ecran/%(RecursiveDir)%(Filename)%(Extension)" />
     
   </ItemGroup>
   <ItemGroup>
