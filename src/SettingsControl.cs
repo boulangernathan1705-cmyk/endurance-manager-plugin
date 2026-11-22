@@ -70,7 +70,7 @@ namespace EnduranceManager.SimHub
             wallButtons.Children.Add(openWall);
             wallButtons.Children.Add(fullWall);
             wall.Children.Add(wallButtons);
-            var copyWall = Theme.Secondary("Copier");
+            copyWall = Theme.Secondary("Copier");
             copyWall.Padding = new Thickness(10, 2, 10, 2);
             copyWall.Margin = new Thickness(10, 0, 0, 0);
             copyWall.Click += (sender, args) => { try { if (plugin.WallServer?.NetworkUrl is string url) Clipboard.SetText(url); } catch { } };
@@ -152,6 +152,7 @@ namespace EnduranceManager.SimHub
 
         // The code copied on the site, taken from the clipboard: nothing to type. Not linked yet, the screen looks
         // by itself every two seconds (automatic): the pilot only clicks « Créer mon code » on the site.
+        Button copyWall;
         readonly TextBlock sessionText = Detail(), wallText = Detail(), wallAddress = new TextBlock { VerticalAlignment = VerticalAlignment.Center, Foreground = Theme.Accent, FontSize = 14 }, shareText = Detail(), recordText = Detail(), companionText = Detail(), reportText = Detail();
         // A message after « Signaler » stays a few seconds before the state comes back.
         DateTime reportSaid;
@@ -277,6 +278,7 @@ namespace EnduranceManager.SimHub
                 + (plugin.WallServer?.Error is string error && !plugin.WallServer.Running ? "\nPage du mur impossible à lancer : " + error : "");
             wallAddress.Text = plugin.Settings.Wall && plugin.WallServer?.Running == true
                 ? "Tablette ou téléphone, même wifi : " + (plugin.WallServer.NetworkUrl ?? plugin.WallServer.LocalUrl) : "";
+            if (copyWall != null) copyWall.Visibility = wallAddress.Text == "" ? Visibility.Collapsed : Visibility.Visible;
             shareText.Text = !plugin.Settings.Share ? "Module coupé : ta voiture n'est pas partagée." : code == null ? "Pas encore relié : va dans « Relier au site »."
                 : plugin.Live.Status + (plugin.Live.SentAt is DateTime sent ? $" (dernier envoi à {sent:HH:mm:ss})" : "");
             if (plugin.GameState == "paused")
