@@ -31,9 +31,9 @@ if (-not $copyOnly -and $site -match '^https://') {
     Write-Host "Téléchargement du plugin depuis $site..."
     try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-        $info = Invoke-RestMethod "$site/downloads/simhub/plugin.json" -UseBasicParsing
+        $info = Invoke-RestMethod "$site/downloads/simhub/v0/plugin.json" -UseBasicParsing
         $part = "$dll.part"
-        Invoke-WebRequest "$site/downloads/simhub/EnduranceManager.SimHub.dll" -OutFile $part -UseBasicParsing
+        Invoke-WebRequest "$site/downloads/simhub/v0/EnduranceManager.SimHub.dll" -OutFile $part -UseBasicParsing
         if ((Get-Item $part).Length -ne $info.size -or (Get-FileHash $part -Algorithm SHA256).Hash -ne $info.sha256.ToUpper()) { Remove-Item $part; throw 'fichier abîmé' }
         Move-Item $part $dll -Force
         Write-Host "Version $($info.version) téléchargée."

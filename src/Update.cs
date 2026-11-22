@@ -1,4 +1,4 @@
-// Mise à jour du plugin : le site qui a donné le code publie la dernière version (/downloads/simhub/plugin.json,
+// Mise à jour du plugin : le site qui a donné le code publie la dernière version (/downloads/simhub/v0/plugin.json,
 // scripts/build.mjs). Le bouton « Mettre à jour » de l'écran du plugin télécharge l'installeur de ce site et le lance :
 // il ferme SimHub, copie la nouvelle DLL et relance SimHub. Jamais pendant que le pilote roule.
 using System;
@@ -20,6 +20,9 @@ namespace EnduranceManager.SimHub
         public static readonly Version Current = typeof(Updater).Assembly.GetName().Version;
         // Without the site module, the public site gives the updates: SimHub alone keeps up to date too.
         public const string PublicSite = "https://endurance-manager.app";
+        // The 0.x line (new numbering from 0.1.0, 22/11/2026) has its own folder on the site: /downloads/simhub/ still holds
+        // the old 2.x plugin, which a 0.x would otherwise take for a newer version.
+        public const string Channel = "/downloads/simhub/v0/";
         static string Origin(LinkCode code) => code?.Origin ?? PublicSite;
         // « 2.6.0 (abc1234) »: the version and the commit it was built from, one build told from another.
         public static string Build
@@ -51,7 +54,7 @@ namespace EnduranceManager.SimHub
             {
                 try
                 {
-                    var info = JObject.Parse(client.GetStringAsync(Origin(code) + "/downloads/simhub/plugin.json").GetAwaiter().GetResult());
+                    var info = JObject.Parse(client.GetStringAsync(Origin(code) + Channel + "plugin.json").GetAwaiter().GetResult());
                     Available = Version.TryParse((string)info["version"], out var latest) && Full(latest) > Current ? latest : null;
                 }
                 catch { }
@@ -65,7 +68,7 @@ namespace EnduranceManager.SimHub
         {
             try
             {
-                string script = client.GetStringAsync(Origin(code) + "/downloads/simhub/installer.cmd").GetAwaiter().GetResult();
+                string script = client.GetStringAsync(Origin(code) + Channel + "installer.cmd").GetAwaiter().GetResult();
                 if (!script.Contains("@@SITE@@")) return "Le site n'a pas donné l'installeur.";
                 script = script.Replace("@@SITE@@", Origin(code)).Replace("\r\n", "\n").Replace("\n", "\r\n");
                 Directory.CreateDirectory(folder);
