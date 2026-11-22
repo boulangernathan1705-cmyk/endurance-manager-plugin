@@ -122,7 +122,7 @@ namespace EnduranceManager.SimHub
             updater = new Updater(home);
             live = new LiveShare(() => Link);
             wall = new Wall();
-            foreach (var (name, get) in WallProperties.All) this.AttachDelegate(name, () => get(wall.View));
+            foreach (var name in WallDash.Properties()) { string key = name; this.AttachDelegate("Mur." + key, () => wall.View[key]); }
             lovely = new Lovely(home);
             standings = new Standings(() => Reading && GameState == "track", Path.Combine(home, "api", "ws-LiveStandings.json"));
             standings.Start();
@@ -200,7 +200,7 @@ namespace EnduranceManager.SimHub
             reader.Start();
             sender.Start();
             // The overlays « Endurance Manager · Bandeau » and « · Colonne » in Dash Studio's templates.
-            ThreadPool.QueueUserWorkItem(_ => Dashes.Install(home));
+            ThreadPool.QueueUserWorkItem(_ => { Dashes.Install(home); Fonts.Install(); });
             if (Settings.CompanionOn) Companion.Start(pluginManager);
             EnduranceManager.SimHub.Report.State("fmt companion", Companion.Status);
         }
@@ -457,7 +457,7 @@ namespace EnduranceManager.SimHub
                 {
                     var values = new List<KeyValuePair<string, object>>();
                     if (CourseOn) foreach (var (name, get) in Course.Properties) values.Add(new KeyValuePair<string, object>(name, get(Course.View)));
-                    if (Settings.Wall) foreach (var p in WallProperties.All) values.Add(new KeyValuePair<string, object>(p.Name, p.Get(wall.View)));
+                    if (Settings.Wall) foreach (var name in WallDash.Properties()) values.Add(new KeyValuePair<string, object>("Mur." + name, wall.View[name]));
                     EnduranceManager.SimHub.Report.Figures(values);
                 }
                 catch (Exception e) { EnduranceManager.SimHub.Report.Error("Chiffres", e); }

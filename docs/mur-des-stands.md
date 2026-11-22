@@ -6,7 +6,7 @@ Deux murs, mêmes règles de calcul :
 | --- | --- | --- |
 | Où | Dash « Endurance Manager · Mur » dans SimHub (2560 × 1440, 2ᵉ écran) | Page « Mur des stands » du site (`mur.html`), PC et téléphone |
 | Données | Ce PC seul : `LocalRoom.cs` refait le salon du site en C# | Le plugin envoie au site (`LiveShare.cs`), un salon Cloudflare Durable Object par équipe |
-| Fichiers | `Wall.cs`, `WallDash.cs`, `WallProperties.cs`, `LocalRoom.cs` | `LiveShare.cs` ; côté site `server/live.mjs`, `shared/live.mjs`, `front/pit-wall.mjs` |
+| Fichiers | `Wall.cs`, `WallDash.cs`, `dash/` (maquette → dash), `Fonts.cs`, `LocalRoom.cs` | `LiveShare.cs` ; côté site `server/live.mjs`, `shared/live.mjs`, `front/pit-wall.mjs` |
 
 Le rejeu vérifie que le mur solo est identique au mur passé par le salon du site (voir [tests-et-ci.md](tests-et-ci.md)).
 
@@ -29,15 +29,19 @@ Disposition de Nathan :
 - Alertes : énergie/carburant < 2 tours, zone de dégâts en rouge, pneu < 30 % orange < 15 % rouge, réglage à changer en
   cyan. Seul le cadre clignote.
 
-## Deux versions du dash
+## Le dash = la maquette (depuis la 2.7.0)
 
-- `main` (2.6.0) : `WallDash.cs` dessine le dash en C# d'après la maquette, `WallProperties.cs` liste les propriétés.
-- Branche `mur-dash-maquette` : la refonte faite juste après le refus du premier dash (« c'est pas du tout la
-  maquette ») : `dash/mur.html` = la maquette avec des attributs `data-*`, `node dash/build.mjs` la lit dans Chromium et
-  écrit les éléments Dash Studio (`dash/mur.json`, incorporé à la DLL), polices du site installées pour l'utilisateur.
-  Elle n'a jamais été fusionnée avec la 2.6.0 (conflits dans `Wall.cs`, `WallDash.cs`, `Plugin.cs`).
-- Rien des deux n'est vérifié dans le vrai Dash Studio. Voir aussi la piste « page web locale » dans
-  [limites-simhub.md](limites-simhub.md).
+- `src/dash/mur.html` est la maquette validée, avec des attributs `data-*` qui la relient aux propriétés
+  `EnduranceManagerPlugin.Mur.*` (légende en haut du fichier).
+- `node src/dash/build.mjs` (Playwright + Chromium, fichiers du site dans `site/` ou `EM_SITE`) lit la page et écrit
+  `src/dash/mur.json` (éléments Dash Studio, incorporés à la DLL, `WallDash.cs`). Le résultat est commité : le refaire
+  après chaque changement de `mur.html`.
+- `node src/dash/build.mjs valeurs.json sortie.png` dessine le dash avec des valeurs (par exemple
+  `*.mur-milieu.json` du rejeu).
+- `Wall.Make` remplit une valeur par propriété ; polices du site installées pour l'utilisateur (`Fonts.cs`).
+- Historique : un premier dash dessiné en C# avait été refusé (« pas du tout la maquette ») ; cette version s'était
+  perdue entre deux PR puis a été adaptée au mur solo en 2.7.0.
+- Pas encore vérifié dans le vrai Dash Studio (liaisons de position, `blink`, polices).
 
 ## Données lues (rappel)
 

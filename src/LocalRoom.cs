@@ -229,6 +229,7 @@ namespace EnduranceManager.SimHub
                 ["ve5"] = Avg(recent, l => l.Ve), ["fuel5"] = Avg(recent, l => l.Fuel),
                 ["wear5"] = JArray.FromObject(Enumerable.Range(0, 4).Select(i => Avg(recent, l => l.Wear?[i])).ToArray()),
                 ["lastVe"] = ours.LastOrDefault()?.Ve, ["lastFuel"] = ours.LastOrDefault()?.Fuel,
+                ["lastWear"] = ours.LastOrDefault()?.Wear == null ? null : JArray.FromObject(ours.LastOrDefault().Wear),
                 ["stintVe"] = Avg(stintLaps, l => l.Ve), ["stintFuel"] = Avg(stintLaps, l => l.Fuel),
                 ["stintAvg"] = Avg(stintLaps.Where(l => l.T.HasValue && !l.Pit), l => l.T),
                 ["bestSectors"] = JArray.FromObject(Enumerable.Range(0, 3).Select(i => { var v = clean.Where(l => l.S != null).Select(l => l.S[i]).ToList(); return v.Count > 0 ? v.Min() : (double?)null; }).ToArray())

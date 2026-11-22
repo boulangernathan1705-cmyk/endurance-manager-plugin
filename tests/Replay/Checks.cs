@@ -137,6 +137,8 @@ namespace EnduranceManager.SimHub.Replay
 
         // The mur: the plugin's messages through the room (the site's code), then into the dash in SimHub.
         static readonly string[] Inputs = { "Mur.Entrees." };
+        // Every property the dash reads (WallDash.Properties, from dash/mur.json), with its value.
+        static Dictionary<string, object> Props(WallView view) => WallDash.Properties().ToDictionary(n => "Mur." + n, n => view[n]);
 
         static void Wall(Fixture f, Run run, string outDir, Report r)
         {
@@ -164,7 +166,7 @@ namespace EnduranceManager.SimHub.Replay
                 {
                     // The wall halfway through the session too, car on track (for the picture, dash-render.mjs).
                     if (index++ == lines.Length / 2)
-                        File.WriteAllText(Path.Combine(outDir, f.File + ".mur-milieu.json"), JsonConvert.SerializeObject(WallProperties.All.ToDictionary(x => x.Name, x => x.Get(wall.View)), Formatting.Indented));
+                        File.WriteAllText(Path.Combine(outDir, f.File + ".mur-milieu.json"), JsonConvert.SerializeObject(Props(wall.View), Formatting.Indented));
                     var item = JObject.Parse(line);
                     now = (long)item["at"];
                     bool whole = wall.Hear((string)item["message"]);
@@ -172,20 +174,20 @@ namespace EnduranceManager.SimHub.Replay
                     if (wall.LastError != null && errors++ < 5) r.Is(false, "Mur : " + wall.LastError.GetType().Name + " " + wall.LastError.Message + " " + wall.LastError.StackTrace?.Split('\n').FirstOrDefault()?.Trim());
                 }
                 var v = wall.View;
-                File.WriteAllText(Path.Combine(outDir, f.File + ".mur.json"), JsonConvert.SerializeObject(WallProperties.All.ToDictionary(x => x.Name, x => x.Get(v)), Formatting.Indented));
-                r.Is(v.Live, $"Mur : pas « en direct » ({v.Status})");
-                r.Is(v.Track == f.Track, $"Mur : circuit « {v.Track} »");
-                r.Is(v.Class != null, "Mur : catégorie vide");
+                File.WriteAllText(Path.Combine(outDir, f.File + ".mur.json"), JsonConvert.SerializeObject(Props(v), Formatting.Indented));
+                r.Is(v["EnDirect"] is bool live && live, "Mur : pas « en direct »");
+                r.Is(v["Classement.Titre"] != null, "Mur : catégorie vide");
                 var last = f.Laps.Last(l => l.T > 0);
                 string lap = (int)(last.T.Value / 60) + ":" + (last.T.Value - (int)(last.T.Value / 60) * 60).ToString("00.000", Fr);
-                r.Is(v.LastLap == lap, $"Mur : dernier tour « {v.LastLap} » au lieu de « {lap} »");
-                r.Is(v.Standing.Count(x => x.Visible) == 4, $"Mur : {v.Standing.Count(x => x.Visible)} lignes au classement de la catégorie au lieu de 4");
-                r.Is(v.Standing.Count(x => x.Visible && x.Us) == 1, "Mur : notre voiture absente du classement");
+                r.Is((v["Chrono.Dernier"] as string) == lap, $"Mur : dernier tour « {v["Chrono.Dernier"]} » au lieu de « {lap} »");
+                int rows = Enumerable.Range(1, 10).Count(i => v["Classement." + i + ".Visible"] is bool b && b);
+                r.Is(rows == 4, $"Mur : {rows} lignes au classement de la catégorie au lieu de 4");
+                r.Is(Enumerable.Range(1, 10).Count(i => v["Classement." + i + ".Visible"] is bool b && b && v["Classement." + i + ".Nous"] is bool u && u) == 1, "Mur : notre voiture absente du classement");
                 // The mur des stands on the PC alone (LocalRoom) shows the same as through the site's room, inputs aside
                 // (the room passes our car's frames ten times a second, the PC its reading of the moment).
-                var viaSite = WallProperties.All.ToDictionary(x => x.Name, x => JsonConvert.SerializeObject(x.Get(v)));
-                var solo = WallProperties.All.ToDictionary(x => x.Name, x => JsonConvert.SerializeObject(x.Get(run.Solo.View)));
-                File.WriteAllText(Path.Combine(outDir, f.File + ".mur-solo.json"), JsonConvert.SerializeObject(WallProperties.All.ToDictionary(x => x.Name, x => x.Get(run.Solo.View)), Formatting.Indented));
+                var viaSite = Props(v).ToDictionary(x => x.Key, x => JsonConvert.SerializeObject(x.Value));
+                var solo = Props(run.Solo.View).ToDictionary(x => x.Key, x => JsonConvert.SerializeObject(x.Value));
+                File.WriteAllText(Path.Combine(outDir, f.File + ".mur-solo.json"), JsonConvert.SerializeObject(Props(run.Solo.View), Formatting.Indented));
                 var differ = viaSite.Keys.Where(k => viaSite[k] != solo[k] && !Inputs.Any(k.Contains)).ToList();
                 r.Is(differ.Count == 0, "Mur solo différent du mur par le site : " + string.Join(", ", differ.Take(8).Select(k => $"{k} {solo[k]} au lieu de {viaSite[k]}")));
             }

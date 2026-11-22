@@ -10,7 +10,7 @@ du site). Deux groupes, noms choisis par Nathan le 19/11/2026 :
 | **Overlay relais** | Après chaque tour : temps, énergie (ou carburant) et usure des pneus face à la cible. Overlays Dash Studio « Bandeau » et « Colonne ». | `Practice.cs`, `Dashes.cs` | `Overlays` (activé) |
 | **Réglages voiture en course** | Profils perso de black box (Sec, Inter, Pluie) par voiture, appliqués en une touche. | `Profiles.cs`, `ProfilesControl.cs` | `Profiles` (coupé) |
 | **Black box sur boutons** | FMT companion 0.5 tel quel, porté par le plugin : black box et menu des stands sur boutons (volant, Stream Deck). | `Companion.cs` | `Companion` (activé si sa DLL est là) |
-| **Mur des stands** | Le mur de sa propre voiture dans SimHub (dash « Endurance Manager · Mur », 2560 × 1440), sans le site. | `Wall.cs`, `WallDash.cs`, `WallProperties.cs`, `LocalRoom.cs` | `Wall` (coupé) |
+| **Mur des stands** | Le mur de sa propre voiture dans SimHub (dash « Endurance Manager · Mur », 2560 × 1440), sans le site. | `Wall.cs`, `WallDash.cs`, `dash/`, `Fonts.cs`, `LocalRoom.cs` | `Wall` (coupé) |
 
 Les « chiffres de course » (propriétés façon NeoRed pour les dashs, `Course.cs`, `Telemetry.cs`, `Computed.cs`) ne
 sont plus un module : ils tournent quand Overlay relais ou Mur des stands est activé.
@@ -36,8 +36,6 @@ sont plus un module : ils tournent quand Overlay relais ou Mur des stands est ac
 - Zip 2.6.0 de test donné à quelques pilotes. Le site sert encore la 2.2.0 en mise à jour automatique.
 - Pas encore vérifié dans le vrai SimHub : les profils (appels Control Mapper signalés par `ApiCheck`), Black box sur
   boutons intégré, le mur dans Dash Studio (liaisons de position, `blink`, polices).
-- Branche `mur-dash-maquette` : une refonte du dash du mur (le dash généré depuis la maquette HTML validée, commit
-  « le dash est la maquette validée elle-même ») faite en parallèle et jamais fusionnée. À reprendre ou abandonner
-  (voir [mur-des-stands.md](mur-des-stands.md)).
+- 2.7.0 : le dash du mur est généré depuis la maquette HTML validée (voir [mur-des-stands.md](mur-des-stands.md)).
 - En discussion : remplacer l'écran en onglets par une page d'accueil avec tous les modules, et servir le mur et
   l'overlay en page web locale (voir [limites-simhub.md](limites-simhub.md)).
