@@ -20,7 +20,8 @@ concurrency:
 env:
   # Le dépôt du site (public) : son shared/live.mjs fait tourner le salon du mur dans le rejeu (tests/room-bridge.mjs).
   SITE_REPO: boulangernathan1705-cmyk/app-endurance-manager
-  SITE_REF: dev
+  # Branche du site tant que sa PR 782 (champs du plugin 2.5) n'est pas dans dev ; ensuite : dev.
+  SITE_REF: claude/project-thread-6xn5qk
 
 jobs:
   plugin:
