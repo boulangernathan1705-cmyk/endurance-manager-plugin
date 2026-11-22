@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.MemoryMappedFiles;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Media;
@@ -34,6 +35,9 @@ namespace EnduranceManager.SimHub
         // Was the « Chiffres de course » switch: kept so old settings still read, no longer used (Plugin.CourseOn).
         public bool Course { get; set; } = true;
         public bool Profiles { get; set; } = false;
+        // Where the profiles' popup shows (ProfilePopup.cs), chosen with « Placer le popup ». Empty: top centre of the main screen.
+        public double? PopupLeft { get; set; }
+        public double? PopupTop { get; set; }
         // Mur des stands (Wall.cs): our car on the dash « Endurance Manager · Mur », from this PC alone. Off by default.
         public bool Wall { get; set; } = false;
         // FMT companion, whole, run by this plugin (Companion.cs). Not chosen yet: on when the installer put its DLL in
@@ -143,6 +147,13 @@ namespace EnduranceManager.SimHub
             this.AttachDelegate("Profils.AChanger", () => Settings.Profiles && Profiles.ToChange);
             this.AttachDelegate("Profils.Humidite", () => Profiles.Wetness);
             this.AttachDelegate("Profils.Message", () => Settings.Profiles ? Profiles.Message : "");
+            // The popup of a first press (what the profile changes, waiting for the second), also for the dashes.
+            this.AttachDelegate("Profils.Popup", () => PopupNow != null);
+            this.AttachDelegate("Profils.Popup.Titre", () => PopupNow?.Title ?? "");
+            this.AttachDelegate("Profils.Popup.Lignes", () => PopupNow is Profiles.PopupView v ? string.Join("\n", v.Drive.Concat(v.Pit).Select(x => x.Label + " " + x.Now + " → " + x.Next)) : "");
+            this.AttachDelegate("Profils.Popup.Aide", () => PopupNow?.Help ?? "");
+            this.AttachDelegate("Profils.Popup.Confirmer", () => PopupNow?.Confirm ?? false);
+            try { popup = ProfilePopup.Start(this); } catch (Exception e) { EnduranceManager.SimHub.Report.Log("popup", e.Message); }
             this.AttachDelegate("Status", () => Status);
             this.AttachDelegate("LapsRecorded", () => laps);
             this.AttachDelegate("Enabled", () => Settings.Enabled);
@@ -219,9 +230,16 @@ namespace EnduranceManager.SimHub
             Profiles = new Profiles(home, () => null, () => PluginManager, () => Settings.Profiles);
         }
 
+        // The profiles' popup on screen now, or null.
+        Profiles.PopupView PopupNow => Settings.Profiles && Profiles?.Popup is Profiles.PopupView v && DateTime.UtcNow < v.Until ? v : null;
+        ProfilePopup popup;
+        // « Placer le popup » on the profiles' tab.
+        public void PlacePopup() => popup?.Place();
+
         public void End(PluginManager pluginManager)
         {
             running = false;
+            try { popup?.Stop(); } catch { }
             live?.Stop();
             standings?.Stop();
             pluginManager.InputToActionTriggered -= DashButton;

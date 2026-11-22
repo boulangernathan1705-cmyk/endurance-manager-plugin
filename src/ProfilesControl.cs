@@ -36,6 +36,13 @@ namespace EnduranceManager.SimHub
             page.Children.Add(car);
             page.Children.Add(list);
             page.Children.Add(buttons);
+            var place = Button("Placer le popup", false);
+            place.HorizontalAlignment = HorizontalAlignment.Left;
+            place.Margin = new Thickness(0, 10, 0, 0);
+            place.Click += (sender, args) => plugin.PlacePopup();
+            page.Children.Add(place);
+            page.Children.Add(new TextBlock { Foreground = Theme.Muted, Margin = new Thickness(0, 4, 0, 0), TextWrapping = TextWrapping.Wrap,
+                Text = "Visible au-dessus de LMU en mode fenêtré sans bordure." });
             var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             timer.Tick += (sender, args) => Refresh();
             timer.Start();
@@ -55,7 +62,7 @@ namespace EnduranceManager.SimHub
             car.Foreground = shown == null ? Theme.Muted : Theme.Text;
             int count = shown == null ? 0 : Profiles.For(shown).Count;
             buttons.Text = "Sur ton volant : relie " + string.Join(", ", Enumerable.Range(1, Math.Max(1, count)).Select(i => "Profil" + i))
-                + " à tes boutons dans SimHub › Contrôles et événements. Appui court : applique. Appui de 2 s : mémorise.";
+                + " à tes boutons dans SimHub › Contrôles et événements. 1er appui : le popup montre ce qui change. 2e appui dans les 5 s : appliqué. Appui de 2 s : mémorise.";
             if (!plugin.Settings.Profiles) { state.Text = "Module coupé : les boutons ne font rien."; return; }
             var lines = new List<string>();
             if (Profiles.Car != null) lines.Add("Profil actif : " + (Profiles.Active ?? "aucun") + (Profiles.Wetness is double wet ? $" · piste humide à {wet:0} %" : ""));
@@ -119,7 +126,7 @@ namespace EnduranceManager.SimHub
             return new Border { Background = Card, BorderBrush = Edge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8), Padding = new Thickness(16), Margin = new Thickness(0, 0, 0, 12), Child = inside };
         }
 
-        static string Pretty(string name) => name.Length == 0 ? name : name.Substring(0, 1) + name.Substring(1).ToLowerInvariant();
+        static string Pretty(string name) => Profiles.Pretty(name);
 
         static Button Button(string text, bool main)
         {

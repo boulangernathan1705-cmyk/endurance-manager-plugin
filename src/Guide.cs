@@ -201,7 +201,7 @@ namespace EnduranceManager.SimHub
             "Règle le nombre de tours par relais dans l'onglet Overlay relais : il fixe ta cible d'énergie par tour.");
 
         UIElement Profiles() => Info("Réglages voiture en course",
-            "Un bouton du volant par profil (Sec, Inter, Pluie…) : appui court, la voiture passe dans ce profil ; appui de 2 s, il mémorise tes réglages du moment.",
+            "Un bouton du volant par profil (Sec, Inter, Pluie…) : 1er appui, un popup montre ce qui change ; 2e appui dans les 5 s, la voiture passe dans ce profil ; appui de 2 s, il mémorise tes réglages du moment.",
             "Dans l'onglet Réglages voiture en course, donne à chaque commande de LMU le bouton qui appuie dessus.",
             "Charge une voiture dans LMU : ses profils apparaissent dans l'onglet.");
 

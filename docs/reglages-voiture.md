@@ -21,7 +21,12 @@
   Profils perso, sur son PC (`%LOCALAPPDATA%\EnduranceManager\profils.json`).
 - Réglages d'un profil : TC, TC cut, TC slip, ABS, répartition de freinage, migration, map moteur, régén (un réglage
   absent de la voiture est ignoré). Nathan voulait aussi le menu des stands (18 lignes) : pas encore fait.
-- Un bouton par profil (actions SimHub `Profil1`…) : appui court = appliquer, appui long 2 s = mémoriser l'état actuel.
+- Un bouton par profil (actions SimHub `Profil1`…) : 1er appui = un popup montre ce qui va changer (en roulant et au
+  prochain arrêt) ; 2e appui sur le même bouton dans les 5 s = appliquer ; sans 2e appui, rien ne change. Appui long 2 s =
+  mémoriser l'état actuel. Règle décidée par Nathan le 22/11/2026.
+- Le popup (`src/ProfilePopup.cs`) : petite fenêtre toujours au premier plan, que le clic traverse et qui ne prend pas le
+  focus du jeu (visible au-dessus de LMU en fenêtré sans bordure). « Placer le popup » sur l'onglet la fait glisser, la
+  place est gardée. Mêmes textes pour les dashs : `Profils.Popup`, `.Titre`, `.Lignes`, `.Aide`, `.Confirmer`.
 - Appliquer = appuyer sur les rôles « + / − » trouvés tout seuls (`Profiles.Find` : rôles FMT companion d'abord, puis
   Next/Previous ou +/−), relire la valeur après chaque appui, s'arrêter et signaler si elle ne bouge pas.
 - **Rien d'automatique.** Seulement des rappels : profil pas actif (valeurs différentes) et humidité de la piste

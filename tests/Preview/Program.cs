@@ -69,9 +69,20 @@ namespace EnduranceManager.SimHub.Preview
             Shot("onglet-pour-moi-mur-des-stands", () => new Shell(Plugin(true)), e => Open(e, 1, 3));
             Shot("onglet-equipe-relier-au-site", () => new Shell(Plugin(true)), e => Open(e, 2, 0));
             Shot("onglet-equipe-aide-au-developpement", () => new Shell(Plugin(true)), e => Open(e, 2, 3));
+            // The profiles' popup after a first press (example values).
+            Shot("popup-profil-1er-appui", () =>
+            {
+                var view = new Profiles.PopupView { Title = "« Pluie »", Help = "Rappuie sur le même bouton pour confirmer.", Confirm = true, Since = DateTime.UtcNow, Until = DateTime.UtcNow.AddSeconds(5) };
+                view.Drive.Add(("TC", "5", "8")); view.Drive.Add(("ABS", "4", "7")); view.Drive.Add(("Répartition", "54,2 %", "52,8 %"));
+                view.Pit.Add(("Pneus", "Medium", "Wet")); view.Pit.Add(("Aileron arrière", "P5", "P7"));
+                var card = ProfilePopup.Card(view, out var bar);
+                bar.Width = 308 * 0.6;
+                card.HorizontalAlignment = HorizontalAlignment.Left; card.VerticalAlignment = VerticalAlignment.Top;
+                return card;
+            });
             Console.WriteLine(made + " photos dans " + Path.GetFullPath(dir));
             // The plugin's threads (sharing, updates) must not keep the program open.
-            Environment.Exit(made == 11 ? 0 : 1);
+            Environment.Exit(made == 12 ? 0 : 1);
             return 0;
         }
 
