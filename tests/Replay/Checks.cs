@@ -160,7 +160,7 @@ namespace EnduranceManager.SimHub.Replay
             System.Threading.Thread.Sleep(300);
             pages.Turn(-1);
             Is((string)PV("BlackBox.Pneus.AVG.Usure") == "99%" && (string)PV("BlackBox.Pneus.AVG.Gomme") == "M" && (string)PV("BlackBox.Pneus.AVG.Pression") == "122.7kPa"
-                && (string)PV("BlackBox.Pneus.AVG.Temp") == "31.6°C" && (string)PV("BlackBox.Pneus.Jeux") == "∞ Pneus", "Pneus : usure, gomme, pression, température, jeux");
+                && (string)PV("BlackBox.Pneus.AVG.Temp") == "30.0°C" && (string)PV("BlackBox.Pneus.Jeux") == "∞ Pneus", "Pneus : usure, gomme, pression, température, jeux");
             Is((double)PV("BlackBox.Pneus.AVG.Reste") == 99.0 && (string)PV("BlackBox.Pneus.AVG.GommeCouleur") == "#FFFFD400", "Pneus : anneau qui s'use, medium en jaune");
             Is((string)PV("BlackBox.Pneus.AVD.Etat") == "Perdue" && (string)PV("BlackBox.Pneus.AVD.Couleur") == "#FFE83A4C", "Pneus : roue perdue en rouge");
             System.Threading.Thread.Sleep(300);
