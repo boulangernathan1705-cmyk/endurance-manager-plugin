@@ -281,7 +281,9 @@ namespace EnduranceManager.SimHub
             sender.Start();
             // The overlays « Endurance Manager · Bandeau » and « · Colonne » in Dash Studio's templates.
             ThreadPool.QueueUserWorkItem(_ => Dashes.Install(home));
-            if (Settings.CompanionOn) Companion.Start(pluginManager);
+            // FMT companion knows from us whether LMU runs (our reading of its memory) and gets each pit menu we read.
+            if (Settings.CompanionOn) Companion.Start(pluginManager, () => GameState != "closed");
+            Menu.Shared = Companion.Offer;
             EnduranceManager.SimHub.Report.State("fmt companion", Companion.Status);
             // Updates (Update.cs, UpdateWindow.cs): looked for at the start then every hour, shown in a small window.
             Updater.Tidy();

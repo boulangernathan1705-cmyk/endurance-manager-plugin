@@ -1,7 +1,7 @@
 // La page « Black box sur boutons » de l'écran du plugin (maquette validée par Nathan le 23/11/2026,
 // maquettes/black-box-boutons/) : tout l'écran de FMT companion 0.5, refait dans la page web. FMT companion tourne tel
-// quel (sa DLL, Companion.cs) ; son code source est perdu, donc cette page lui parle par réflexion, avec exactement les
-// appels que fait son propre écran (CompanionControl, relu dans sa DLL) : cocher une commande (SetCommandVisible),
+// quel (sa DLL, compilée depuis src/fmt/, Companion.cs) ; elle reste un assemblage à part, donc cette page lui parle par réflexion, avec exactement les
+// appels que fait son propre écran (CompanionControl, src/fmt/) : cocher une commande (SetCommandVisible),
 // Tester (Mapper.Test), Préparer LMU (Preparer.Prepare des commandes LMU cochées), Annuler (Preparer.Undo), ouvrir le
 // Control Mapper, exporter le profil Stream Deck, sauvegarder le mapping, valider une nouvelle version de LMU. Rien de ce
 // que fait FMT companion n'est réécrit. Si une version de FMT companion n'a plus ces noms, la page le dit et propose son
@@ -73,6 +73,8 @@ namespace EnduranceManager.SimHub
         public object State()
         {
             if (P == null) return null;
+            // The page shows the pit menu FMT companion read: kept fresh while it is open.
+            companion.Touch();
             try
             {
                 Read();

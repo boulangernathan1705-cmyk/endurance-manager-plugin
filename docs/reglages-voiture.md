@@ -2,8 +2,9 @@
 
 ## Black box sur boutons (FMT companion)
 
-- FMT companion = plugin SimHub de Nathan (`FMTCompanionPlugin`, version 0.5). **Son code source est perdu**, seule la
-  DLL existe : `src/fmt/FMTCompanion.dll` (copie de `FMT Companion 0.5.zip`, SHA-256 `aac2eba5…2e4f`).
+- FMT companion = plugin SimHub de Nathan (`FMTCompanionPlugin`). Son code a été retrouvé le 23/11/2026 en décompilant
+  la DLL 0.5 (ILSpy) : il est dans `src/fmt/` (projet `FmtCompanion.csproj`, version 0.6.0), compilé par la CI. Depuis 0.6.0 :
+  plus de lecture du menu en boucle (il prend celle du plugin, `Companion.Offer`), plus de recherche de LMU toutes les 10 s.
 - Elle est **dans la DLL du plugin** (ressource `fmt/FMTCompanion.dll`) : la mise à jour du plugin la donne à chaque
   pilote, rien à installer à part. Au lancement, module activé, `Companion.Unpack` l'écrit dans
   `SimHub\EnduranceManager\` (ou `%LOCALAPPDATA%\EnduranceManager\` si le dossier de SimHub demande les droits admin).

@@ -35,6 +35,8 @@ namespace EnduranceManager.SimHub
         // The menu as the game sent it, for a change made from the wheel's screen (BlackBox, BlackBoxDash.cs).
         public volatile JArray Raw;
         public bool Busy => busy != 0;
+        // The game's answer as it came, handed on (to FMT companion, Companion.Offer): one read of the menu for both.
+        public Action<string> Shared;
 
         // Never throws: it runs on a pool thread, where an error would close SimHub.
         public void Read()
@@ -42,9 +44,11 @@ namespace EnduranceManager.SimHub
             if (System.Threading.Interlocked.Exchange(ref busy, 1) == 1) return;
             try
             {
-                var lines = JArray.Parse(Tape.Get(client, Url));
+                string answer = Tape.Get(client, Url);
+                var lines = JArray.Parse(answer);
                 Items = Parse(lines);
                 Raw = lines;
+                Shared?.Invoke(answer);
             }
             catch { }
             finally { busy = 0; }
