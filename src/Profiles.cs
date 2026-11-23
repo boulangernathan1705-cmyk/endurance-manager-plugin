@@ -352,7 +352,7 @@ namespace EnduranceManager.SimHub
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         static IEnumerable<string> OutputRoles(PluginManager manager)
         {
-            var mapping = manager?.GetPlugin<SimHub.Plugins.OutputPlugins.ControlRemapper.ControlMapperPlugin>()?.controlMapperPluginSettings?.OutputMapping?.ControllerMapping;
+            var mapping = manager?.GetPlugin<global::SimHub.Plugins.OutputPlugins.ControlRemapper.ControlMapperPlugin>()?.controlMapperPluginSettings?.OutputMapping?.ControllerMapping;
             if (mapping == null) return new string[0];
             return mapping.Buttons.Select(b => b.TargetRole).Concat(mapping.VirtualButtons.Select(b => b.TargetRole)).ToList();
         }
