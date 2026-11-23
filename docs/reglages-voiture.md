@@ -62,9 +62,27 @@
 - Noms : si l'API répond en anglais (« VIRTUAL ENERGY »), ils sont écrits comme l'écran français du jeu
   (« Énergie Virtuelle: ») ; sinon tels que le jeu les donne. À vérifier dans le vrai jeu : la langue de l'API et le
   texte de l'énergie (le jeu affiche « 100% 35 laps », l'API peut ne donner que « 100% »).
-- Propriétés : `BlackBox.Lignes`, `.Choisie`, `.Page`, `.Message`, `.Haut`, `.Bas`, `BlackBox.1.Nom` / `.Valeur` / `.Choisie` … `BlackBox.7.*`.
-- Étape 2 (à faire, accord de Nathan) : les autres pages (Relatif, Séance, Chrono, Pneus, Carburant, Électronique) et
-  un bouton SimHub « page suivante » pour le VoCore.
+- Propriétés : `BlackBox.Page`, `.PageNo` (0 Relatif … 6 Arrêt aux stands), `.Message`, `.Attente`, `.Haut`, `.Bas`,
+  `.Lignes`, `.Choisie` ; les 7 lignes `BlackBox.1.Nom` / `.Valeur` / `.C1` `.C2` `.C3` / `.Pos` / `.Classe` / `.Couleur` /
+  `.Petit` / `.Choisie` / `.Reglable` / `.Moi` … `BlackBox.7.*` ; les roues `BlackBox.Pneus.AVG.Usure` / `.Gomme` /
+  `.Pression` / `.Temp` / `.Frein` / `.Etat` / `.Couleur` … `ARD.*`, `BlackBox.Pneus.Jeux`.
+- Étape 2 (faite, PR #14, accord de Nathan sur les pages le 23/11) : les 7 pages du jeu dans son ordre (Relatif, Séance,
+  Chrono, Pneus, Carburant, Électronique, Arrêt aux stands), icônes dans la barre de titre, ◂ ▸ font le tour
+  (`BlackBoxPages.cs`). Boutons par page, comme la black box du jeu (Nathan) :
+  - Électronique : ▲ ▼ changent de ligne, − + envoient les commandes de FMT companion (`TC.Next`, `Bias.Forward`…,
+    comme son bouton « Tester ») : il faut avoir fait « Préparer LMU » dans FMT companion. Seuls les réglages que la
+    voiture a sont listés.
+  - Chrono : − + passent de Delta à Secteur à Split ; ▲ ▼ de Timing (Meilleur, Optimal) à Relatif (Dernier).
+  - Carburant : − + passent de Virtual Energy à Carburant ; ▲ un tour de plus pour l'objectif de sauvegarde, ▼ un de
+    moins. Pousser = la plus forte des conso (dernier tour, moyenne de 5), Estimation = moyenne de 5 ; avec un
+    objectif, la conso par tour qu'il faut et ⚠ si l'estimation n'y arrive pas.
+  - Relatif, Séance, Pneus : rien à régler.
+  Au toucher, les lignes réglables (en-têtes de Chrono et Carburant, ligne choisie) sont coupées en deux (− / +, actions
+  `BlackBoxToucheMoins1…7` / `BlackBoxTouchePlus1…7`).
+  À vérifier dans le jeu (jamais vus, faits à notre idée) : écart du Relatif (devant « -1.2 », derrière « +1.2 ») et
+  couleurs des catégories sauf Hypercar ; textes d'adhérence ; contenu exact des lignes Delta ; « P4 » des ARB
+  (niveau + 1) ; migration, carto moteur et recharge affichées en niveau (le jeu écrit « 1.5% F », « 120kW ») ; roue
+  crevée ou perdue sur la page Pneus.
 
 ## Réglages voiture en course (profils)
 

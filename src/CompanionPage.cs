@@ -245,6 +245,25 @@ namespace EnduranceManager.SimHub
             return Said("Test « " + label + " » : " + end, sent);
         }
 
+        // One of FMT companion's commands by its id (« TC.Next »…), as its Tester does, for the wheel's black box
+        // (BlackBoxPages.cs, page Électronique): null when sent, otherwise a short reason for the dash's title bar.
+        public string Send(string id)
+        {
+            if (P == null) return "FMT companion absent";
+            string why = null;
+            try
+            {
+                OnScreen(() =>
+                {
+                    var mapper = Get(P, "Mapper");
+                    if (mapper == null) { why = "Control Mapper pas prêt"; return; }
+                    if (!(bool)Call(mapper, "Test", Function(id))) why = "Préparer LMU dans FMT";
+                });
+            }
+            catch (Exception e) { why = Message(e); }
+            return why;
+        }
+
         object Said(string text, bool ok) { lastTest = text; return new { ok, message = text }; }
 
         // « Préparer LMU »: the LMU controls ticked (as its screen picks them); « Annuler »: what FMT added, only that.

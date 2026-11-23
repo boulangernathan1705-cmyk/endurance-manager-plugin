@@ -108,6 +108,8 @@ namespace EnduranceManager.SimHub
         public PitMenu Menu { get; } = new PitMenu();
         // The game's pit menu for the wheel's screen (BlackBoxDash.cs), while Black box sur boutons is on.
         public BlackBox BlackBox { get; private set; } = new BlackBox();
+        // Its seven pages, as the game's black box (BlackBoxPages.cs).
+        public BlackBoxPages BlackBoxPages { get; private set; }
         BlackBoxRoles blackBoxRoles;
         public GameApi Game { get; } = new GameApi();
         // The pilot's setting profiles, car by car, and the wheel buttons that apply or memorise them (Profiles.cs).
@@ -165,26 +167,35 @@ namespace EnduranceManager.SimHub
                 this.AddAction("Profil" + (slot + 1), (manager, button) => Profiles.Press(slot), (manager, button) => Profiles.Release(slot));
                 this.AttachDelegate("Profils." + (slot + 1) + ".Nom", () => Profiles.NameAt(slot));
             }
-            // The wheel's black box (BlackBoxDash.cs): six actions, the six MFD commands of LMU (page, line, value).
-            // A change is read back at once from the game.
+            // The wheel's black box (BlackBoxDash.cs, BlackBoxPages.cs): six actions, the six MFD commands of LMU (page,
+            // line, value), each doing what the game's black box does on the page shown. A change of the pit menu is read
+            // back at once from the game; on Électronique − + are FMT companion's commands.
             BlackBox = new BlackBox(() => Menu.Raw, () => { Menu.Read(); BlackBox.Update(Menu.Items); });
-            this.AddAction("BlackBoxPageSuivante", (manager, button) => { });
-            this.AddAction("BlackBoxPagePrecedente", (manager, button) => { });
-            this.AddAction("BlackBoxMonter", (manager, button) => BlackBox.Move(-1));
-            this.AddAction("BlackBoxDescendre", (manager, button) => BlackBox.Move(1));
-            this.AddAction("BlackBoxPlus", (manager, button) => BlackBox.Change(1));
-            this.AddAction("BlackBoxMoins", (manager, button) => BlackBox.Change(-1));
-            // A touch on a line of the dash (its transparent buttons, BlackBoxDash.cs).
-            for (int k = 0; k < BlackBox.Rows; k++) { int row = k; this.AddAction("BlackBoxLigne" + (row + 1), (manager, button) => BlackBox.Select(row)); }
+            BlackBoxPages = new BlackBoxPages(BlackBox, id => CompanionPage.Send(id));
+            this.AddAction("BlackBoxPageSuivante", (manager, button) => BlackBoxPages.Turn(1));
+            this.AddAction("BlackBoxPagePrecedente", (manager, button) => BlackBoxPages.Turn(-1));
+            this.AddAction("BlackBoxMonter", (manager, button) => BlackBoxPages.Move(-1));
+            this.AddAction("BlackBoxDescendre", (manager, button) => BlackBoxPages.Move(1));
+            this.AddAction("BlackBoxPlus", (manager, button) => BlackBoxPages.Change(1));
+            this.AddAction("BlackBoxMoins", (manager, button) => BlackBoxPages.Change(-1));
+            // A touch on the dash (its transparent buttons, BlackBoxDash.cs): a line, or the left / right half of a line
+            // that − + adjust.
+            for (int k = 0; k < BlackBox.Rows; k++)
+            {
+                int row = k;
+                this.AddAction("BlackBoxLigne" + (row + 1), (manager, button) => BlackBoxPages.Select(row));
+                this.AddAction("BlackBoxToucheMoins" + (row + 1), (manager, button) => BlackBoxPages.Touch(row, -1));
+                this.AddAction("BlackBoxTouchePlus" + (row + 1), (manager, button) => BlackBoxPages.Touch(row, 1));
+            }
             // The same six as Control Mapper roles (BlackBoxRoles.cs), created while Black box sur boutons is on.
             blackBoxRoles = new BlackBoxRoles(() => PluginManager ?? pluginManager, new Dictionary<string, Action>
             {
-                ["EM - Black box - Monter"] = () => BlackBox.Move(-1),
-                ["EM - Black box - Descendre"] = () => BlackBox.Move(1),
-                ["EM - Black box - Page suivante"] = () => { },
-                ["EM - Black box - Page precedente"] = () => { },
-                ["EM - Black box - Plus"] = () => BlackBox.Change(1),
-                ["EM - Black box - Moins"] = () => BlackBox.Change(-1)
+                ["EM - Black box - Monter"] = () => BlackBoxPages.Move(-1),
+                ["EM - Black box - Descendre"] = () => BlackBoxPages.Move(1),
+                ["EM - Black box - Page suivante"] = () => BlackBoxPages.Turn(1),
+                ["EM - Black box - Page precedente"] = () => BlackBoxPages.Turn(-1),
+                ["EM - Black box - Plus"] = () => BlackBoxPages.Change(1),
+                ["EM - Black box - Moins"] = () => BlackBoxPages.Change(-1)
             });
             if (Settings.CompanionOn) blackBoxRoles.Start();
             // Where the roles stand (created, Control Mapper missing…), readable in SimHub's property list.
@@ -238,7 +249,7 @@ namespace EnduranceManager.SimHub
             }
             // The race figures under NeoRed's names (EnduranceManagerPlugin.Energy.VE.Current_%…), for any dashboard.
             foreach (var (name, get) in Course.Properties) this.AttachDelegate(name, () => get(Course.View));
-            foreach (var (name, get) in BlackBox.Properties()) this.AttachDelegate(name, get);
+            foreach (var (name, get) in BlackBoxPages.Properties()) this.AttachDelegate(name, get);
             // What LMU Drive reads of the car and the session (Telemetry.cs, plugin 2.5), from the last reading.
             foreach (var (name, get) in Telemetry.Properties) this.AttachDelegate(name, () => latest is Sample s ? get(s) : null);
             this.AttachDelegate("Voiture.TourOptimal", () => Computed.Optimal);
@@ -510,6 +521,8 @@ namespace EnduranceManager.SimHub
                             if (ok && Settings.Profiles) Profiles.Seen(sample);
                             // Each car's pit lane and our optimal and predicted lap (Computed.cs), ten times a second.
                             if (driving) try { Computed.Update(buffer, sample, recorder.Current); } catch (Exception e) { EnduranceManager.SimHub.Report.Error("Computed", e); }
+                            // The wheel's black box pages (BlackBoxPages.cs), ten times a second while its module is on.
+                            if (driving && Settings.CompanionOn) try { BlackBoxPages.Update(buffer, sample, Course.View); } catch (Exception e) { EnduranceManager.SimHub.Report.Error("BlackBox", e); }
                             GameState = driving ? "track" : "menu";
                             // Once a second, the car and the field for the team's mur des stands.
                             if (driving && Settings.Share) live.Frame(sample);

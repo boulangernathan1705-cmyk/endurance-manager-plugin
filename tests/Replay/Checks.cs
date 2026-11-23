@@ -68,7 +68,7 @@ namespace EnduranceManager.SimHub.Replay
                 Text = n == "FL TIRE" ? "No Change" : n == "REPLACE BRAKES" ? "No" : "1"
             }).ToList();
             var box = new BlackBox();
-            var props = box.Properties().ToDictionary(p => p.name, p => p.get);
+            var props = new BlackBoxPages(box).Properties().ToDictionary(p => p.name, p => p.get);
             object V(string name) => props[name]();
             box.Update(Menu());
             Is(box.Chosen == "DAMAGE" && box.Top == 0, "Premier menu lu : curseur sur la 1re ligne, fenêtre en haut");
@@ -114,6 +114,49 @@ namespace EnduranceManager.SimHub.Replay
             Is(BlackBox.Step(menu, "FL TIRE", 1) && At("FL TIRE") == 1 && At("FR TIRE") == 0, "Une roue seule : les autres ne bougent pas");
             Is(BlackBox.Step(menu, "VIRTUAL ENERGY", 1) && At("VIRTUAL ENERGY") == 0, "Énergie : plus après le dernier choix revient au premier");
             Is(!BlackBox.Step(menu, "DAMAGE", 1), "Un seul choix : rien ne bouge");
+            // Les 7 pages (BlackBoxPages.cs) : ◂ ▸ font le tour, chaque page ses boutons, comme la black box du jeu.
+            var sent = new List<string>();
+            var pages = new BlackBoxPages(box, id => { sent.Add(id); return null; });
+            var pv = pages.Properties().ToDictionary(p => p.name, p => p.get);
+            object PV(string name) => pv[name]();
+            Is(pages.Page == BlackBoxPages.Stands, "Première page : Arrêt aux stands");
+            pages.Turn(1);
+            Is((string)PV("BlackBox.Page") == "Relatif" && (int)PV("BlackBox.PageNo") == 0, "Page suivante après Arrêt aux stands : Relatif (le tour)");
+            pages.Turn(-1); pages.Turn(-1);
+            Is((string)PV("BlackBox.Page") == "Électronique", "Page précédente deux fois : Électronique");
+            var car = new Sample { Fuel = 60, Energy = 80, MotorState = 2, Battery = 0.5, TC = 3, TCMax = 9, RearBrakeBias = 0.477, LapsDone = 3, Wheels = new Wheel[4],
+                FrontCompound = "Medium", RearCompound = "Medium" };
+            car.Wheels[0] = new Wheel { Wear = 0.99, Pressure = 122.7, Temp = 22.4, Brake = 85.5 };
+            car.Wheels[1] = new Wheel { Wear = 0.5, Off = true };
+            var cv = new CourseView { FuelAvg5 = 3, FuelLastLap = 2.5, VeAvg5 = 4, VeLastLap = 5, LapTimeAvg10 = 120, RegenLevel = 2 };
+            pages.Update(null, car, cv);
+            Is((string)PV("BlackBox.1.Nom") == "Contrôle de traction" && (string)PV("BlackBox.1.Valeur") == "3" && (bool)PV("BlackBox.1.Choisie"), "Électronique : TC en 1re ligne, choisi");
+            Is((string)PV("BlackBox.2.Nom") == "Répartition des freins" && (string)PV("BlackBox.2.Valeur") == "52.3:47.7", "Électronique : répartition avant:arrière");
+            Is((string)PV("BlackBox.3.Nom") == "Niveau de recharge" && (string)PV("BlackBox.4.Nom") == "", "Électronique : seulement les réglages de la voiture");
+            pages.Move(1); pages.Change(1); pages.Change(-1);
+            Is(sent.SequenceEqual(new[] { "Bias.Forward", "Bias.Rearward" }), "Électronique : − + passent par les commandes de FMT companion");
+            pages.Turn(-1);
+            Is((string)PV("BlackBox.1.Nom") == "◂ ▸  Virtual Energy" && (string)PV("BlackBox.1.Valeur") == "80%", "Carburant : Virtual Energy d'abord");
+            Is((string)PV("BlackBox.4.Nom") == "Pousser" && (string)PV("BlackBox.4.C1") == "16.0" && (string)PV("BlackBox.4.C2") == "32 mins" && (string)PV("BlackBox.4.C3") == "5.00%", "Carburant : pousser");
+            pages.Change(1);
+            Is((string)PV("BlackBox.1.Nom") == "◂ ▸  Carburant" && (string)PV("BlackBox.1.Valeur") == "60.00L", "Carburant : − + passent au carburant");
+            pages.Move(-1);
+            Is((string)PV("BlackBox.2.Valeur") == "+1 Tours  ▴▾" && (string)PV("BlackBox.4.Nom") == "Objectif" && (string)PV("BlackBox.4.C1") == "21.0", "Carburant : ▲ un tour de plus à sauver");
+            Is((string)PV("BlackBox.5.Nom") == "Estimation  ⚠", "Carburant : estimation trop courte signalée");
+            pages.Move(1); pages.Move(1);
+            Is((string)PV("BlackBox.2.Valeur") == "Aucun  ▴▾", "Carburant : ▼ jusqu'à « Aucun », pas en dessous");
+            pages.Turn(-1);
+            Is((string)PV("BlackBox.Pneus.AVG.Usure") == "99%" && (string)PV("BlackBox.Pneus.AVG.Gomme") == "M" && (string)PV("BlackBox.Pneus.AVG.Pression") == "122.7kPa", "Pneus : usure, gomme, pression");
+            Is((string)PV("BlackBox.Pneus.AVD.Etat") == "Perdue" && (string)PV("BlackBox.Pneus.AVD.Couleur") == "#FFE83A4C", "Pneus : roue perdue en rouge");
+            pages.Turn(-1);
+            Is((string)PV("BlackBox.1.Nom") == "◂ ▸  Delta" && (string)PV("BlackBox.3.Nom") == "▴ ▾  Timing" && (string)PV("BlackBox.4.Nom") == "Meilleur", "Chrono : Delta et Timing d'abord");
+            pages.Change(1); pages.Move(1);
+            car.LapsDone = 4; car.LastSector1 = 30; car.LastSector2 = 65; car.LastLap = 100;
+            pages.Update(null, car, cv);
+            Is((string)PV("BlackBox.1.Nom") == "◂ ▸  Secteur" && (string)PV("BlackBox.4.Nom") == "Dernier" && (string)PV("BlackBox.4.C2") == "35.000", "Chrono : Secteur, Relatif, dernier tour par secteur");
+            pages.Change(1);
+            Is((string)PV("BlackBox.4.C3") == "1:40.000", "Chrono : Split, temps à la fin de chaque secteur");
+            Is(BlackBoxPages.Short("Nathan Boulanger") == "N Boulanger" && BlackBoxPages.Badge("Hypercar").badge == "HY", "Relatif : nom court et catégorie");
             foreach (var failure in failures) Console.WriteLine("ÉCHEC Black box : " + failure);
             if (failures.Count == 0) Console.WriteLine("OK    Black box : ligne choisie, défilement et noms");
             return failures.Count == 0;

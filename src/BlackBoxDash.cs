@@ -1,14 +1,13 @@
-// La page « Arrêt aux stands » de la black box de LMU sur un petit écran (VoCore du volant), pour le pilote qui la masque
-// sur son écran principal. Le jeu ne sait pas l'afficher ailleurs : on la redessine d'après les captures de Nathan
-// (titre, 7 lignes visibles, ligne choisie en blanc et rouge, flèches de défilement), avec les lignes du menu lues par
-// l'API locale (PitMenu, Course.cs), dans le même ordre. Les lignes que le jeu ajoute quand il les faut (dommages,
-// pénalités, pilote suivant) arrivent toutes seules.
-// On navigue dedans sans ouvrir la black box du jeu (0.1.5, demande de Nathan) : 6 actions SimHub pour le volant,
-// ▲ ▼ changent de ligne (le curseur est celui du dash, rien n'est envoyé au jeu), ◂ ▸ changent de page (une seule pour
-// l'instant), − + changent la valeur de la ligne : le menu est lu, la ligne passe au choix d'avant ou d'après, le menu
-// entier est renvoyé au jeu puis relu (comme les profils, Profiles.WriteMenu). Les choix font le tour dans les deux
-// sens et « Pneus » règle les 4 roues, comme la black box du jeu ; la valeur s'affiche dès l'appui. Une ligne changée ailleurs (bouton FMT
-// companion, black box du jeu) amène le curseur sur elle.
+// La black box de LMU sur un petit écran (VoCore du volant), pour le pilote qui la masque sur son écran principal. Le jeu
+// ne sait pas l'afficher ailleurs : on la redessine d'après les captures de Nathan (titre et icônes des 7 pages, 7 lignes
+// visibles, ligne choisie en blanc et rouge, flèches de défilement). Les pages et leurs boutons : BlackBoxPages.cs.
+// Ici, la page « Arrêt aux stands » : les lignes du menu lues par l'API locale (PitMenu, Course.cs), dans le même
+// ordre ; celles que le jeu ajoute quand il les faut (dommages, pénalités, pilote suivant) arrivent toutes seules.
+// On y navigue sans ouvrir la black box du jeu (demande de Nathan) : ▲ ▼ changent de ligne (le curseur est celui du
+// dash, rien n'est envoyé au jeu), − + changent la valeur de la ligne : le menu est lu, la ligne passe au choix d'avant
+// ou d'après, le menu entier est renvoyé au jeu puis relu (comme les profils, Profiles.WriteMenu). Les choix font le
+// tour dans les deux sens et « Pneus » règle les 4 roues, comme la black box du jeu ; la valeur s'affiche dès l'appui.
+// Une ligne changée ailleurs (bouton FMT companion, black box du jeu) amène le curseur sur elle.
 // Propriétés EnduranceManagerPlugin.BlackBox.* et dash « Endurance Manager · Black box » (800 × 480).
 using System;
 using System.Net.Http;
@@ -203,26 +202,8 @@ namespace EnduranceManager.SimHub
 
         void Say(string text) { if (string.IsNullOrEmpty(text)) return; message = text; messageUntil = DateTime.UtcNow.AddSeconds(3); }
 
-        MenuItem At(int row) { var list = items; int k = top + row; return k >= 0 && k < list.Count ? list[k] : null; }
-
-        // For SimHub: BlackBox.Lignes, .Choisie, .Haut / .Bas (more lines above / below), and the 7 lines in view,
-        // BlackBox.1.Nom / .Valeur / .Choisie … BlackBox.7.*.
-        public IEnumerable<(string name, System.Func<object> get)> Properties()
-        {
-            yield return ("BlackBox.Lignes", () => items.Count);
-            yield return ("BlackBox.Choisie", () => Chosen);
-            yield return ("BlackBox.Page", () => "Arrêt aux stands");
-            yield return ("BlackBox.Message", () => Message);
-            yield return ("BlackBox.Haut", () => top > 0);
-            yield return ("BlackBox.Bas", () => top + Rows < items.Count);
-            for (int k = 0; k < Rows; k++)
-            {
-                int row = k;
-                yield return ("BlackBox." + (row + 1) + ".Nom", () => At(row) is MenuItem i ? Label(i) : "");
-                yield return ("BlackBox." + (row + 1) + ".Valeur", () => At(row) is MenuItem i ? Text(i) : "");
-                yield return ("BlackBox." + (row + 1) + ".Choisie", () => At(row) is MenuItem i && chosen != null && i.Name == chosen);
-            }
-        }
+        // The line shown at 0 to 6, null when none (BlackBoxPages.cs makes the dash's lines from it).
+        public MenuItem Row(int row) { var list = items; int k = top + row; return k >= 0 && k < list.Count ? list[k] : null; }
     }
 
     public static class BlackBoxDash
@@ -245,59 +226,118 @@ namespace EnduranceManager.SimHub
             return item;
         }
 
-        static JObject Rect(string name, double x, double y, double w, double h, string color, string visible = null)
+        static JObject Rect(string name, double x, double y, double w, double h, string color, string visible = null, int radius = 0, string border = null)
         {
-            var box = Dashes.Box(name, x, y, w, h, color, color, 0);
-            if (visible != null) box["Bindings"] = new JObject { ["Visible"] = Dashes.Bind("Visible", visible) };
+            bool formula = !color.StartsWith("#");
+            var box = Dashes.Box(name, x, y, w, h, formula ? "#00000000" : color, border ?? (formula ? "#00000000" : color), radius);
+            var bindings = new JObject();
+            if (formula) bindings["BackgroundColor"] = Dashes.Bind("BackgroundColor", color);
+            if (visible != null) bindings["Visible"] = Dashes.Bind("Visible", visible);
+            if (bindings.Count > 0) box["Bindings"] = bindings;
             return box;
         }
+
+        // The page icons of the title bar, in the game's order (BlackBoxPages.Titles): the page shown in white.
+        static readonly string[] Icons = { "⇅", "ⓘ", "⏱", "◎", "⛽", "⚡", "⚙" };
 
         public static JArray Items()
         {
             double row = (Height - Header) / (double)BlackBox.Rows;
+            string page = P("PageNo"), tyres = page + " == " + BlackBoxPages.Tyres, message = P("Message") + " != ''";
             var items = new JArray
             {
                 Rect("Fond", 0, 0, Width, Height, Panel),
                 Rect("Barre", 0, 0, Width, Header, Bar),
-                Text("Titre", Pad, 0, 500, Header, 30, P("Page"), White, 0),
-                // A change that did not go through: a short word on the right of the title bar, for 3 s.
-                Text("Message", 420, 0, Width - 420 - Pad, Header, 20, P("Message"), Red, 2),
-                // Until the game's menu is read (game closed, module off): one line instead of an empty page.
-                Text("Attente", Pad, Header, Width - 2 * Pad, row, 26, "'Menu des stands non lu'", Label, 0, P("Lignes") + " == 0")
+                Text("Titre", Pad, 0, 400, Header, 30, P("Page"), White, 0),
+                // A change that did not go through: a short word in place of the icons, for 3 s.
+                Text("Message", 400, 0, Width - 400 - Pad, Header, 20, P("Message"), Red, 2, message),
+                // Nothing to show (menu not read, nobody driving): one line instead of an empty page.
+                Text("Attente", Pad, Header, Width - 2 * Pad, row, 26, P("Attente"), Label, 0, P("Attente") + " != ''")
             };
+            for (int k = 0; k < Icons.Length; k++)
+            {
+                var icon = Text("Icone" + (k + 1), 418 + k * 52, 0, 48, Header, 26, "'" + Icons[k] + "'", $"if({page} == {k}, '{White}', '#FF8A909C')", 1, "!(" + message + ")");
+                icon["Font"] = "Segoe UI Symbol";
+                items.Add(icon);
+            }
             for (int k = 0; k < BlackBox.Rows; k++)
             {
-                string at = (k + 1) + ".", chosen = P(at + "Choisie"), plain = "!" + chosen;
+                string at = (k + 1) + ".", chosen = P(at + "Choisie"), plain = "!" + chosen, small = P(at + "Petit"), place = P(at + "Pos") + " != ''";
                 double y = Header + k * row;
-                items.Add(Rect("Separation" + (k + 1), 0, y + row - 1, Width, 1, Separator, P(at + "Nom") + " != ''"));
+                items.Add(Rect("Separation" + (k + 1), 0, y + row - 1, Width, 1, Separator, $"{P(at + "Nom")} != '' || {P(at + "C1")} != ''"));
+                // Relatif: our car on a lighter line; the place in the class colour and the class badge.
+                items.Add(Rect("Moi" + (k + 1), 0, y, Width, row - 1, "#FF6E7482", P(at + "Moi")));
                 items.Add(Rect("Choix" + (k + 1), 0, y, Width, row - 1, White, chosen));
-                items.Add(Text("Nom" + (k + 1), Pad, y, 420, row, 30, P(at + "Nom"), $"if({chosen}, '{Red}', '{Label}')", 0));
-                items.Add(Text("Valeur" + (k + 1), 360, y, Width - 360 - Pad, row, 30, P(at + "Valeur"), White, 2, plain));
+                items.Add(Rect("Place" + (k + 1), Pad, y + 9, 46, row - 18, P(at + "Couleur"), place, 4));
+                items.Add(Text("PlaceTexte" + (k + 1), Pad, y, 46, row, 26, P(at + "Pos"), White, 1, place));
+                items.Add(Rect("Classe" + (k + 1), Pad + 54, y + 9, 56, row - 18, White, P(at + "Classe") + " != ''", 4));
+                items.Add(Text("ClasseTexte" + (k + 1), Pad + 54, y, 56, row, 20, P(at + "Classe"), P(at + "Couleur"), 1, P(at + "Classe") + " != ''"));
+                items.Add(Text("Pilote" + (k + 1), Pad + 124, y, 440, row, 30, P(at + "Nom"), White, 0, place));
+                items.Add(Text("Nom" + (k + 1), Pad, y, 560, row, 30, P(at + "Nom"), $"if({chosen}, '{Red}', '{Label}')", 0, $"!({place}) && !{small}"));
+                items.Add(Text("NomPetit" + (k + 1), Pad, y, 560, row, 20, P(at + "Nom"), Label, 0, small));
+                items.Add(Text("Valeur" + (k + 1), 300, y, Width - 300 - Pad, row, 30, P(at + "Valeur"), White, 2, plain));
+                // Three columns (Chrono S1 S2 S3, Carburant Tours Temps Usage), right-aligned.
+                double[] ends = { 520, 650, Width - Pad };
+                for (int c = 0; c < 3; c++)
+                    items.Add(Text("Colonne" + (c + 1) + "_" + (k + 1), ends[c] - 124, y, 124, row, 26, P(at + "C" + (c + 1)), $"if({small}, '{Label}', '{White}')", 2, P(at + "C" + (c + 1)) + " != ''"));
                 // The chosen line: its value in red with « ◂ ▸ » after it, « ▴ ▾ » in the middle, as in the game.
-                items.Add(Text("ValeurChoisie" + (k + 1), 360, y, Width - 360 - Pad - 52, row, 30, P(at + "Valeur"), Red, 2, chosen));
+                items.Add(Text("ValeurChoisie" + (k + 1), 300, y, Width - 300 - Pad - 52, row, 30, P(at + "Valeur"), Red, 2, chosen));
                 items.Add(Text("Fleches" + (k + 1), Width - Pad - 48, y, 48, row, 20, "'◂ ▸'", Red, 2, chosen));
                 items.Add(Text("Haut" + (k + 1), Width / 2 - 20, y + 4, 40, row / 2 - 4, 14, "'▴'", Red, 1, chosen));
                 items.Add(Text("Bas" + (k + 1), Width / 2 - 20, y + row / 2, 40, row / 2 - 4, 14, "'▾'", Red, 1, chosen));
             }
             items.Add(Text("PlusHaut", Width / 2 - 20, Header, 40, 22, 16, "'▲'", Arrow, 1, P("Haut")));
             items.Add(Text("PlusBas", Width / 2 - 20, Height - 24, 40, 22, 16, "'▼'", Arrow, 1, P("Bas")));
+            foreach (var item in TyreItems(tyres)) items.Add(item);
             // Touch (format of Dash Studio's buttons, read in Lovely Dashboard; Dash Studio has no swipe, only touches, and
-            // buttons on top of each other all fire: none overlap). Another line touched is chosen (the first or last one
-            // shown also scrolls by one); the chosen line, left half −, right half +; the far left or far right edge changes
-            // page. Transparent: the page looks the same.
+            // buttons on top of each other all fire: none overlap). A line touched is chosen (the first or last one shown
+            // also scrolls by one); a line that − + adjust (the chosen one, Chrono's and Carburant's headers): left half −,
+            // right half +; the far left or far right edge changes page. Transparent: the page looks the same.
             const int Edge = 60;
             double half = (Width - 2 * Edge) / 2.0;
             for (int k = 0; k < BlackBox.Rows; k++)
             {
                 double y = Header + k * row;
-                string chosen = P((k + 1) + ".Choisie");
-                items.Add(Button("ToucherLigne" + (k + 1), Edge, y, Width - 2 * Edge, row, "BlackBoxLigne" + (k + 1), "!" + chosen));
-                items.Add(Button("ToucherMoins" + (k + 1), Edge, y, half, row, "BlackBoxMoins", chosen));
-                items.Add(Button("ToucherPlus" + (k + 1), Edge + half, y, half, row, "BlackBoxPlus", chosen));
+                string adjust = P((k + 1) + ".Reglable");
+                items.Add(Button("ToucherLigne" + (k + 1), Edge, y, Width - 2 * Edge, row, "BlackBoxLigne" + (k + 1), "!" + adjust));
+                items.Add(Button("ToucherMoins" + (k + 1), Edge, y, half, row, "BlackBoxToucheMoins" + (k + 1), adjust));
+                items.Add(Button("ToucherPlus" + (k + 1), Edge + half, y, half, row, "BlackBoxTouchePlus" + (k + 1), adjust));
             }
             items.Add(Button("ToucherPagePrecedente", 0, 0, Edge, Height, "BlackBoxPagePrecedente"));
             items.Add(Button("ToucherPageSuivante", Width - Edge, 0, Edge, Height, "BlackBoxPageSuivante"));
             return items;
+        }
+
+        // The Pneus page as in the game: a ring per wheel in the corners (what is left, the compound's letter), and between
+        // them pressure, temperature and brake temperature, the fronts above, the rears below (mirrored), the sets left in
+        // the middle.
+        static IEnumerable<JObject> TyreItems(string shown)
+        {
+            const string Yellow = "#FFFFD400";
+            string[] corners = { "AVG", "AVD", "ARG", "ARD" };
+            for (int i = 0; i < 4; i++)
+            {
+                string at = "Pneus." + corners[i] + ".";
+                double x = i % 2 == 0 ? 22 : Width - 22 - 150, y = i < 2 ? 82 : 308;
+                bool right = i % 2 == 1, front = i < 2;
+                yield return Rect("Anneau" + (i + 1), x, y, 150, 150, P(at + "Couleur"), shown, 75);
+                yield return Rect("AnneauFond" + (i + 1), x + 13, y + 13, 124, 124, Panel, shown, 62);
+                yield return Text("Usure" + (i + 1), x, y + 30, 150, 54, 38, P(at + "Usure"), White, 1, shown);
+                yield return Rect("GommeRond" + (i + 1), x + 61, y + 90, 28, 28, "#00000000", $"{shown} && {P(at + "Gomme")} != '' && {P(at + "Etat")} == ''", 14, Yellow);
+                yield return Text("Gomme" + (i + 1), x + 61, y + 90, 28, 28, 16, P(at + "Gomme"), Yellow, 1, $"{shown} && {P(at + "Etat")} == ''");
+                yield return Text("Etat" + (i + 1), x, y + 86, 150, 34, 20, P(at + "Etat"), Red, 1, $"{shown} && {P(at + "Etat")} != ''");
+                double cx = right ? 410 : 190;
+                int align = right ? 2 : 0;
+                double[] lines = front ? new double[] { 80, 122, 176 } : new double[] { 300, 342, 396 };
+                string[] what = front ? new[] { "Pression", "Temp", "Frein" } : new[] { "Frein", "Temp", "Pression" };
+                for (int l = 0; l < 3; l++)
+                {
+                    bool big = what[l] == "Temp";
+                    yield return Text(what[l] + (i + 1), cx, lines[l], 200, big ? 52 : 40, big ? 32 : 22, P(at + what[l]), big ? White : Label, align, shown);
+                }
+            }
+            foreach (double y in new double[] { 120, 172, 298, 350 }) yield return Rect("PneusTrait" + y, 190, y, 420, 1, Separator, shown);
+            yield return Text("Jeux", 190, 228, 420, 48, 26, P("Pneus.Jeux"), White, 1, shown);
         }
 
         // A transparent Dash Studio button that runs one of this plugin's actions when touched or clicked.
@@ -327,7 +367,7 @@ namespace EnduranceManager.SimHub
             var metadata = new JObject
             {
                 ["Category"] = "Endurance Manager", ["Title"] = "Endurance Manager · Black box", ["Author"] = "Endurance Manager",
-                ["Description"] = "La page « Arrêt aux stands » de la black box de LMU sur l'écran du volant (VoCore 800 × 480). On y navigue avec 6 boutons du volant (actions BlackBox*). Plugin Endurance Manager requis, module « Black box sur boutons » activé.",
+                ["Description"] = "Les 7 pages de la black box de LMU sur l'écran du volant (VoCore 800 × 480), comme dans le jeu. On y navigue avec 6 boutons du volant (actions BlackBox*) ou au toucher. Plugin Endurance Manager requis, module « Black box sur boutons » activé.",
                 ["ScreenCount"] = 1.0, ["InGameScreensIndexs"] = new JArray(0), ["IdleScreensIndexs"] = new JArray(0), ["MainPreviewIndex"] = 0, ["IsOverlay"] = false,
                 ["Width"] = (double)Width, ["Height"] = (double)Height, ["OverlaySizeWarning"] = false, ["MetadataVersion"] = 2.0, ["EnableOnDashboardMessaging"] = true,
                 ["PitScreensIndexs"] = new JArray()
@@ -338,7 +378,7 @@ namespace EnduranceManager.SimHub
                 ["BackgroundColor"] = Panel,
                 ["Screens"] = new JArray(new JObject
                 {
-                    ["Name"] = "Arrêt aux stands", ["InGameScreen"] = true, ["IdleScreen"] = true, ["PitScreen"] = false, ["ScreenId"] = "0b5c6c9e-4f0a-4d39-9d3e-6a1d2b7c1a08", ["IsForegroundLayer"] = false,
+                    ["Name"] = "Black box", ["InGameScreen"] = true, ["IdleScreen"] = true, ["PitScreen"] = false, ["ScreenId"] = "0b5c6c9e-4f0a-4d39-9d3e-6a1d2b7c1a08", ["IsForegroundLayer"] = false,
                     ["IsBackgroundLayer"] = false, ["BackgroundColor"] = Panel, ["Items"] = new JArray(layer)
                 }),
                 ["SnapToGrid"] = false, ["HideLabels"] = true, ["ShowForeground"] = true, ["ForegroundOpacity"] = 100.0, ["ShowBackground"] = true, ["BackgroundOpacity"] = 100.0,
