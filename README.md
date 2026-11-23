@@ -25,7 +25,7 @@ Ensuite le plugin se met à jour tout seul (bouton « Mettre à jour » dans son
 ## Travailler
 
 - `main` = ce que les pilotes installent. Chaque changement se fait sur une branche, puis une PR que Nathan valide.
-- Chaque PR est compilée et testée sur Windows par GitHub (onglet Actions) : le zip à essayer est dans *Artifacts*.
+- Chaque PR est compilée et testée sur Windows par GitHub (onglet Actions) : le zip à essayer est dans [Releases](../../releases), en pré-version « Test PR #N » (aussi dans *Artifacts*).
 - Une nouvelle version : monter `<Version>` dans `src/EnduranceManager.SimHub.csproj` dans la PR. Une fois fusionnée
   dans `main`, la CI publie la Release. Détails : [`docs/publier.md`](docs/publier.md).
 
