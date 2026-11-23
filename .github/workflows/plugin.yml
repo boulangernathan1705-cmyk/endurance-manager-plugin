@@ -175,7 +175,7 @@ jobs:
 
       # Une version nouvelle sur main : la PR du site qui la sert aux plugins installés (docs/publier.md). Remplace
       # connectors/simhub-plugin/v0/ du site (DLL, plugin.json, installeur) sur une branche plugin-x.y.z vers dev.
-      # Rien à faire si le dev du site l'a déjà ou si sa PR est ouverte. Demande le secret SITE_TOKEN (jeton GitHub
+      # Clone à part (RUNNER_TEMP) : site/ est déjà pris par le checkout du salon. Rien à faire si le dev du site l'a déjà ou si sa PR est ouverte. Demande le secret SITE_TOKEN (jeton GitHub
       # avec Contents et Pull requests en écriture sur le dépôt du site) ; sans lui, un avertissement et rien d'autre.
       - name: Proposer la version au site
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
@@ -192,21 +192,23 @@ jobs:
           }
           $open = gh pr list -R $env:SITE_REPO --head $branch --state open --json number --jq length
           if ($open -and $open -ne '0') { "PR du site déjà ouverte pour la $env:VERSION."; exit 0 }
-          git clone --depth 1 --branch dev "https://x-access-token:$env:GH_TOKEN@github.com/$env:SITE_REPO.git" site
+          git clone --depth 1 --branch dev "https://x-access-token:$env:GH_TOKEN@github.com/$env:SITE_REPO.git" "$env:RUNNER_TEMP/livraison"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Set-Location site
+          $root = $env:GITHUB_WORKSPACE
+          Set-Location "$env:RUNNER_TEMP/livraison"
           git checkout -b $branch
           $to = "connectors/simhub-plugin/v0"
           New-Item -ItemType Directory -Force $to | Out-Null
-          Copy-Item ../zip/EnduranceManager.SimHub.dll, ../zip/plugin.json $to -Force
-          Copy-Item "../zip/Installer le plugin.cmd" "$to/installer.cmd" -Force
+          Copy-Item "$root/zip/EnduranceManager.SimHub.dll", "$root/zip/plugin.json" $to -Force
+          Copy-Item "$root/zip/Installer le plugin.cmd" "$to/installer.cmd" -Force
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add $to
           git commit -m "Plugin SimHub $env:VERSION servi aux plugins installés"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           git push --force origin "HEAD:refs/heads/$branch"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $notes = (Get-Content ../src/changements.json -Raw -Encoding UTF8 | ConvertFrom-Json).changes | ForEach-Object { "- $($_.text)" }
+          $notes = (Get-Content "$root/src/changements.json" -Raw -Encoding UTF8 | ConvertFrom-Json).changes | ForEach-Object { "- $($_.text)" }
           $body = "La Release $env:VERSION du plugin ($env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/releases/tag/v$env:VERSION), dans connectors/simhub-plugin/v0/ : DLL, plugin.json tel quel, installeur. Ouverte toute seule par la CI du plugin.`n`nCe qui change :`n$($notes -join "`n")`n`nUne fois fusionnée dans dev puis en production, les plugins installés la proposent dans SimHub (/downloads/simhub/v0/) ; les anciens 2.x passent à la 0.x (/downloads/simhub/, annoncée 2.99.0)."
           gh pr create -R $env:SITE_REPO --base dev --head $branch --title "Plugin SimHub $env:VERSION" --body $body
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
