@@ -319,48 +319,59 @@ namespace EnduranceManager.SimHub
         // the middle.
         static IEnumerable<JObject> TyreItems(string shown)
         {
+            // Measured on Nathan's capture of the game's page (23/11), scaled to 800 × 480 under our title bar: ring
+            // centres x 112 / 688, y 149 / 389, radius 76, band 10 px; the three lines of each wheel at y 95 / 149 / 218
+            // (front) and 340 / 393 / 449 (rear), the brake sign at x 356 / 444, « ∞ Pneus » in the middle.
             const string Worn = "#FF3A3F48";
+            const double R = 76;
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
             string[] corners = { "AVG", "AVD", "ARG", "ARD" };
             for (int i = 0; i < 4; i++)
             {
                 string at = "Pneus." + corners[i] + ".";
-                double x = i % 2 == 0 ? 20 : Width - 20 - 156, y = i < 2 ? 80 : 304;
                 bool right = i % 2 == 1, front = i < 2;
-                // The ring wears round as in the game: 90 small dots clockwise from the top, lit (white, red when lost or
-                // flat) up to what is left, grey after; close enough to look like one smooth band (36 big ones looked
-                // notched, Nathan 23/11). The inner panel hides their inner halves.
-                const int Dots = 90;
-                for (int k = 0; k < Dots; k++)
+                double cx = right ? Width - 112 : 112, cy = front ? 149 : 389;
+                // The ring as the game: worn from the top clockwise (grey), the rest white (red when lost or flat). 100 small
+                // dots, one per percent, close enough for a smooth band; the inner panel hides their inner halves.
+                for (int k = 0; k < 100; k++)
                 {
-                    double angle = k * Math.PI * 2 / Dots;
-                    double dx = x + 78 + 73 * Math.Sin(angle) - 6, dy = y + 78 - 73 * Math.Cos(angle) - 6;
-                    string lit = ((k + 1) * 100.0 / Dots).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
-                    yield return Rect("Anneau" + (i + 1) + "_" + k, dx, dy, 12, 12, $"if({P(at + "Reste")} >= {lit}, {P(at + "Couleur")}, '{Worn}')", shown, 6);
+                    double angle = k * Math.PI * 2 / 100;
+                    double dx = cx + (R - 5) * Math.Sin(angle) - 5, dy = cy - (R - 5) * Math.Cos(angle) - 5;
+                    yield return Rect("Anneau" + (i + 1) + "_" + k, dx, dy, 10, 10, $"if({P(at + "Reste")} >= {(100 - k).ToString(inv)} - 0.5, {P(at + "Couleur")}, '{Worn}')", shown, 5);
                 }
-                yield return Rect("AnneauFond" + (i + 1), x + 10, y + 10, 136, 136, Panel, shown, 68);
-                yield return Text("Usure" + (i + 1), x, y + 32, 156, 54, 38, P(at + "Usure"), White, 1, shown);
+                yield return Rect("AnneauFond" + (i + 1), cx - R + 10, cy - R + 10, 2 * R - 20, 2 * R - 20, Panel, shown, (int)R - 10);
+                yield return Text("Usure" + (i + 1), cx - R, cy - 32, 2 * R, 54, 40, P(at + "Usure"), White, 1, shown);
                 // The compound's letter in its circle, in the game's colour (soft white, medium yellow, hard red, wet blue).
                 string whole = $"{shown} && {P(at + "Gomme")} != '' && {P(at + "Etat")} == ''";
-                yield return Rect("GommeRond" + (i + 1), x + 64, y + 92, 28, 28, P(at + "GommeCouleur"), whole, 14);
-                yield return Rect("GommeFond" + (i + 1), x + 66, y + 94, 24, 24, Panel, whole, 12);
-                yield return Text("Gomme" + (i + 1), x + 64, y + 92, 28, 28, 16, P(at + "Gomme"), P(at + "GommeCouleur"), 1, $"{shown} && {P(at + "Etat")} == ''");
-                yield return Text("Etat" + (i + 1), x, y + 88, 156, 34, 20, P(at + "Etat"), Red, 1, $"{shown} && {P(at + "Etat")} != ''");
-                // The brake's sign beside its temperature, toward the middle, as in the game.
-                var disc = Text("Disque" + (i + 1), right ? 410 : 360, front ? 176 : 300, 30, 40, 22, "'⊚'", Label, 1, shown);
-                disc["Font"] = "Segoe UI Symbol";
-                yield return disc;
-                double cx = right ? 410 : 190;
+                yield return Rect("GommeRond" + (i + 1), cx - 15, cy + 24, 30, 30, P(at + "GommeCouleur"), whole, 15);
+                yield return Rect("GommeFond" + (i + 1), cx - 12.5, cy + 26.5, 25, 25, Panel, whole, 13);
+                yield return Text("Gomme" + (i + 1), cx - 15, cy + 24, 30, 30, 17, P(at + "Gomme"), P(at + "GommeCouleur"), 1, $"{shown} && {P(at + "Etat")} == ''");
+                yield return Text("Etat" + (i + 1), cx - R, cy + 22, 2 * R, 34, 20, P(at + "Etat"), Red, 1, $"{shown} && {P(at + "Etat")} != ''");
+                // The brake's sign as the game draws it: a disc with its hub and the calliper on top.
+                double bx = right ? 444 : 356, by = front ? 218 : 340;
+                foreach (var part in Brake("Disque" + (i + 1), bx, by, shown)) yield return part;
+                double tx = right ? Width - 188 - 220 : 188;
                 int align = right ? 2 : 0;
-                double[] lines = front ? new double[] { 80, 122, 176 } : new double[] { 300, 342, 396 };
+                double[] lines = front ? new double[] { 95, 149, 218 } : new double[] { 340, 393, 449 };
                 string[] what = front ? new[] { "Pression", "Temp", "Frein" } : new[] { "Frein", "Temp", "Pression" };
                 for (int l = 0; l < 3; l++)
                 {
                     bool big = what[l] == "Temp";
-                    yield return Text(what[l] + (i + 1), cx, lines[l], 200, big ? 52 : 40, big ? 32 : 22, P(at + what[l]), big ? White : Label, align, shown);
+                    double h = big ? 50 : 36;
+                    yield return Text(what[l] + (i + 1), tx, lines[l] - h / 2, 220, h, big ? 32 : 22, P(at + what[l]), big ? White : Label, align, shown);
                 }
             }
-            foreach (double y in new double[] { 120, 172, 298, 350 }) yield return Rect("PneusTrait" + y, 190, y, 420, 1, Separator, shown);
-            yield return Text("Jeux", 190, 228, 420, 48, 26, P("Pneus.Jeux"), White, 1, shown);
+            foreach (double y in new double[] { 120, 183, 306, 368 }) yield return Rect("PneusTrait" + y, 188, y, Width - 376, 1, Separator, shown);
+            yield return Text("Jeux", 188, 252, Width - 376, 46, 26, P("Pneus.Jeux"), White, 1, shown);
+        }
+
+        // A brake disc sign, about 30 px, centred on (x, y): the disc, its hub, the calliper over its top right.
+        static IEnumerable<JObject> Brake(string name, double x, double y, string shown)
+        {
+            yield return Rect(name + "Disque", x - 14, y - 14, 28, 28, "#FF8A909C", shown, 14);
+            yield return Rect(name + "Moyeu", x - 6, y - 6, 12, 12, Panel, shown, 6);
+            yield return Rect(name + "Point", x - 2, y - 2, 4, 4, "#FF8A909C", shown, 2);
+            yield return Rect(name + "Etrier", x + 3, y - 17, 13, 17, "#FF8A909C", shown, 5, Panel);
         }
 
         // A transparent Dash Studio button that runs one of this plugin's actions when touched or clicked.
