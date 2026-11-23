@@ -399,37 +399,36 @@ namespace EnduranceManager.SimHub
         {
             // A pilot's « + » can lower the game's level (TC counted the other way on some cars): seen once, then swapped.
             bool swapped = false;
-            // Nathan 23/11 (Peugeot 9X8): TC, migration and carto did not move with their Control Mapper role while the
-            // others did. Then FMT companion's own command (as the black box's Électronique page sends it) is tried.
-            bool fmt = false, triedFmt = false;
+            // Nathan 23/11 (Peugeot 9X8): TC, migration and carto did not move with FMT companion's roles while the others
+            // did (with ChatGPT's version, the pilot's own roles « TC + »… worked). Each fitting role is tried in turn,
+            // then FMT companion's own command (as the black box's Électronique page sends it).
+            int pick = 0;
+            bool fmt = false;
+            var tried = new List<string>();
             string how = "";
-            for (int presses = 0, still = 0; presses < 40; presses++)
+            for (int presses = 0, still = 0; presses < 60; presses++)
             {
                 if (!(latest() is Sample s)) return setting.Label + " (voiture plus en piste)";
                 if (!(setting.Read(s) is double now)) return null;
                 if (Math.Abs(now - target) < setting.Tolerance) return null;
                 string command = setting.Key + ((target > now) != swapped ? "+" : "-");
-                if (fmt)
+                var roles = RolesFor(command);
+                bool pressed = false;
+                if (!fmt && pick < roles.Count)
+                {
+                    how = roles[pick];
+                    pressed = PressRole(manager(), how);
+                    if (!pressed) { if (!tried.Contains(how)) tried.Add(how); pick++; presses--; continue; }
+                }
+                else if (!fmt && SendFmt != null) { fmt = true; presses--; continue; }
+                else if (fmt)
                 {
                     string id = FmtId(command), why = id == null ? "pas de commande" : SendFmt(id);
-                    if (why != null) return setting.Label + " (rien ne bouge avec « " + how + " », FMT : " + why + ")";
                     how = "FMT " + id;
+                    if (why != null) { tried.Add(how + " (" + why + ")"); break; }
+                    pressed = true;
                 }
-                else
-                {
-                    string role = Role(command);
-                    if (string.IsNullOrEmpty(role))
-                    {
-                        if (SendFmt != null && !triedFmt) { fmt = triedFmt = true; presses--; continue; }
-                        return setting.Label + " (bouton « " + Command(command) + " » introuvable : clique « Préparer LMU » dans FMT companion)";
-                    }
-                    if (!PressRole(manager(), role))
-                    {
-                        if (SendFmt != null && !triedFmt) { fmt = triedFmt = true; presses--; continue; }
-                        return setting.Label + " (rôle « " + role + " » introuvable)";
-                    }
-                    how = role;
-                }
+                if (!pressed) break;
                 // The game takes a moment to show the new level: up to 1 s, then the next press.
                 double? after = now;
                 for (int wait = 0; wait < 12 && after == now; wait++) { Thread.Sleep(80); after = latest() is Sample t ? setting.Read(t) : null; }
@@ -437,11 +436,15 @@ namespace EnduranceManager.SimHub
                 if (after is double moved && Math.Abs(moved - target) > Math.Abs(now - target)) swapped = !swapped;
                 if (still >= 2)
                 {
-                    if (!fmt && SendFmt != null && !triedFmt) { fmt = triedFmt = true; still = 0; Report.Log("profils", setting.Label + " : rien avec « " + how + " », essai par FMT companion"); continue; }
-                    return setting.Label + " (rien ne bouge avec « " + how + " »)";
+                    if (!tried.Contains(how)) tried.Add(how);
+                    Report.Log("profils", setting.Label + " : rien ne bouge avec « " + how + " »");
+                    still = 0;
+                    if (fmt) break;
+                    pick++;
                 }
             }
-            return setting.Label + " (pas atteint)";
+            if (tried.Count == 0) return setting.Label + " (aucun bouton : clique « Préparer LMU » dans Black box sur boutons)";
+            return setting.Label + " (rien ne bouge avec « " + string.Join(" », « ", tried) + " »)";
         }
 
         // FMT companion's command for a setting and a sign (its Catalog.cs ids), null when it has none.
@@ -498,6 +501,15 @@ namespace EnduranceManager.SimHub
 
         // The Control Mapper role that presses a command in LMU, found by itself: FMT companion's first (« FMT - … », made by
         // its « Préparer LMU »), else one the pilot named (« TC + »), else one chosen by hand in an older version.
+        public List<string> RolesFor(string command)
+        {
+            var setting = Setting.All.FirstOrDefault(x => command.StartsWith(x.Key) && command.Length == x.Key.Length + 1);
+            if (setting == null) return new List<string>();
+            var list = FindAll(setting, command.EndsWith("+") ? "+" : "-", Available());
+            if (File.Roles.TryGetValue(command, out string kept) && !string.IsNullOrEmpty(kept) && !list.Contains(kept)) list.Add(kept);
+            return list;
+        }
+
         public string Role(string command)
         {
             var setting = Setting.All.FirstOrDefault(x => command.StartsWith(x.Key) && command.Length == x.Key.Length + 1);
@@ -531,8 +543,12 @@ namespace EnduranceManager.SimHub
 
         // The role for a setting and a sign: its last part (« FMT - Voiture - TC Next » → « tc next »), the sign at the end,
         // what is left is the setting's name. « TC + » is TC, not « TC cut + »: short names must be the whole name.
-        internal static string Find(Setting setting, string sign, List<string> roles)
+        internal static string Find(Setting setting, string sign, List<string> roles) => FindAll(setting, sign, roles).FirstOrDefault();
+
+        // Every role that fits, FMT companion's first: when one moves nothing in the game, the next is tried.
+        internal static List<string> FindAll(Setting setting, string sign, List<string> roles)
         {
+            var found = new List<string>();
             var ordered = roles.OrderBy(x => x.TrimStart().StartsWith("FMT", StringComparison.OrdinalIgnoreCase) ? 0 : 1);
             foreach (string word in setting.Words)
                 foreach (string role in ordered)
@@ -545,9 +561,9 @@ namespace EnduranceManager.SimHub
                         if (text.EndsWith(end) && (end.Length == 1 || text.Length == end.Length || !char.IsLetter(text[text.Length - end.Length - 1])))
                         { stem = text.Substring(0, text.Length - end.Length).Trim(' ', '-', '_'); break; }
                     if (stem == null) continue;
-                    if (stem == word || (word.Length > 3 && stem.Contains(word))) return role;
+                    if ((stem == word || (word.Length > 3 && stem.Contains(word))) && !found.Contains(role)) found.Add(role);
                 }
-            return null;
+            return found;
         }
 
         public static string Command(string command)
