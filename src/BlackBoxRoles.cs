@@ -23,6 +23,11 @@ namespace EnduranceManager.SimHub
 
         readonly Func<PluginManager> manager;
         readonly Dictionary<string, Action> handlers;
+        // What a release does, for roles that need it (the profiles: a press held 2 s memorises). Empty for the black box.
+        readonly Dictionary<string, Action> releases;
+        readonly string label;
+        // SimHub gave its InputReleased event: the releases arrive.
+        public bool Releases { get; private set; }
         System.Threading.Timer retry;
         int tries;
         bool listening;
@@ -30,10 +35,12 @@ namespace EnduranceManager.SimHub
         public string Status { get; private set; } = "Rôles du Control Mapper pas encore créés.";
 
         // Role names and what a press does.
-        public BlackBoxRoles(Func<PluginManager> manager, IDictionary<string, Action> roles)
+        public BlackBoxRoles(Func<PluginManager> manager, IDictionary<string, Action> roles, IDictionary<string, Action> released = null, string label = "EM - Black box")
         {
             this.manager = manager;
             handlers = new Dictionary<string, Action>(roles, StringComparer.OrdinalIgnoreCase);
+            releases = new Dictionary<string, Action>(released ?? new Dictionary<string, Action>(), StringComparer.OrdinalIgnoreCase);
+            this.label = label;
         }
 
         // Listens to the presses at once; creates the roles when the Control Mapper is ready (it loads after the plugins:
@@ -67,6 +74,13 @@ namespace EnduranceManager.SimHub
                 var handler = Delegate.CreateDelegate(evt.EventHandlerType, this, typeof(BlackBoxRoles).GetMethod(nameof(OnPressed), BindingFlags.Instance | BindingFlags.NonPublic));
                 evt.AddEventHandler(pm, handler);
                 listening = true;
+                // The release too, when someone needs it (same delegate type as InputPressed).
+                var up = releases.Count > 0 ? pm.GetType().GetEvent("InputReleased") : null;
+                if (up != null)
+                {
+                    up.AddEventHandler(pm, Delegate.CreateDelegate(up.EventHandlerType, this, typeof(BlackBoxRoles).GetMethod(nameof(OnReleased), BindingFlags.Instance | BindingFlags.NonPublic)));
+                    Releases = true;
+                }
             }
             catch (Exception e) { Status = "Appuis du Control Mapper non écoutés : " + (e.InnerException ?? e).Message; }
         }
@@ -76,6 +90,16 @@ namespace EnduranceManager.SimHub
             try
             {
                 if (input != null && input.StartsWith(Prefix, StringComparison.Ordinal) && handlers.TryGetValue(input.Substring(Prefix.Length), out var act)) act();
+            }
+            catch { }
+            return false;
+        }
+
+        bool OnReleased(string input)
+        {
+            try
+            {
+                if (input != null && input.StartsWith(Prefix, StringComparison.Ordinal) && releases.TryGetValue(input.Substring(Prefix.Length), out var act)) act();
             }
             catch { }
             return false;
@@ -112,7 +136,7 @@ namespace EnduranceManager.SimHub
                 // The list is shown by the Control Mapper's screen: changed on its thread.
                 var dispatcher = System.Windows.Application.Current?.Dispatcher;
                 if (dispatcher != null && !dispatcher.CheckAccess()) dispatcher.Invoke(new Action(Add)); else Add();
-                Status = handlers.Count + " rôles « EM - Black box » dans le Control Mapper" + (added ? " (créés)." : ".");
+                Status = handlers.Count + " rôles « " + label + " » dans le Control Mapper" + (added ? " (créés)." : ".");
                 return true;
             }
             catch (Exception e) { Status = "Rôles du Control Mapper : " + (e.InnerException ?? e).Message; return false; }

@@ -110,7 +110,7 @@ namespace EnduranceManager.SimHub
         public BlackBox BlackBox { get; private set; } = new BlackBox();
         // Its seven pages, as the game's black box (BlackBoxPages.cs).
         public BlackBoxPages BlackBoxPages { get; private set; }
-        BlackBoxRoles blackBoxRoles;
+        BlackBoxRoles blackBoxRoles, profileRoles;
         public GameApi Game { get; } = new GameApi();
         // The pilot's setting profiles, car by car, and the wheel buttons that apply or memorise them (Profiles.cs).
         public Profiles Profiles { get; private set; }
@@ -204,6 +204,19 @@ namespace EnduranceManager.SimHub
                 ["EM - Black box - Moins"] = () => BlackBoxPages.Change(-1)
             });
             if (Settings.CompanionOn) blackBoxRoles.Start();
+            // The profile buttons as Control Mapper roles too (« EM - Profil 1 »…, Nathan 23/11: his wheel goes through the
+            // Control Mapper), created while Réglages voiture en course is on. Without SimHub's release event, a press is a
+            // short press (never the 2 s hold that memorises).
+            var profilePress = new Dictionary<string, Action>();
+            var profileRelease = new Dictionary<string, Action>();
+            for (int k = 0; k < 3; k++)
+            {
+                int slot = k;
+                profilePress["EM - Profil " + (slot + 1)] = () => { Profiles.Press(slot); if (!profileRoles.Releases) Profiles.Release(slot); };
+                profileRelease["EM - Profil " + (slot + 1)] = () => Profiles.Release(slot);
+            }
+            profileRoles = new BlackBoxRoles(() => PluginManager ?? pluginManager, profilePress, profileRelease, "EM - Profil");
+            if (Settings.Profiles) profileRoles.Start();
             // Where the roles stand (created, Control Mapper missing…), readable in SimHub's property list.
             this.AttachDelegate("BlackBox.Roles", () => blackBoxRoles.Status);
             this.AttachDelegate("Profils.Actif", () => Settings.Profiles ? Profiles.Active ?? "" : "");
@@ -383,6 +396,7 @@ namespace EnduranceManager.SimHub
             standings?.Stop();
             pluginManager.InputToActionTriggered -= DashButton;
             blackBoxRoles?.Stop();
+            profileRoles?.Stop();
             Companion.End(pluginManager);
             EnduranceManager.SimHub.Report.Close("SimHub fermé", Modules());
             this.SaveCommonSettings("GeneralSettings", Settings);
