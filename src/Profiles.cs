@@ -399,24 +399,70 @@ namespace EnduranceManager.SimHub
         {
             // A pilot's « + » can lower the game's level (TC counted the other way on some cars): seen once, then swapped.
             bool swapped = false;
+            // Nathan 23/11 (Peugeot 9X8): TC, migration and carto did not move with their Control Mapper role while the
+            // others did. Then FMT companion's own command (as the black box's Électronique page sends it) is tried.
+            bool fmt = false, triedFmt = false;
+            string how = "";
             for (int presses = 0, still = 0; presses < 40; presses++)
             {
                 if (!(latest() is Sample s)) return setting.Label + " (voiture plus en piste)";
                 if (!(setting.Read(s) is double now)) return null;
                 if (Math.Abs(now - target) < setting.Tolerance) return null;
                 string command = setting.Key + ((target > now) != swapped ? "+" : "-");
-                string role = Role(command);
-                if (string.IsNullOrEmpty(role)) return setting.Label + " (bouton « " + Command(command) + " » introuvable : clique « Préparer LMU » dans FMT companion)";
-                if (!PressRole(manager(), role)) return setting.Label + " (rôle « " + role + " » introuvable)";
-                // The game takes a moment to show the new level: a few readings at most, then the next press.
+                if (fmt)
+                {
+                    string id = FmtId(command), why = id == null ? "pas de commande" : SendFmt(id);
+                    if (why != null) return setting.Label + " (rien ne bouge avec « " + how + " », FMT : " + why + ")";
+                    how = "FMT " + id;
+                }
+                else
+                {
+                    string role = Role(command);
+                    if (string.IsNullOrEmpty(role))
+                    {
+                        if (SendFmt != null && !triedFmt) { fmt = triedFmt = true; presses--; continue; }
+                        return setting.Label + " (bouton « " + Command(command) + " » introuvable : clique « Préparer LMU » dans FMT companion)";
+                    }
+                    if (!PressRole(manager(), role))
+                    {
+                        if (SendFmt != null && !triedFmt) { fmt = triedFmt = true; presses--; continue; }
+                        return setting.Label + " (rôle « " + role + " » introuvable)";
+                    }
+                    how = role;
+                }
+                // The game takes a moment to show the new level: up to 1 s, then the next press.
                 double? after = now;
-                // Up to 1 s: 0.36 s was too short for TC on Nathan's Peugeot 9X8 (23/11 : « rien ne bouge » with the FMT role).
                 for (int wait = 0; wait < 12 && after == now; wait++) { Thread.Sleep(80); after = latest() is Sample t ? setting.Read(t) : null; }
                 still = after == now ? still + 1 : 0;
                 if (after is double moved && Math.Abs(moved - target) > Math.Abs(now - target)) swapped = !swapped;
-                if (still >= 2) return setting.Label + " (rien ne bouge avec « " + role + " »)";
+                if (still >= 2)
+                {
+                    if (!fmt && SendFmt != null && !triedFmt) { fmt = triedFmt = true; still = 0; Report.Log("profils", setting.Label + " : rien avec « " + how + " », essai par FMT companion"); continue; }
+                    return setting.Label + " (rien ne bouge avec « " + how + " »)";
+                }
             }
             return setting.Label + " (pas atteint)";
+        }
+
+        // FMT companion's command for a setting and a sign (its Catalog.cs ids), null when it has none.
+        public Func<string, string> SendFmt;
+
+        static string FmtId(string command)
+        {
+            bool up = command.EndsWith("+");
+            switch (command.Substring(0, command.Length - 1))
+            {
+                case "TC": return up ? "TC.Next" : "TC.Previous";
+                case "TCCut": return up ? "TC2.Next" : "TC2.Previous";
+                case "TCSlip": return up ? "TCSlip.Next" : "TCSlip.Previous";
+                case "ABS": return up ? "ABS.Next" : "ABS.Previous";
+                case "Bias": return up ? "Bias.Forward" : "Bias.Rearward";
+                case "Migration": return up ? "Migration.Forward" : "Migration.Rearward";
+                case "MotorMap": return up ? "MotorMap.Next" : "MotorMap.Previous";
+                case "ArbFront": return up ? "FrontARB.Next" : "FrontARB.Previous";
+                case "ArbRear": return up ? "RearARB.Next" : "RearARB.Previous";
+                default: return null;
+            }
         }
 
         // Alone in its method: should SimHub's Control Mapper differ from the facade (reference/), only the profiles' presses

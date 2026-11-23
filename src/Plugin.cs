@@ -178,6 +178,8 @@ namespace EnduranceManager.SimHub
             // back at once from the game; on Électronique − + are FMT companion's commands.
             BlackBox = new BlackBox(() => Menu.Raw, () => { Menu.Read(); BlackBox.Update(Menu.Items); });
             BlackBoxPages = new BlackBoxPages(BlackBox, id => CompanionPage.Send(id));
+            // The profiles too, when a Control Mapper role moves nothing (Profiles.Reach).
+            Profiles.SendFmt = id => CompanionPage?.Send(id) ?? "FMT companion absent";
             this.AddAction("BlackBoxPageSuivante", (manager, button) => BlackBoxPages.Turn(1));
             this.AddAction("BlackBoxPagePrecedente", (manager, button) => BlackBoxPages.Turn(-1));
             this.AddAction("BlackBoxMonter", (manager, button) => BlackBoxPages.Move(-1));
