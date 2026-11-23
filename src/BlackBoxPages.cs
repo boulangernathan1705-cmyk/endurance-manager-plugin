@@ -599,8 +599,9 @@ namespace EnduranceManager.SimHub
                 made[4] = Line("Moyenne", avg, estimate);
                 made[5] = Line("Dernier", last, lastLaps);
             }
-            // The game's ratio of fuel to energy (0.73 in Nathan's capture): our last lap's, else its forecast's.
-            double? ratio = v?.RatioLastLap ?? (game?.Fuel > 0 && game?.Energy > 0 ? game.Fuel / game.Energy : null);
+            // The fuel ratio as the game sets it: its pit menu's « FUEL RATIO » line (read from the game); without it, our
+            // last lap's, else its forecast's.
+            double? ratio = v?.MenuRatioNumber ?? v?.RatioLastLap ?? (game?.Fuel > 0 && game?.Energy > 0 ? game.Fuel / game.Energy : null);
             made[6] = ve ? new BlackBoxRow { Nom = "Ratio carburant", Valeur = ratio is double r ? r.ToString("0.00", Inv) : "-" }
                 : new BlackBoxRow { Nom = "Batterie", Valeur = s.MotorState != 0 && s.Battery > 0 ? (s.Battery * 100).ToString("0", Inv) + "%" : "-" };
         }
