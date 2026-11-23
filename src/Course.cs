@@ -17,9 +17,10 @@ using Newtonsoft.Json.Linq;
 namespace EnduranceManager.SimHub
 {
     // One line of the game's pit menu (garage/PitMenu/receivePitMenu): its name, the choice made and its text.
+    // Label: the name as the game writes it (case and colon kept), for the wheel's screen (BlackBoxDash.cs).
     public class MenuItem
     {
-        public string Name, Text, Type;
+        public string Name, Label, Text, Type;
         public int Index;
     }
 
@@ -48,7 +49,7 @@ namespace EnduranceManager.SimHub
                     var settings = line["settings"] as JArray;
                     var setting = settings != null && index >= 0 && index < settings.Count ? settings[index] as JObject : null;
                     string text = ((string)setting?["text"] ?? "").Trim();
-                    if (name != "") items.Add(new MenuItem { Name = name, Index = index, Text = text, Type = (string)setting?["type"] });
+                    if (name != "") items.Add(new MenuItem { Name = name, Label = ((string)line["name"] ?? "").Trim(), Index = index, Text = text, Type = (string)setting?["type"] });
                 }
                 Items = items;
             }

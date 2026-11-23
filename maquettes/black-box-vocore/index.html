@@ -1,0 +1,92 @@
+<title>Black box VoCore</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Inter:wght@400;600&display=swap">
+<style>
+/* Page autour ; l'écran VoCore reproduit la black box de LMU (captures de Nathan), toujours sombre. */
+:root{--bg:#eef0f3;--fg:#1a1d22;--muted:#5b6370;--line:#d4d8de;--card:#fff;
+ --panel:#1d2330;--panel2:#262d3b;--sep:#4a5160;--lbl:#b9bec8;--val:#ffffff;--sel:#e83a4c;--off:#8a909c;
+ --ui:"Roboto","Segoe UI",Arial,sans-serif;--body:"Inter",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111418;--fg:#e8ebef;--muted:#9aa3ae;--line:#2a3038;--card:#181c22;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#111418;--fg:#e8ebef;--muted:#9aa3ae;--line:#2a3038;--card:#181c22;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);line-height:1.5}
+.wrap{max-width:860px;margin:0 auto;padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:28px;margin:0 0 4px;font-family:var(--ui);font-weight:900}
+.sub{color:var(--muted);margin:0 0 18px}
+h2{font-family:var(--ui);font-size:20px;margin:28px 0 8px}
+.vocore{width:100%;max-width:800px;aspect-ratio:800/480;container-type:inline-size;background:#000;border-radius:12px;box-shadow:0 0 0 6px #2b2f35,0 10px 30px rgba(0,0,0,.35);overflow:hidden}
+.vocore .mfd{font-size:1cqw;width:100%;height:100%;border-radius:0}
+.mfd{--u:1cqw;background:var(--panel);color:var(--val);font-family:var(--ui);display:flex;flex-direction:column;container-type:normal}
+.hd{display:flex;justify-content:space-between;align-items:center;height:calc(var(--u)*8.4);padding:0 calc(var(--u)*1.6);background:var(--panel2)}
+.tt{font-weight:700;font-size:calc(var(--u)*3.6)}
+.ics{display:flex;gap:calc(var(--u)*1.9)}
+.ic{width:calc(var(--u)*4.2);height:calc(var(--u)*4.2);color:var(--off);display:block}
+.ic.on{color:#fff}
+.ic svg{width:100%;height:100%;display:block}
+.bd{flex:1;display:flex;flex-direction:column;position:relative}
+.row{flex:1;display:flex;align-items:center;justify-content:space-between;padding:0 calc(var(--u)*1.6);border-bottom:1px solid var(--sep);font-size:calc(var(--u)*3.7);position:relative}
+.row span{color:var(--lbl);font-weight:700}
+.row b{font-weight:700}
+.row.sel{background:#fff}
+.row.sel span,.row.sel b{color:var(--sel)}
+.row.sel em{font-style:normal;font-size:.8em}
+.ud{position:absolute;left:50%;font-style:normal;color:var(--sel);font-size:calc(var(--u)*2.2);line-height:1.1;text-align:center}
+.scroll{position:absolute;left:50%;transform:translateX(-50%);color:#cfd3da;font-size:calc(var(--u)*2.4);z-index:2}
+.scroll.dn{bottom:calc(var(--u)*.3)} .scroll.up{top:calc(var(--u)*.3)}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.pair>div{min-width:0}
+.thumb{aspect-ratio:800/480;container-type:inline-size;border-radius:8px;overflow:hidden;box-shadow:0 0 0 3px #2b2f35}
+.thumb .mfd{height:100%}
+.cap{font-size:13px;color:var(--muted);margin-top:6px}
+.ty{flex:1;display:grid;grid-template-columns:1fr 1.5fr 1.5fr 1fr;grid-template-rows:1fr auto 1fr;align-items:center;padding:calc(var(--u)*1.5)}
+.w{justify-self:center;width:calc(var(--u)*17);aspect-ratio:1;border-radius:50%;border:calc(var(--u)*1.5) solid #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:calc(var(--u)*4.4)}
+.w small{font-size:calc(var(--u)*2.4);color:#ffd400;border:2px solid #ffd400;border-radius:50%;width:1.5em;height:1.5em;display:grid;place-items:center}
+.c{display:flex;flex-direction:column;gap:calc(var(--u)*1);font-size:calc(var(--u)*3);padding:0 calc(var(--u)*1)}
+.c.r{align-items:flex-end}
+.c s{text-decoration:none;color:var(--lbl)}
+.c b{font-size:calc(var(--u)*4.2)}
+.mid{grid-column:1/-1;text-align:center;font-weight:700;font-size:calc(var(--u)*3.6)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 18px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+td,th{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.y{color:#1a9a55;font-weight:600} .p{color:#c47f00;font-weight:600} .n{color:#d0453b;font-weight:600}
+ul{margin:0;padding-left:20px} li{margin:6px 0}
+@media (max-width:560px){.pair{grid-template-columns:1fr}}
+</style>
+<div class="wrap">
+<h1>Black box sur l'écran VoCore</h1>
+<p class="sub">Version 3, d'après tes captures du jeu. Page « Arrêt aux stands » en plein écran 800 × 480. Valeurs d'exemple.</p>
+<div class="vocore"><div class="mfd "><div class="hd"><span class="tt">Arrêt aux stands</span><span class="ics"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6.5" cy="8" r="1.6" fill="currentColor"/><circle cx="17.5" cy="16" r="1.6" fill="currentColor"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><rect x="10.8" y="10" width="2.4" height="8" rx="1" fill="var(--panel)"/><circle cx="12" cy="6.8" r="1.5" fill="var(--panel)"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="10" y="1.5" width="4" height="2.4" fill="currentColor"/><path d="M12 13V8" stroke="currentColor" stroke-width="2.2"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v6M12 16v6M2 12h6M16 12h6" stroke="currentColor" stroke-width="1.6"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="10" height="18" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="6" y="5" width="6" height="5" fill="currentColor"/><path d="M14 9h3l2 2v8a1.5 1.5 0 0 1-3 0v-4h-2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><path d="M14 2 5 14h6l-2 8 9-12h-6z" fill="currentColor"/></svg></span><span class="ic on"><svg viewBox="0 0 24 24"><circle cx="9" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="3 2.2"/><path d="M13 14l7 7" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg></span></span></div><div class="bd"><div class="row"><span>Dommages</span><b>N/A</b></div><div class="row sel"><span>Énergie Virtuelle:</span><i class="ud">▴<br>▾</i><b>100% 35 laps <em>◂ ▸</em></b></div><div class="row"><span>Ratio carburant</span><b>0.76</b></div><div class="row"><span>Pneus:</span><b>Aucun changement</b></div><div class="row"><span>Pneu AvG</span><b>Aucun changement</b></div><div class="row"><span>Pneu AvD</span><b>Aucun changement</b></div><div class="row"><span>Pneu ArrG</span><b>Aucun changement</b></div><div class="scroll dn">▼</div></div></div></div>
+<div class="pair">
+ <div><div class="thumb"><div class="mfd small"><div class="hd"><span class="tt">Électronique</span><span class="ics"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6.5" cy="8" r="1.6" fill="currentColor"/><circle cx="17.5" cy="16" r="1.6" fill="currentColor"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><rect x="10.8" y="10" width="2.4" height="8" rx="1" fill="var(--panel)"/><circle cx="12" cy="6.8" r="1.5" fill="var(--panel)"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="10" y="1.5" width="4" height="2.4" fill="currentColor"/><path d="M12 13V8" stroke="currentColor" stroke-width="2.2"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v6M12 16v6M2 12h6M16 12h6" stroke="currentColor" stroke-width="1.6"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="10" height="18" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="6" y="5" width="6" height="5" fill="currentColor"/><path d="M14 9h3l2 2v8a1.5 1.5 0 0 1-3 0v-4h-2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span><span class="ic on"><svg viewBox="0 0 24 24"><path d="M14 2 5 14h6l-2 8 9-12h-6z" fill="currentColor"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="9" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="3 2.2"/><path d="M13 14l7 7" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg></span></span></div><div class="bd"><div class="row sel"><span>Contrôle de traction</span><i class="ud">▴<br>▾</i><b>7 <em>◂ ▸</em></b></div><div class="row"><span>TC Power cut</span><b>7</b></div><div class="row"><span>TC Slip angle</span><b>8</b></div><div class="row"><span>ARB avant</span><b>P4</b></div><div class="row"><span>ARB arrière</span><b>P1</b></div><div class="row"><span>Répartition des freins</span><b>52.3:47.7</b></div><div class="row"><span>Répartition des freins</span><b>1.5% F</b></div><div class="scroll dn">▼</div></div></div></div><div class="cap">Électronique (2ᵉ étape)</div></div>
+ <div><div class="thumb"><div class="mfd small"><div class="hd"><span class="tt">Pneus</span><span class="ics"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6.5" cy="8" r="1.6" fill="currentColor"/><circle cx="17.5" cy="16" r="1.6" fill="currentColor"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><rect x="10.8" y="10" width="2.4" height="8" rx="1" fill="var(--panel)"/><circle cx="12" cy="6.8" r="1.5" fill="var(--panel)"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="10" y="1.5" width="4" height="2.4" fill="currentColor"/><path d="M12 13V8" stroke="currentColor" stroke-width="2.2"/></svg></span><span class="ic on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v6M12 16v6M2 12h6M16 12h6" stroke="currentColor" stroke-width="1.6"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="10" height="18" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="6" y="5" width="6" height="5" fill="currentColor"/><path d="M14 9h3l2 2v8a1.5 1.5 0 0 1-3 0v-4h-2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><path d="M14 2 5 14h6l-2 8 9-12h-6z" fill="currentColor"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="9" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="3 2.2"/><path d="M13 14l7 7" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg></span></span></div><div class="bd"><div class="ty">
+ <div class="w">100%<small>M</small></div><div class="c"><s>124.2kPa</s><b>22.9°C</b><s>20.0°C</s></div><div class="c r"><s>124.1kPa</s><b>22.9°C</b><s>20.0°C</s></div><div class="w">100%<small>M</small></div>
+ <div class="mid">∞ Pneus</div>
+ <div class="w">100%<small>M</small></div><div class="c"><s>20.0°C</s><b>22.8°C</b><s>124.1kPa</s></div><div class="c r"><s>20.0°C</s><b>22.8°C</b><s>124.1kPa</s></div><div class="w">100%<small>M</small></div>
+</div></div></div></div><div class="cap">Pneus (2ᵉ étape)</div></div>
+</div>
+
+<h2>Ce qu'on peut reproduire</h2>
+<div class="card tw"><table>
+<tr><th>Page du jeu</th><th>Données</th><th>Fidélité</th></tr>
+<tr><td>Arrêt aux stands</td><td>Le menu du jeu lui-même, ligne par ligne. Dommages, pénalités et pilote suivant apparaissent tout seuls quand le jeu les ajoute.</td><td class="y">Identique</td></tr>
+<tr><td>Pneus</td><td>Usure, gomme, pressions, températures pneus et freins : lus dans le jeu.</td><td class="y">Identique</td></tr>
+<tr><td>Chrono</td><td>Secteurs actuel, meilleur, dernier, optimal : lus ou calculés par le plugin.</td><td class="p">Très proche</td></tr>
+<tr><td>Électronique</td><td>TC, ABS, carto, migration lus. Power cut, slip angle, barres : à vérifier.</td><td class="p">Partielle</td></tr>
+<tr><td>Carburant</td><td>Carburant, énergie, batterie lus. Les estimations du jeu (Pousser, Objectif) ne sont pas données : on mettrait les nôtres.</td><td class="p">Proche</td></tr>
+<tr><td>Séance, Relatif</td><td>Heure, météo, piste, classement autour : lus.</td><td class="p">Très proche</td></tr>
+</table></div>
+
+<h2>Les deux limites</h2>
+<div class="card"><ul>
+<li><b>La ligne en rouge.</b> Le jeu ne donne pas la position de son curseur. On surligne la dernière ligne changée. Avec tes boutons directs, c'est justement celle que tu viens de régler.</li>
+<li><b>La page affichée.</b> Le jeu ne dit pas quelle page il montre. Le VoCore change de page avec un bouton à lui (action SimHub « page suivante »), ou reste sur « Arrêt aux stands ».</li>
+</ul></div>
+
+<h2>Je propose</h2>
+<div class="card"><ul>
+<li><b>Étape 1</b> : la page « Arrêt aux stands » seule, à l'identique. C'est celle qu'on règle avec les boutons.</li>
+<li><b>Étape 2</b> : les autres pages et un bouton pour passer de l'une à l'autre.</li>
+</ul></div>
+</div>
