@@ -21,7 +21,7 @@ namespace EnduranceManager.SimHub
         static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
 
         // ── What the page shows ─────────────────────────────────────────────────────────────────────────────────────
-        public object State()
+        public object State(string query = null)
         {
             var s = plugin.Settings;
             var code = plugin.Link;
@@ -69,7 +69,7 @@ namespace EnduranceManager.SimHub
                 game = new { game.state, game.title, game.detail },
                 modules = new { relais = s.Overlays, profils = s.Profiles, bb = s.CompanionOn, mur = s.Wall, memo = s.Enabled, equipe = s.Share, dev = s.Report },
                 laps = s.StintLaps,
-                bb = new { running = plugin.Companion.Running, pending = s.CompanionOn != plugin.Companion.StartAttempted, status = plugin.Companion.Status },
+                bb = new { running = plugin.Companion.Running, pending = s.CompanionOn != plugin.Companion.StartAttempted, status = plugin.Companion.Status, page = plugin.Companion.Running && (query ?? "").Contains("bb=1") ? plugin.CompanionPage.State() : null },
                 mur = new
                 {
                     running = server?.Running == true && s.Wall,
@@ -155,6 +155,8 @@ namespace EnduranceManager.SimHub
                     case "record": plugin.SetRecording(on); return Ok();
                     case "guideDone": plugin.SetModule(x => x.GuideDone = true); return Ok();
                     case "companion": return Companion();
+                    case "bbCheck": case "bbTest": case "bbPrepare": case "bbUndo": case "bbMapper": case "bbDeck": case "bbBackup": case "bbGarage": case "bbWrites":
+                        return plugin.CompanionPage.Act(what, (string)a["id"], on);
                     case "oldScreen": OnScreen(() => plugin.Shell?.ShowModules()); return Ok();
                     default: return new { ok = false, message = "Inconnu : " + what };
                 }
@@ -162,7 +164,7 @@ namespace EnduranceManager.SimHub
             catch (Exception e)
             {
                 Report.Error("Écran", e);
-                return new { ok = false, message = e.Message };
+                return new { ok = false, message = (e as System.Reflection.TargetInvocationException)?.InnerException?.Message ?? e.Message };
             }
         }
 
@@ -229,7 +231,7 @@ namespace EnduranceManager.SimHub
             return Ok();
         }
 
-        // FMT companion's own screen, in a window of its own, until it is rewritten into this page.
+        // FMT companion's own screen, in a window of its own (« Ancien écran » on its page, if ever needed).
         object Companion()
         {
             if (!plugin.Companion.Running) return new { ok = false, message = plugin.Companion.Status };
