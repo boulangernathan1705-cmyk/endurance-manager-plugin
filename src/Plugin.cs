@@ -106,6 +106,8 @@ namespace EnduranceManager.SimHub
         // The race figures a dashboard reads (Course.cs), and the game's pit menu they come with.
         public Course Course { get; } = new Course();
         public PitMenu Menu { get; } = new PitMenu();
+        // The game's pit menu for the wheel's screen (BlackBoxDash.cs), while Black box sur boutons is on.
+        public BlackBox BlackBox { get; } = new BlackBox();
         public GameApi Game { get; } = new GameApi();
         // The pilot's setting profiles, car by car, and the wheel buttons that apply or memorise them (Profiles.cs).
         public Profiles Profiles { get; private set; }
@@ -128,7 +130,7 @@ namespace EnduranceManager.SimHub
         volatile object latest;
         public string Status => !Settings.Enabled ? "En pause" : uploader?.Status ?? "";
         // The game is read while one module at least needs it.
-        bool Reading => Settings.Enabled || Settings.Share || Settings.Overlays || Settings.Wall || Settings.Profiles;
+        bool Reading => Settings.Enabled || Settings.Share || Settings.Overlays || Settings.Wall || Settings.Profiles || Settings.CompanionOn;
         // The race figures for the dashs (Course.cs): no switch of their own, they run for the overlay and the mur des stands.
         public bool CourseOn => Settings.Overlays || Settings.Wall;
 
@@ -211,6 +213,7 @@ namespace EnduranceManager.SimHub
             }
             // The race figures under NeoRed's names (EnduranceManagerPlugin.Energy.VE.Current_%…), for any dashboard.
             foreach (var (name, get) in Course.Properties) this.AttachDelegate(name, () => get(Course.View));
+            foreach (var (name, get) in BlackBox.Properties()) this.AttachDelegate(name, get);
             // What LMU Drive reads of the car and the session (Telemetry.cs, plugin 2.5), from the last reading.
             foreach (var (name, get) in Telemetry.Properties) this.AttachDelegate(name, () => latest is Sample s ? get(s) : null);
             this.AttachDelegate("Voiture.TourOptimal", () => Computed.Optimal);
@@ -496,7 +499,9 @@ namespace EnduranceManager.SimHub
                             // The mur's inputs at each reading (10 a second), between the full updates.
                             if (driving && Settings.Wall && tick % 10 != 0) wall.Inputs(sample.Speed, sample.Throttle * 100, sample.BrakePedal * 100, sample.Steer * 100, sample.Gear);
                             if (driving && CourseOn && tick % 10 == 0) try { Course.Update(buffer, sample, recorder.Current, api.Service, Menu, Game, api.Refuel, standings, lovely); } catch (Exception e) { EnduranceManager.SimHub.Report.Error("Course", e); }
-                            if (driving && CourseOn && tick % 20 == 5 && !Menu.Busy) ThreadPool.QueueUserWorkItem(_ => Menu.Read());
+                            // Every 2 s for the figures; every half second for the wheel's screen (Black box sur boutons on).
+                            if (driving && (Settings.CompanionOn ? tick % 5 == 0 : CourseOn && tick % 20 == 5) && !Menu.Busy)
+                                ThreadPool.QueueUserWorkItem(_ => { Menu.Read(); BlackBox.Update(Menu.Items); });
                             // The game's state, its estimate of the stop and the car's condition, what is due each second.
                             if (driving && tick % 10 == 7 && !Game.Busy)
                             {

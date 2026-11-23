@@ -32,7 +32,7 @@ namespace EnduranceManager.SimHub.Replay
 
         public static bool RunAll(List<string> fixtures, string outDir)
         {
-            bool allOk = Recorder();
+            bool allOk = Recorder() & BlackBoxLines();
             foreach (var file in fixtures)
             {
                 var f = Fixture.Load(file);
@@ -52,6 +52,42 @@ namespace EnduranceManager.SimHub.Replay
                 allOk &= report.Failures.Count == 0;
             }
             return allOk;
+        }
+
+        // The wheel's black box (BlackBoxDash.cs): the line changed last is the chosen one, the 7-line window follows it,
+        // the game's English names and texts are shown as its French screen writes them.
+        static bool BlackBoxLines()
+        {
+            var failures = new List<string>();
+            void Is(bool ok, string what) { if (!ok) failures.Add(what); }
+            string[] names = { "DAMAGE", "VIRTUAL ENERGY", "FUEL RATIO", "TIRES", "FL TIRE", "FR TIRE", "RL TIRE", "RR TIRE", "R WING", "GRILLE",
+                "FL PRESS", "FR PRESS", "RL PRESS", "RR PRESS", "F BRAKE DUCT", "R BRAKE DUCT", "REPLACE BRAKES" };
+            List<MenuItem> Menu(params (string name, int index)[] changes) => names.Select(n => new MenuItem
+            {
+                Name = n, Label = n, Index = changes.Where(c => c.name == n).Select(c => c.index).DefaultIfEmpty(0).First(),
+                Text = n == "FL TIRE" ? "No Change" : n == "REPLACE BRAKES" ? "No" : "1"
+            }).ToList();
+            var box = new BlackBox();
+            var props = box.Properties().ToDictionary(p => p.name, p => p.get);
+            object V(string name) => props[name]();
+            box.Update(Menu());
+            Is(box.Chosen == "" && box.Top == 0, "Premier menu lu : aucune ligne choisie, fenêtre en haut");
+            Is((string)V("BlackBox.1.Nom") == "Dommages" && (string)V("BlackBox.2.Nom") == "Énergie Virtuelle:", "Noms du jeu en français");
+            Is((string)V("BlackBox.5.Valeur") == "Aucun changement", "« No Change » écrit « Aucun changement »");
+            Is((bool)V("BlackBox.Bas") && !(bool)V("BlackBox.Haut"), "Flèche du bas seulement");
+            box.Update(Menu(("VIRTUAL ENERGY", 3)));
+            Is(box.Chosen == "VIRTUAL ENERGY" && (bool)V("BlackBox.2.Choisie") && !(bool)V("BlackBox.1.Choisie"), "Énergie changée : 2e ligne en rouge");
+            box.Update(Menu(("VIRTUAL ENERGY", 3), ("REPLACE BRAKES", 1)));
+            Is(box.Chosen == "REPLACE BRAKES" && box.Top == names.Length - BlackBox.Rows, "Freins changés : la fenêtre descend jusqu'à la dernière ligne");
+            Is((bool)V("BlackBox.7.Choisie") && (string)V("BlackBox.7.Nom") == "Remplacer les freins", "Freins en 7e ligne visible");
+            Is((bool)V("BlackBox.Haut") && !(bool)V("BlackBox.Bas"), "Flèche du haut seulement");
+            box.Update(Menu(("VIRTUAL ENERGY", 3), ("REPLACE BRAKES", 1), ("FL PRESS", 2)));
+            Is(box.Chosen == "FL PRESS" && box.Top == names.Length - BlackBox.Rows, "Pression AvG visible : la fenêtre ne bouge pas");
+            box.Update(Menu(("VIRTUAL ENERGY", 4), ("REPLACE BRAKES", 1), ("FL PRESS", 2)));
+            Is(box.Chosen == "VIRTUAL ENERGY" && box.Top == 1, "Énergie au-dessus : la fenêtre remonte juste assez");
+            foreach (var failure in failures) Console.WriteLine("ÉCHEC Black box : " + failure);
+            if (failures.Count == 0) Console.WriteLine("OK    Black box : ligne choisie, défilement et noms");
+            return failures.Count == 0;
         }
 
         // The recorder's format (Tape.cs): each copy rebuilt exactly from the one before and its changes.
