@@ -112,7 +112,7 @@ namespace EnduranceManager.SimHub
                 case Electronics: lock (gate) MoveSetting(step); break;
                 case Timing: lock (gate) relative = !relative; break;
                 // ▲ one lap more to save, ▼ one less.
-                case Fuel: lock (gate) save = Math.Max(0, save - step); break;
+                case Fuel: lock (gate) save = Math.Min(5, Math.Max(0, save - step)); break; // +5 laps at most, as the game
                 default: return;
             }
             Rebuild();
@@ -564,8 +564,13 @@ namespace EnduranceManager.SimHub
             double? forecast = ve ? game?.Energy : game?.Fuel;
             double? push = forecast > 0 ? forecast : last > 0 && avg > 0 ? Math.Max(last.Value, avg.Value) : avg > 0 ? avg : last;
             if (!(avg > 0)) avg = forecast;
-            double? best = cars.FirstOrDefault(c => c.Me).BestLap is double bl && bl > 0 ? bl : (double?)null;
-            double lapTime = v?.LapTimeAvg10 > 0 ? v.LapTimeAvg10.Value : best ?? (v?.BestLap > 0 ? v.BestLap.Value : v?.LastLap > 0 ? v.LastLap.Value : 0);
+            // Nathan's captures (23/11), before any lap: the game's Moyenne and Dernier are both its forecast; its times
+            // go 1.5 min a lap (91.7 s: its estimate of our lap, the one its Relatif uses).
+            if (!(last > 0)) last = forecast;
+            var me = cars.FirstOrDefault(c => c.Me);
+            double? best = me.BestLap > 0 ? me.BestLap : (double?)null;
+            double lapTime = me.Estimate > 10 && me.Estimate < 3600 ? me.Estimate
+                : v?.LapTimeAvg10 > 0 ? v.LapTimeAvg10.Value : best ?? (v?.BestLap > 0 ? v.BestLap.Value : v?.LastLap > 0 ? v.LastLap.Value : 0);
             string Use(double? u) => u > 0 ? (ve ? u.Value.ToString("0.00", Inv) + "%" : u.Value.ToString("0.00", Inv) + "L") : "-";
             string LapsOf(double? n) => n > 0 ? n.Value.ToString("0.0", Inv) : "-";
             string Mins(double? n) => n > 0 && lapTime > 0 ? Math.Round(n.Value * lapTime / 60).ToString("0", Inv) + " mins" : "-";
@@ -575,20 +580,28 @@ namespace EnduranceManager.SimHub
             made[0] = new BlackBoxRow { Nom = "◂ ▸  " + (ve ? "Virtual Energy" : "Carburant"), Valeur = ve ? s.Energy.ToString("0", Inv) + "%" : s.Fuel.ToString("0.00", Inv) + "L", Petit = true, Reglable = true };
             made[1] = new BlackBoxRow { Nom = "Objectif de sauvegarde", Valeur = (save > 0 ? "+" + save + " Tours" : "Aucun") + "  ▴▾", Reglable = true };
             made[2] = new BlackBoxRow { C1 = "Tours", C2 = "Temps", C3 = "Usage", Petit = true };
-            double? estimate = Lasts(avg);
+            double? estimate = Lasts(avg), lastLaps = Lasts(last);
             if (save > 0 && Lasts(push) is double flat)
             {
-                double goal = flat + save;
-                made[3] = Line("Objectif", left / goal, goal);
-                made[4] = Line(estimate < goal ? "Estimation  ⚠" : "Estimation", avg, estimate);
+                // As the game (captures +1 to +5 at 39.9 laps): the usage for the whole laps (39 + N), the laps shown with
+                // what is left of the lap being driven (40.1 at +1).
+                double whole = Math.Floor(flat) + save;
+                double length = view?.TrackLength > 100 ? view.TrackLength.Value : 0;
+                double rest = length > 0 && s.LapDist > 0 ? Math.Max(0, 1 - s.LapDist / length) : 0;
+                double goal = whole + rest;
+                made[3] = Line("Objectif", left / whole, goal);
+                made[4] = Line(estimate < whole ? "Moyenne  ⚠" : "Moyenne", avg, estimate);
+                made[5] = Line(lastLaps < whole ? "Dernier  ⚠" : "Dernier", last, lastLaps);
             }
             else
             {
                 made[3] = Line("Pousser", push, Lasts(push));
-                made[4] = Line("Estimation", avg, estimate);
+                made[4] = Line("Moyenne", avg, estimate);
+                made[5] = Line("Dernier", last, lastLaps);
             }
-            made[5] = Line("Dernier", last, Lasts(last));
-            made[6] = ve ? new BlackBoxRow { Nom = "Ratio carburant", Valeur = v?.RatioLastLap is double r ? r.ToString("0.00", Inv) : "-" }
+            // The game's ratio of fuel to energy (0.73 in Nathan's capture): our last lap's, else its forecast's.
+            double? ratio = v?.RatioLastLap ?? (game?.Fuel > 0 && game?.Energy > 0 ? game.Fuel / game.Energy : null);
+            made[6] = ve ? new BlackBoxRow { Nom = "Ratio carburant", Valeur = ratio is double r ? r.ToString("0.00", Inv) : "-" }
                 : new BlackBoxRow { Nom = "Batterie", Valeur = s.MotorState != 0 && s.Battery > 0 ? (s.Battery * 100).ToString("0", Inv) + "%" : "-" };
         }
 
@@ -609,7 +622,9 @@ namespace EnduranceManager.SimHub
                 case "Pression": return w.Off ? "-" : w.Pressure.ToString("0.0", Inv) + "kPa";
                 // Nathan's captures (23/11): the carcass read 2 °C under the game, the inner layer 3 °C over it; the tread's
                 // three temperatures in between: their mean, to check.
-                case "Temp": return w.Off ? "-" : ((w.TreadIn + w.TreadMid + w.TreadOut) / 3).ToString("0.0", Inv) + "°C";
+                // Warm (39.9 in game): carcass 37.9, inner layer 42.9; cold (25.6): the tread read 28.0. Between the
+                // carcass and the inner layer, 60/40: to check again.
+                case "Temp": return w.Off ? "-" : (0.6 * w.Temp + 0.4 * (w.InnerIn + w.InnerMid + w.InnerOut) / 3).ToString("0.0", Inv) + "°C";
                 // What is left, 0 to 100, for the ring that wears round (BlackBoxDash.cs).
                 case "Reste": return w.Off ? 0.0 : Math.Round(w.Wear * 100, 1);
                 // The compound's colour, as the game's circles (Nathan's capture): soft white, medium yellow, hard red, wet
