@@ -161,6 +161,9 @@ namespace EnduranceManager.SimHub
             // The mur (plugin 2.5): a full screen, 2560 × 1440, for the PC (WallDash.cs).
             var (wall, wallMeta) = MakeWall();
             yield return ("Endurance Manager · Mur", wall.ToString(Formatting.None), wallMeta.ToString(Formatting.Indented));
+            // The game's pit menu for the wheel's screen (VoCore 800 × 480, BlackBoxDash.cs).
+            var (box, boxMeta) = BlackBoxDash.Make();
+            yield return ("Endurance Manager · Black box", box.ToString(Formatting.None), boxMeta.ToString(Formatting.Indented));
         }
 
         static string Hash(string text) { using (var sha = SHA256.Create()) return Convert.ToBase64String(sha.ComputeHash(Encoding.UTF8.GetBytes(text))); }

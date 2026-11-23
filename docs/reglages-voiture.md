@@ -18,6 +18,27 @@
 - Nathan n'utilise plus vJoy mais une clé USB bridge SimHub ; beaucoup de pilotes en ont une. Le plugin doit marcher
   avec les deux : passer par les rôles du Control Mapper le permet.
 
+
+### Black box sur l'écran du volant (VoCore)
+
+- Demande d'un pilote (23/11/2026) : voir la black box de LMU sur l'écran VoCore de son volant et la masquer sur
+  l'écran principal. LMU ne sait pas afficher sa black box ailleurs, et une copie d'image est impossible une fois
+  masquée : on la **redessine** avec les données du jeu, d'après les captures de Nathan (maquette :
+  [`maquettes/black-box-vocore/`](../maquettes/black-box-vocore/index.html)).
+- Étape 1 (faite) : la page « Arrêt aux stands ». Dash « Endurance Manager · Black box » (800 × 480, écrit dans les
+  modèles de SimHub comme les overlays, `BlackBoxDash.cs`) : titre, 7 lignes visibles, ligne choisie en blanc et rouge
+  avec ses flèches, flèches de défilement. Les lignes sont celles du menu lu par l'API (`PitMenu`, lu toutes les 0,5 s
+  quand le module est activé) ; dommages, pénalités, pilote suivant arrivent tout seuls quand le jeu les ajoute.
+- **Le jeu ne donne ni la position de son curseur ni la page affichée.** La ligne en rouge est la dernière dont le
+  réglage a changé (avec les boutons directs de FMT companion, celle que le pilote vient de régler) ; la fenêtre de
+  7 lignes défile pour la garder visible.
+- Noms : si l'API répond en anglais (« VIRTUAL ENERGY »), ils sont écrits comme l'écran français du jeu
+  (« Énergie Virtuelle: ») ; sinon tels que le jeu les donne. À vérifier dans le vrai jeu : la langue de l'API et le
+  texte de l'énergie (le jeu affiche « 100% 35 laps », l'API peut ne donner que « 100% »).
+- Propriétés : `BlackBox.Lignes`, `.Choisie`, `.Haut`, `.Bas`, `BlackBox.1.Nom` / `.Valeur` / `.Choisie` … `BlackBox.7.*`.
+- Étape 2 (à faire, accord de Nathan) : les autres pages (Relatif, Séance, Chrono, Pneus, Carburant, Électronique) et
+  un bouton SimHub « page suivante » pour le VoCore.
+
 ## Réglages voiture en course (profils)
 
 - Chaque pilote garde, voiture par voiture, ses réglages de black box : 3 profils par défaut **Sec / Inter / Pluie**.
