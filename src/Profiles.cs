@@ -33,6 +33,8 @@ namespace EnduranceManager.SimHub
         // The pit menu lines memorised (line name → choice text), and the ones it applies (damage and driver left out by default).
         public Dictionary<string, string> Pit = new Dictionary<string, string>();
         public List<string> PitApplied = new List<string>();
+        // The place of each memorised choice in its line, used when the game shows the choice with another text.
+        public Dictionary<string, int> PitIndex = new Dictionary<string, int>();
     }
 
     public class ProfileFile
@@ -66,14 +68,14 @@ namespace EnduranceManager.SimHub
         {
             new Setting { Key = "TC", Label = "TC", Words = new[] { "tc" }, Read = s => s.TCMax > 0 ? s.TC : (double?)null },
             new Setting { Key = "TCCut", Label = "Coupure TC", Words = new[] { "tc cut", "tc2", "coupure" }, Read = s => s.TCCutMax > 0 ? s.TCCut : (double?)null },
-            new Setting { Key = "TCSlip", Label = "TC slip", Words = new[] { "tc angle", "tc slip", "tcslip", "slip" }, Read = s => s.TCSlipMax > 0 ? s.TCSlip : (double?)null },
+            new Setting { Key = "TCSlip", Label = "TC slip", Words = new[] { "tc angle", "tc slip", "tcslip", "slip", "tc glisse", "glisse" }, Read = s => s.TCSlipMax > 0 ? s.TCSlip : (double?)null },
             new Setting { Key = "ABS", Label = "ABS", Words = new[] { "abs" }, Read = s => s.ABSMax > 0 ? s.ABS : (double?)null },
             new Setting { Key = "Bias", Label = "Répartition", Words = new[] { "bb", "bias", "répartition", "repartition" }, Tolerance = 0.05,
                 Read = s => s.RearBrakeBias > 0 && s.RearBrakeBias < 1 ? Math.Round((1 - s.RearBrakeBias) * 100, 1) : (double?)null },
             new Setting { Key = "Migration", Label = "Migration", Words = new[] { "migration" }, Read = s => s.MigrationMax > 0 ? s.Migration : (double?)null },
             new Setting { Key = "MotorMap", Label = "Carto moteur", Words = new[] { "carto", "motor map", "motormap", "map" }, Read = s => s.MotorMapMax > 0 ? s.MotorMap : (double?)null },
-            new Setting { Key = "ArbFront", Label = "Barre avant", Words = new[] { "arb av", "arb front", "front arb", "frontarb", "barre av" }, Read = s => s.AntiSwayFrontMax > 0 ? s.AntiSwayFront : (double?)null },
-            new Setting { Key = "ArbRear", Label = "Barre arrière", Words = new[] { "arb arr", "arb rear", "rear arb", "reararb", "barre arr" }, Read = s => s.AntiSwayRearMax > 0 ? s.AntiSwayRear : (double?)null },
+            new Setting { Key = "ArbFront", Label = "Barre avant", Words = new[] { "arb av", "arb front", "front arb", "frontarb", "barre av", "antiroulis av" }, Read = s => s.AntiSwayFrontMax > 0 ? s.AntiSwayFront : (double?)null },
+            new Setting { Key = "ArbRear", Label = "Barre arrière", Words = new[] { "arb arr", "arb rear", "rear arb", "reararb", "barre arr", "antiroulis arr" }, Read = s => s.AntiSwayRearMax > 0 ? s.AntiSwayRear : (double?)null },
         };
     }
 
@@ -331,7 +333,8 @@ namespace EnduranceManager.SimHub
             var drive = new Dictionary<string, double>();
             foreach (var setting in Setting.All)
                 if (setting.Read(s) is double value) drive[setting.Key] = value;
-            var pit = ReadMenuTexts();
+            var indexes = new Dictionary<string, int>();
+            var pit = ReadMenuTexts(indexes);
             lock (gate)
             {
                 profile.Drive = drive;
@@ -339,6 +342,7 @@ namespace EnduranceManager.SimHub
                 {
                     bool first = profile.Pit.Count == 0;
                     profile.Pit = pit;
+                    profile.PitIndex = indexes;
                     // The first time, every line applies except the damage and the driver; later, the pilot's own choice stays.
                     if (first) profile.PitApplied = pit.Keys.Where(name => !PitOffByDefault.Contains(name)).ToList();
                 }
@@ -379,7 +383,10 @@ namespace EnduranceManager.SimHub
                     if (profile.PitApplied.Count > 0) { string problem = WriteMenu(profile); if (problem != null) problems.Add(problem); }
                     Applied = profile.Name;
                     Message = problems.Count == 0 ? $"« {profile.Name} » appliqué." : $"« {profile.Name} » appliqué sauf : " + string.Join(" · ", problems);
-                    Show(problems.Count == 0 ? $"« {profile.Name} » appliqué" : $"« {profile.Name} » appliqué en partie", problems.Count == 0 ? "" : "Pas changé : " + string.Join(" · ", problems), problems.Count == 0 ? 2 : 6);
+                    // Same look as the first press: what is still not as the profile, line by line (now → profile), not a
+                    // paragraph of role names (Nathan 23/11). The reasons stay on the plugin's screen (Message).
+                    if (problems.Count == 0) Show($"« {profile.Name} » appliqué", "", 2);
+                    else Show($"« {profile.Name} » appliqué en partie", "Pas changé : détails sur l'écran du plugin.", 6, Preview(profile, latest(), profile.PitApplied.Count > 0 ? ReadMenuTexts() : null));
                 }
                 catch { Message = $"« {profile.Name} » : erreur, rien de plus n'a été changé."; Show($"« {profile.Name} » : erreur", "Rien de plus n'a été changé.", 4); }
                 finally { busy = 0; }
@@ -403,7 +410,8 @@ namespace EnduranceManager.SimHub
                 if (!PressRole(manager(), role)) return setting.Label + " (rôle « " + role + " » introuvable)";
                 // The game takes a moment to show the new level: a few readings at most, then the next press.
                 double? after = now;
-                for (int wait = 0; wait < 6 && after == now; wait++) { Thread.Sleep(60); after = latest() is Sample t ? setting.Read(t) : null; }
+                // Up to 1 s: 0.36 s was too short for TC on Nathan's Peugeot 9X8 (23/11 : « rien ne bouge » with the FMT role).
+                for (int wait = 0; wait < 12 && after == now; wait++) { Thread.Sleep(80); after = latest() is Sample t ? setting.Read(t) : null; }
                 still = after == now ? still + 1 : 0;
                 if (after is double moved && Math.Abs(moved - target) > Math.Abs(now - target)) swapped = !swapped;
                 if (still >= 2) return setting.Label + " (rien ne bouge avec « " + role + " »)";
@@ -470,7 +478,10 @@ namespace EnduranceManager.SimHub
             return available;
         }
 
-        static readonly string[] Up = { "+", "plus", "next", "suivant", "increase", "up" }, Down = { "-", "−", "moins", "previous", "prev", "précédent", "decrease", "down" };
+        // FMT companion's own names end with « suivant(e) », « précédent(e) », « vers l'avant », « vers l'arrière » (its
+        // Catalog.cs): « Carto moteur précédente », « Migration vers l'avant », « Antiroulis avant suivant ».
+        static readonly string[] Up = { "+", "plus", "next", "suivant", "suivante", "increase", "up", "vers l'avant", "forward" },
+            Down = { "-", "−", "moins", "previous", "prev", "précédent", "précédente", "decrease", "down", "vers l'arrière", "vers l'arriere", "rearward" };
 
         // The role for a setting and a sign: its last part (« FMT - Voiture - TC Next » → « tc next »), the sign at the end,
         // what is left is the setting's name. « TC + » is TC, not « TC cut + »: short names must be the whole name.
@@ -500,7 +511,7 @@ namespace EnduranceManager.SimHub
         }
 
         // The pit menu as the game sends it: name of each line → text of its choice. Null when the game does not answer.
-        Dictionary<string, string> ReadMenuTexts()
+        Dictionary<string, string> ReadMenuTexts(Dictionary<string, int> indexes = null)
         {
             try
             {
@@ -509,7 +520,7 @@ namespace EnduranceManager.SimHub
                 foreach (var line in lines.OfType<JObject>())
                 {
                     string name = Name(line), text = Choice(line, (int?)line["currentSetting"] ?? -1);
-                    if (name != "" && text != null) texts[name] = text;
+                    if (name != "" && text != null) { texts[name] = text; if (indexes != null) indexes[name] = (int?)line["currentSetting"] ?? -1; }
                 }
                 return texts;
             }
@@ -518,25 +529,30 @@ namespace EnduranceManager.SimHub
 
         // The menu is read, the chosen lines set to the profile's choice (found by its text: the game's indexes change with
         // the car), sent back whole, then read again to check.
+        // A choice whose text changed (energy or fuel shown with laps, wing…) is found again by its place when memorised.
+        // Lines that hang together (virtual energy and fuel ratio) can be refused once: a second send for what is left.
         string WriteMenu(Profile profile)
         {
             try
             {
-                var lines = JArray.Parse(Tape.Get(client, MenuUrl));
-                var wanted = new Dictionary<string, int>();
                 var missing = new List<string>();
-                foreach (var line in lines.OfType<JObject>())
+                var wanted = new Dictionary<string, int>();
+                for (int round = 0; round < 2; round++)
                 {
-                    string name = Name(line);
-                    if (!profile.PitApplied.Contains(name) || !profile.Pit.TryGetValue(name, out string text)) continue;
-                    var settings = line["settings"] as JArray;
-                    int index = -1;
-                    for (int i = 0; settings != null && i < settings.Count; i++) if (Choice(line, i) == text) { index = i; break; }
-                    if (index < 0) { missing.Add(name); continue; }
-                    if (((int?)line["currentSetting"] ?? -1) != index) { line["currentSetting"] = index; wanted[name] = index; }
-                }
-                if (wanted.Count > 0)
-                {
+                    var lines = JArray.Parse(Tape.Get(client, MenuUrl));
+                    wanted.Clear();
+                    foreach (var line in lines.OfType<JObject>())
+                    {
+                        string name = Name(line);
+                        if (!profile.PitApplied.Contains(name) || !profile.Pit.TryGetValue(name, out string text)) continue;
+                        var settings = line["settings"] as JArray;
+                        int count = settings?.Count ?? 0, index = -1;
+                        for (int i = 0; i < count; i++) if (Choice(line, i) == text) { index = i; break; }
+                        if (index < 0 && profile.PitIndex != null && profile.PitIndex.TryGetValue(name, out int kept) && kept >= 0 && kept < count) index = kept;
+                        if (index < 0) { if (round == 0) missing.Add(name); continue; }
+                        if (((int?)line["currentSetting"] ?? -1) != index) { line["currentSetting"] = index; wanted[name] = index; }
+                    }
+                    if (wanted.Count == 0) break;
                     var body = new StringContent(lines.ToString(Formatting.None), Encoding.UTF8, "application/json");
                     client.PostAsync(LoadUrl, body).GetAwaiter().GetResult().EnsureSuccessStatusCode();
                     for (int check = 0; check < 4 && wanted.Count > 0; check++)
@@ -545,6 +561,7 @@ namespace EnduranceManager.SimHub
                         foreach (var line in JArray.Parse(Tape.Get(client, MenuUrl)).OfType<JObject>())
                             if (wanted.TryGetValue(Name(line), out int index) && ((int?)line["currentSetting"] ?? -1) == index) wanted.Remove(Name(line));
                     }
+                    if (wanted.Count == 0) break;
                 }
                 missing.AddRange(wanted.Keys);
                 return missing.Count == 0 ? null : "stand : " + string.Join(", ", missing.Select(x => x.ToLowerInvariant()));
