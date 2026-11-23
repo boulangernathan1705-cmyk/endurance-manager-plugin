@@ -10,6 +10,8 @@ Ce que Nathan a décidé, avec la date. Les idées refusées ne sont pas à repr
 - Un seul chantier à la fois sur le plugin.
 - 22/11/2026 : le plugin vit dans son propre dépôt GitHub (celui-ci), pour travailler depuis un téléphone, avec ChatGPT
   ou seul, sans le PC de Nathan. `main` = ce que les pilotes installent, une branche par sujet, PR validée par Nathan.
+- 23/11/2026 : on travaille **uniquement sur GitHub** (compilation par la CI, zip « Test PR #N »), jamais dans les
+  dossiers du PC, même depuis le PC : une session avait repris une vieille copie locale.
 - 22/11/2026 : numérotation repartie de 0.1.0 (« c'est un début qu'on va beaucoup travailler »).
 - 22/11/2026 : le mur des stands ne sera **pas** un dash Dash Studio (trop dur à rendre fidèle). Il garde les mêmes
   informations, venues du plugin, affichées à la façon de LMU Drive (page ou fenêtre à lui). Proposition en cours.

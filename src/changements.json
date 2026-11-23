@@ -1,9 +1,6 @@
 {
-  "version": "0.1.0",
+  "version": "0.1.1",
   "changes": [
-    { "type": "nouveau", "text": "Le nouvel écran du plugin, aux couleurs du site", "page": "home" },
-    { "type": "nouveau", "text": "Un guide pour bien démarrer", "page": "guide" },
-    { "type": "nouveau", "text": "La mise à jour en un clic, avec ce qui change", "page": "maj" },
     { "type": "nouveau", "text": "FMT companion livré avec le plugin : rien à installer à part", "page": "bb" }
   ]
 }
