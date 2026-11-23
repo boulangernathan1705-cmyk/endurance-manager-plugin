@@ -122,6 +122,27 @@ details label span{min-width:0}
 .foot{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line2);padding-top:14px}
 .ghost{background:transparent!important;border-color:transparent!important;color:var(--muted)!important}
 .empty{color:var(--muted);text-align:center;padding:30px}
+/* Black box sur boutons (FMT companion's screen in this page, maquettes/black-box-boutons/). */
+.pill.warn{color:var(--warn);background:rgba(231,182,83,.13)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line2);padding-bottom:10px}
+.tab{min-height:36px;padding:0 14px;border-radius:8px;border:1px solid transparent;background:transparent;color:#dce6e3;font-weight:700;cursor:pointer;display:inline-flex;gap:8px;align-items:center}
+.tab[aria-selected="true"]{background:linear-gradient(180deg,#1f5f64,#17484d);border-color:rgba(91,213,218,.72);color:#eaffff}
+.tab small{font-weight:400;color:var(--muted)}
+.fold{border-top:1px solid var(--line2)}
+.fold>button{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;padding:10px 2px;background:none;border:0;color:var(--text);font-weight:700;font-size:14.5px;cursor:pointer;text-align:left}
+.fold>button small{font-weight:400;color:var(--muted);font-size:13px}
+.cmd{display:flex;align-items:center;gap:10px;padding:5px 2px 5px 6px;border-radius:7px}
+.cmd:hover{background:rgba(25,37,40,.6)}
+.cmd label{flex:1;min-width:0;display:flex;align-items:center;gap:10px;cursor:pointer}
+.cmd input{width:17px;height:17px;accent-color:#45c3ca;flex:none;margin:0}
+.cmd .pills{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.stepc{display:flex;flex-direction:column;gap:10px}
+.stepc .top{display:flex;gap:10px;align-items:center}
+.stepc .num{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:700;background:rgba(89,211,216,.14);color:var(--accent);flex:none}
+.stepc .btns{margin-top:auto}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.toolbar .field{flex:1;min-width:200px;max-width:340px}
+.log{max-height:160px;overflow-y:auto;font-size:12.5px;color:var(--muted);white-space:pre-wrap;margin:0}
 /* The small update window (UpdateWindow.cs, ?fenetre=maj or installee): no banner, no menu. */
 body.win .banner,body.win nav{display:none}
 body.win main{padding:22px 26px 20px}
@@ -200,7 +221,7 @@ const $ = (id) => document.getElementById(id);
 async function poll() {
   if (!document.hidden) {
     try {
-      const r = await fetch('/etat', { headers: { 'X-EM': '1' }, cache: 'no-store' });
+      const r = await fetch('/etat' + (UI.page === 'bb' && !WIN ? '?bb=1' : ''), { headers: { 'X-EM': '1' }, cache: 'no-store' });
       if (r.ok) {
         const text = await r.text();
         if (text !== last) {
@@ -358,15 +379,54 @@ const PAGES = {
   },
 
   bb() {
-    const b = S.bb;
-    return `<div class="page">${head('bb', '', 'Les réglages de la voiture et le menu des stands sur ton volant ou ton Stream Deck.')}
-      ${b.pending ? stateCard('Au prochain lancement de SimHub', S.modules.bb ? 'Le module démarre quand SimHub redémarre.' : 'Le module s\u2019arrête quand SimHub redémarre.', 'wait', 'En attente') : ''}
-      ${S.modules.bb && !b.running && !b.pending ? stateCard('FMT companion bloqué', esc(b.status), 'bad', 'À corriger') : ''}
-      <section class="card" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-        <div style="flex:1;min-width:260px"><h2>Mes boutons</h2><p class="mut small">${esc(b.status)}</p></div>
-        <button type="button" class="btn p" data-act="companion" ${b.running ? '' : 'disabled'}>Régler mes boutons</button>
-      </section>
-      <p class="mut small">Cette page sera refaite ici : préparation de LMU et liste des commandes à essayer.</p></div>`;
+    const b = S.bb, g = b.page;
+    const top = `<div class="page">${head('bb', '', 'Le menu des stands, la voiture, les caméras et le poste sur ton volant ou ton Stream Deck.')}
+      ${b.pending ? stateCard('Au prochain lancement de SimHub', S.modules.bb ? 'Le module démarre quand SimHub redémarre.' : 'Le module s’arrête quand SimHub redémarre.', 'wait', 'En attente') : ''}
+      ${S.modules.bb && !b.running && !b.pending ? stateCard('FMT companion bloqué', esc(b.status), 'bad', 'À corriger') : ''}`;
+    if (!b.running) return top + `<p class="mut small">${esc(b.status)}</p></div>`;
+    if (!g) return top + '<div class="card empty">Lecture de FMT companion…</div></div>';
+    if (g.error) return top + `${stateCard('Page indisponible', esc(g.error), 'bad', 'Erreur')}<div><button type="button" class="btn" data-act="companion">Ouvrir l’ancien écran de FMT companion</button></div></div>`;
+    const rows = g.rows, on = rows.filter((r) => r.on), todo = on.filter((r) => r.kind === 1 && r.ready !== true).length;
+    const lmu = g.lmu;
+    const lmuCard = lmu.connected
+      ? stateCard('LMU', esc((lmu.menu ? 'Menu des stands lu' : 'Menu des stands pas encore lu') + (lmu.version ? ' · version ' + lmu.version : '')), 'ok', 'Connecté')
+      : stateCard('LMU', 'Lance le jeu.', 'wait', 'Pas joignable');
+    const mapCard = g.mapper.ready ? stateCard('Control Mapper', `${g.mapper.roles} rôles FMT`, 'ok', 'Relié') : stateCard('Control Mapper', esc(g.mapper.status || 'Active Control Mapper dans SimHub.'), 'bad', 'Pas relié');
+    const outCard = g.output.usable ? stateCard('Sortie manette', esc(g.output.name), 'ok', g.output.bridge ? 'Bridge SimHub' : 'vJoy')
+      : stateCard('Sortie manette', esc(g.output.name) + ' · vJoy ou bridge SimHub, dans Control Mapper. Utile pour Voiture, Caméra et Poste.', 'wait', 'À choisir');
+    const ro = lmu.readOnly || lmu.notice;
+    const garage = ro ? `<div class="state bad"><div class="top"><b>Menu des stands en lecture seule</b><b class="st bad">À vérifier</b></div>
+        <div class="sub">${esc([lmu.notice, lmu.readOnly].filter(Boolean).join(' · '))}</div>
+        <div class="sub">Ouvre le menu des stands au garage et vérifie qu’il est normal.</div>
+        <div class="btns" style="margin-top:6px">${UI.bbGarage ? '<button type="button" class="btn p s" data-bb="bbGarage">Oui, tout est correct</button><button type="button" class="btn s" data-bbgarage="0">Pas encore</button>' : '<button type="button" class="btn s" data-bbgarage="1">J’ai vérifié au garage</button>'}</div></div>` : '';
+    const pr = g.prepare;
+    const prep = pr.summary ? `<section class="card stack"><div style="display:flex;gap:10px;align-items:center"><b style="flex:1">${esc(pr.summary)}</b>${pr.busy ? '<span class="pill warn">En cours</span>' : ''}</div>
+        ${pr.log.length ? `<details${pr.busy ? ' open' : ''}><summary>Détail</summary><pre class="log">${esc(pr.log.join('\n'))}</pre></details>` : ''}</section>` : '';
+    return top + `
+      <div class="grid g3">${lmuCard}${mapCard}${outCard}</div>
+      ${garage}
+      <div class="grid g3">
+        <section class="card stepc"><div class="top"><span class="num">1</span><h2>Coche tes commandes</h2></div>
+          <p class="mut small">Seulement celles que tu veux sur un bouton. Cocher n’envoie rien au jeu.</p>
+          <p><b>${on.length}</b> <span class="mut">cochée${on.length > 1 ? 's' : ''} sur ${rows.length}</span></p></section>
+        <section class="card stepc"><div class="top"><span class="num">2</span><h2>Prépare LMU</h2></div>
+          <p class="mut small">Pour Voiture, Caméra et Poste. Le stand marche tout de suite. Seule la colonne Secondaire de LMU est utilisée.</p>
+          <div class="btns"><button type="button" class="btn p" data-bb="bbPrepare" ${pr.busy ? 'disabled' : ''}>Préparer LMU${todo ? ' · ' + todo : ''}</button></div></section>
+        <section class="card stepc"><div class="top"><span class="num">3</span><h2>Relie tes boutons</h2></div>
+          <p class="mut small">Les rôles s’appellent « FMT - famille - commande ».</p>
+          <div class="btns"><button type="button" class="btn" data-bb="bbMapper">Ouvrir Control Mapper</button><button type="button" class="btn" data-bb="bbDeck">Profil Stream Deck</button></div></section>
+      </div>
+      ${prep}
+      <section class="card stack">${bbTabs(rows)}
+        <div class="toolbar"><input class="field" id="bbq" placeholder="Rechercher une commande…" value="${esc(UI.bbq || '')}">${g.test ? `<span class="mut small">${esc(g.test)}</span>` : ''}</div>
+        <div id="bblist">${bbList(rows)}</div></section>
+      <details class="card"${UI.bbMore ? ' open' : ''} data-bbmore><summary style="margin:0">Plus</summary>
+        <div class="row" style="border-top:0"><div class="t"><b>Commandes du stand actives</b><div class="mut small">Coupé : les boutons du stand ne changent plus rien dans LMU.</div></div>
+          <button type="button" class="sw" role="switch" aria-checked="${g.writes}" aria-label="Commandes du stand actives" data-bbwrites><span></span></button></div>
+        <div class="btns" style="margin-top:6px"><button type="button" class="btn" data-bb="bbUndo" ${pr.busy ? 'disabled' : ''}>Annuler ce que FMT a ajouté dans LMU</button><button type="button" class="btn" data-bb="bbBackup">Sauvegarder mes contrôles</button><button type="button" class="btn" data-act="companion">Ancien écran</button></div>
+        ${g.checks.length ? `<div style="margin-top:10px">${g.checks.map((c) => `<div class="small" style="color:${c.ok ? 'var(--muted)' : 'var(--warn)'}">${c.ok ? '✓' : '✗'} ${esc(c.text)}</div>`).join('')}</div>` : ''}
+        <p class="mut small" style="margin-top:8px">FMT companion ${esc(g.version)}</p>
+      </details></div>`;
   },
 
   mur() {
@@ -457,6 +517,39 @@ function renderGuide() {
   </div></div>`;
 }
 
+// ── Black box sur boutons: FMT companion's commands, by family (tabs) and group (folds) ─────────────────────────────
+function bbFamilies(rows) { const f = []; rows.forEach((r) => { if (!f.includes(r.family)) f.push(r.family); }); return f; }
+function bbTabs(rows) {
+  const fam = bbFamilies(rows);
+  if (!fam.includes(UI.bbTab)) UI.bbTab = fam[0];
+  return `<div class="tabs" role="tablist">${fam.map((f) => `<button type="button" class="tab" role="tab" aria-selected="${f === UI.bbTab}" data-bbtab="${esc(f)}">${esc(f)} <small>${rows.filter((r) => r.family === f && r.on).length}</small></button>`).join('')}</div>`;
+}
+function bbPills(r) {
+  const p = [];
+  if (r.kind === 0 || r.kind === 2) p.push('<span class="pill on">Direct</span>');
+  else if (r.kind === 3) p.push('<span class="pill">Clavier</span>');
+  else if (r.ready === true) p.push('<span class="pill on">Prêt dans LMU</span>');
+  else if (r.ready === false) p.push(r.on ? '<span class="pill warn">À préparer</span>' : '<span class="pill">À préparer</span>');
+  else p.push('<span class="pill">LMU non lu</span>');
+  if (r.buttons.length) p.push(`<span class="pill team">${esc(r.buttons.join(', '))}</span>`);
+  else if (r.on) p.push('<span class="pill">Pas encore sur un bouton</span>');
+  return p.join('');
+}
+function bbList(rows) {
+  const q = (UI.bbq || '').trim().toLowerCase();
+  const shown = rows.filter((r) => q ? (r.label + ' ' + r.group + ' ' + r.family).toLowerCase().includes(q) : r.family === UI.bbTab);
+  if (!shown.length) return '<p class="empty">Aucune commande.</p>';
+  const groups = [];
+  shown.forEach((r) => { const k = (q ? r.family + ' · ' : '') + r.group; let gr = groups.find((x) => x.k === k); if (!gr) groups.push(gr = { k, rows: [] }); gr.rows.push(r); });
+  UI.bbOpen = UI.bbOpen || {};
+  return groups.map((gr, i) => {
+    const open = q || (UI.bbOpen[gr.k] ?? i === 0);
+    return `<div class="fold"><button type="button" data-bbfold="${esc(gr.k)}" aria-expanded="${!!open}"><span>${open ? '▾' : '▸'} ${esc(gr.k)}</span><small>${gr.rows.filter((r) => r.on).length} / ${gr.rows.length} cochées</small></button>
+      ${open ? gr.rows.map((r) => `<div class="cmd" title="${esc(r.lmu || r.role)}"><label><input type="checkbox" data-bbcheck="${esc(r.id)}"${r.on ? ' checked' : ''}><span>${esc(r.label)}</span></label>
+        <span class="pills">${bbPills(r)}</span><button type="button" class="btn s" data-bbtest="${esc(r.id)}">Tester</button></div>`).join('') : ''}</div>`;
+  }).join('');
+}
+
 // ── Render ───────────────────────────────────────────────────────────────────────────────────────────────────────
 function render() {
   if (!S) return;
@@ -490,6 +583,13 @@ document.addEventListener('click', async (e) => {
   if (d.gclose !== undefined) { UI.guide = false; render(); act({ do: 'guideDone' }, true); return; }
   if (d.gprev !== undefined) { UI.step = Math.max(0, UI.step - 1); render(); return; }
   if (d.gnext !== undefined) { if (UI.step === 3) { UI.guide = false; UI.page = 'home'; act({ do: 'guideDone' }, true); } else UI.step++; render(); return; }
+  if (d.bbcheck) { const r = S.bb.page && S.bb.page.rows.find((x) => x.id === d.bbcheck); if (r) r.on = t.checked; act({ do: 'bbCheck', id: d.bbcheck, on: t.checked }, true); return; }
+  if (d.bbtest) { act({ do: 'bbTest', id: d.bbtest }); return; }
+  if (d.bbtab) { UI.bbTab = d.bbtab; UI.bbq = ''; render(); return; }
+  if (d.bbfold) { UI.bbOpen = UI.bbOpen || {}; const el = t.getAttribute('aria-expanded') === 'true'; UI.bbOpen[d.bbfold] = !el; render(); return; }
+  if (d.bbgarage) { UI.bbGarage = d.bbgarage === '1'; render(); return; }
+  if (d.bbwrites !== undefined) { const v = !S.bb.page.writes; S.bb.page.writes = v; render(); act({ do: 'bbWrites', on: v }); return; }
+  if (d.bb) { if (d.bb === 'bbGarage') UI.bbGarage = false; act({ do: d.bb }); return; }
   if (d.act) {
     const map = { wall: { do: 'wall', on: false }, wallFull: { do: 'wall', on: true } };
     act(map[d.act] || { do: d.act });
@@ -506,7 +606,11 @@ document.addEventListener('keydown', (e) => {
 });
 // Left the field: the next reading redraws (never at once, the click that left it must reach its button).
 document.addEventListener('focusout', () => { last = ''; });
-document.addEventListener('input', (e) => { if (e.target.id === 'note') UI.note = e.target.value; });
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'note') UI.note = e.target.value;
+  if (e.target.id === 'bbq') { UI.bbq = e.target.value; const l = $('bblist'); if (l && S.bb.page && S.bb.page.rows) l.innerHTML = bbList(S.bb.page.rows); }
+});
+document.addEventListener('toggle', (e) => { if (e.target.dataset && e.target.dataset.bbmore !== undefined) UI.bbMore = e.target.open; }, true);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) last = ''; });
 poll();
 </script>

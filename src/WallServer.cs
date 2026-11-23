@@ -26,7 +26,7 @@ namespace EnduranceManager.SimHub
         public const int FirstPort = 8686;
         readonly Func<object> view;
         readonly Action<int, int, int, int> placed;
-        readonly Func<object> state;
+        readonly Func<string, object> state;
         readonly Func<string, object> act;
         TcpListener listener;
         public bool Network { get; private set; }
@@ -36,8 +36,8 @@ namespace EnduranceManager.SimHub
         public string Error { get; private set; }
 
         // view: what /vue answers (the wall and the active profile); placed: the window's place and size, from this PC.
-        // state, act: the plugin's screen (ScreenApi), on this PC only.
-        public WallServer(Func<object> view, Action<int, int, int, int> placed, Func<object> state = null, Func<string, object> act = null)
+        // state, act: the plugin's screen (ScreenApi), on this PC only; state gets the query (« bb=1 »: the page of FMT companion).
+        public WallServer(Func<object> view, Action<int, int, int, int> placed, Func<string, object> state = null, Func<string, object> act = null)
         {
             this.view = view;
             this.placed = placed;
@@ -108,7 +108,7 @@ namespace EnduranceManager.SimHub
                     {
                         if (!screen || state == null) { Send(stream, 403, "text/plain", Encoding.UTF8.GetBytes("Interdit")); return; }
                         object answer;
-                        if (path == "etat") answer = state();
+                        if (path == "etat") answer = state(query);
                         else
                         {
                             if (parts[0] != "POST") { Send(stream, 405, "text/plain", Encoding.UTF8.GetBytes("POST")); return; }

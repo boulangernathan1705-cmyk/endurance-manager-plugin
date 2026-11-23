@@ -17,6 +17,14 @@
   « FMT - <famille> - <commande> ».
 - Nathan n'utilise plus vJoy mais une clé USB bridge SimHub ; beaucoup de pilotes en ont une. Le plugin doit marcher
   avec les deux : passer par les rôles du Control Mapper le permet.
+- **Sa page dans l'écran du plugin** (maquette validée le 23/11/2026, `maquettes/black-box-boutons/`) : `CompanionPage.cs`
+  refait son écran dans la page web (état LMU / Control Mapper / sortie, 3 étapes, commandes à cocher par Stand /
+  Voiture / Caméra / Poste avec Tester, Préparer LMU, Annuler, Control Mapper, profil Stream Deck, sauvegarde, lecture
+  seule après une mise à jour de LMU). Comme son code source est perdu, la page lui parle **par réflexion**, avec les
+  mêmes appels que son propre écran (`CompanionControl`, relu dans sa DLL) : `SetCommandVisible`, `Mapper.Test`,
+  `Preparer.Prepare` (commandes LMU cochées), `Preparer.Undo`, `Mapper.OpenMapper`, `ExportStreamDeckProfile`,
+  `BackupMapping`, `AcknowledgeLmuVersion`, `Service.EnableWrites`, `SelfCheck`, `Preparer.State`. Les lignes ne sont
+  demandées que quand la page est ouverte (`/etat?bb=1`). Son ancien écran reste dans « Plus » en secours.
 
 ## Réglages voiture en course (profils)
 
