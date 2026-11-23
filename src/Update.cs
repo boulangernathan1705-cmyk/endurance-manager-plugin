@@ -59,6 +59,8 @@ namespace EnduranceManager.SimHub
         // While « Mettre à jour » runs: "telechargement", then "redemarrage". Error: why it stopped (nothing was changed).
         public volatile string Phase;
         public volatile string Error;
+        public volatile bool CheckSucceeded;
+        public volatile string CheckError;
 
         public Updater(string home) { folder = Path.Combine(home, "update"); }
 
@@ -83,11 +85,19 @@ namespace EnduranceManager.SimHub
                 try
                 {
                     var info = JObject.Parse(client.GetStringAsync(Origin(code) + Channel + "plugin.json").GetAwaiter().GetResult());
-                    bool newer = Version.TryParse((string)info["version"], out var latest) && Full(latest) > Current;
+                    if (!Version.TryParse((string)info["version"], out var latest))
+                        throw new InvalidDataException("la version publiée est illisible");
+                    bool newer = Full(latest) > Full(Current);
                     Changes = newer ? Read(info["changes"]) : new List<Change>();
                     Available = newer ? latest : null;
+                    CheckError = null;
+                    CheckSucceeded = true;
                 }
-                catch { }
+                catch (Exception e)
+                {
+                    CheckSucceeded = false;
+                    CheckError = "Vérification impossible : " + Plain(e) + ".";
+                }
                 finally { busy = 0; }
             });
         }
