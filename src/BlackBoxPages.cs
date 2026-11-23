@@ -623,10 +623,10 @@ namespace EnduranceManager.SimHub
                 case "Pression": return w.Off ? "-" : w.Pressure.ToString("0.0", Inv) + "kPa";
                 // Nathan's captures (23/11): the carcass read 2 °C under the game, the inner layer 3 °C over it; the tread's
                 // three temperatures in between: their mean, to check.
-                // The carcass, as the game: read live on Nathan's PC (24/11), the game's four hot values (72.2 / 64.3 /
-                // 69.7 / 64.1) follow the carcass wheel by wheel (74.5 / 63.2 / 67.8 / 62.6 a moment later in the pits), not
-                // the inner layer (57.9 / 50.1 / 55.0 / 52.1) nor the tread (it swings 38 to 60 in a few seconds).
-                case "Temp": return w.Off ? "-" : w.Temp.ToString("0.0", Inv) + "°C";
+                // Read live on Nathan's PC (24/11) with hot tyres: the game's gaps between wheels (60.6 / 52.9 / 54.5 /
+                // 51.5) are the inner layer's (61.1 / 53.2 / 57.1 / 54.3), not the carcass's (78.4 / 66.7 / 71.1 / 65.8)
+                // nor the tread's (it swings 38 to 60 in a few seconds). The inner layer's mean, still 0.5 to 3 °C high.
+                case "Temp": return w.Off ? "-" : ((w.InnerIn + w.InnerMid + w.InnerOut) / 3).ToString("0.0", Inv) + "°C";
                 // What is left, 0 to 100, for the ring that wears round (BlackBoxDash.cs).
                 case "Reste": return w.Off ? 0.0 : Math.Round(w.Wear * 100, 1);
                 // The compound's colour, as the game's circles (Nathan's capture): soft white, medium yellow, hard red, wet
