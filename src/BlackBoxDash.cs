@@ -115,6 +115,14 @@ namespace EnduranceManager.SimHub
             Follow();
         }
 
+        // A touch on a line of the dash (1 to 7, as shown): that line becomes the chosen one.
+        public void Select(int row)
+        {
+            var list = items; int k = top + row;
+            if (k >= 0 && k < list.Count) chosen = list[k].Name;
+            Follow();
+        }
+
         // − + : the chosen line one choice down or up, round the list both ways as in the game's black box (« Aucun
         // changement » − gives the last choice). « Pneus » sets the four wheels with it, as the game does. Shown at once;
         // sent to the game aside, the latest wanted menu only (quick presses are not lost, nor sent one by one).
@@ -263,7 +271,40 @@ namespace EnduranceManager.SimHub
             }
             items.Add(Text("PlusHaut", Width / 2 - 20, Header, 40, 22, 16, "'▲'", Arrow, 1, P("Haut")));
             items.Add(Text("PlusBas", Width / 2 - 20, Height - 24, 40, 22, 16, "'▼'", Arrow, 1, P("Bas")));
+            // Touch (format of Dash Studio's buttons, read in Lovely Dashboard): each line chooses itself; on the chosen line
+            // the left of the value lowers it, the right raises it; the title bar changes page (left half back, right half
+            // on). Transparent: the page looks the same.
+            for (int k = 0; k < BlackBox.Rows; k++)
+            {
+                double y = Header + k * row;
+                items.Add(Button("ToucherLigne" + (k + 1), 0, y, Width, row, "BlackBoxLigne" + (k + 1)));
+            }
+            for (int k = 0; k < BlackBox.Rows; k++)
+            {
+                double y = Header + k * row;
+                string chosen = P((k + 1) + ".Choisie");
+                items.Add(Button("ToucherMoins" + (k + 1), 400, y, 240, row, "BlackBoxMoins", chosen));
+                items.Add(Button("ToucherPlus" + (k + 1), 640, y, 160, row, "BlackBoxPlus", chosen));
+            }
+            items.Add(Button("ToucherPagePrecedente", 0, 0, Width / 2, Header, "BlackBoxPagePrecedente"));
+            items.Add(Button("ToucherPageSuivante", Width / 2, 0, Width / 2, Header, "BlackBoxPageSuivante"));
             return items;
+        }
+
+        // A transparent Dash Studio button that runs one of this plugin's actions when touched or clicked.
+        static JObject Button(string name, double x, double y, double w, double h, string action, string visible = null)
+        {
+            var button = new JObject
+            {
+                ["$type"] = "SimHub.Plugins.OutputPlugins.GraphicalDash.Models.ButtonItem, SimHub.Plugins",
+                ["AutoSize"] = false, ["SimulatedKey"] = 0,
+                ["SimulatedKeyV2"] = new JObject { ["KeyCode"] = 0, ["Win"] = false, ["Ctrl"] = false, ["Alt"] = false, ["Shift"] = false },
+                ["SimulateKey"] = false, ["TriggerAction"] = "EnduranceManagerPlugin." + action, ["TriggerSimHubInputName"] = "", ["TriggerControlMapperRoleName"] = "",
+                ["ButtonStyle"] = 0, ["IsEnabled"] = true, ["DisabledOpacity"] = 50, ["PressedOpacity"] = 100, ["BackgroundColor"] = "#00FFFFFF",
+                ["Height"] = h, ["Left"] = x, ["Top"] = y, ["Width"] = w, ["Visible"] = true, ["Name"] = name
+            };
+            if (visible != null) button["Bindings"] = new JObject { ["Visible"] = Dashes.Bind("Visible", visible) };
+            return button;
         }
 
         public static (JObject dash, JObject metadata) Make()

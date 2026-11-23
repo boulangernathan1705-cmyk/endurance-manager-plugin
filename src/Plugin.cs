@@ -174,6 +174,8 @@ namespace EnduranceManager.SimHub
             this.AddAction("BlackBoxDescendre", (manager, button) => BlackBox.Move(1));
             this.AddAction("BlackBoxPlus", (manager, button) => BlackBox.Change(1));
             this.AddAction("BlackBoxMoins", (manager, button) => BlackBox.Change(-1));
+            // A touch on a line of the dash (its transparent buttons, BlackBoxDash.cs).
+            for (int k = 0; k < BlackBox.Rows; k++) { int row = k; this.AddAction("BlackBoxLigne" + (row + 1), (manager, button) => BlackBox.Select(row)); }
             // The same six as Control Mapper roles (BlackBoxRoles.cs), created while Black box sur boutons is on.
             blackBoxRoles = new BlackBoxRoles(() => PluginManager ?? pluginManager, new Dictionary<string, Action>
             {

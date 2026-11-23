@@ -53,7 +53,10 @@
   la sortie du Control Mapper, `SaveSettings`, lu dans sa DLL). Un appui arrive par `InputPressed`
   (« ControlMapperPlugin.<rôle> »). Tout par réflexion ; jamais « FMT » au début (FMT companion retire les rôles FMT
   qu'il ne connaît pas). Leur état : propriété `BlackBox.Roles`. À vérifier dans le vrai SimHub.
-- Toucher (écran tactile) : à faire, le format des boutons tactiles de Dash Studio n'a pas encore été vu dans un vrai dash.
+- Toucher : boutons transparents de Dash Studio (`ButtonItem`, `TriggerAction` = « EnduranceManagerPlugin.<action> »,
+  format lu dans Lovely Dashboard sur le PC de Nathan). Une ligne touchée est choisie (actions `BlackBoxLigne1` … `7`) ;
+  sur la ligne choisie, à gauche de la valeur = −, à droite = + ; la barre du titre change de page (moitié gauche
+  précédente, moitié droite suivante). À vérifier sur iPhone et VoCore.
 - Noms : si l'API répond en anglais (« VIRTUAL ENERGY »), ils sont écrits comme l'écran français du jeu
   (« Énergie Virtuelle: ») ; sinon tels que le jeu les donne. À vérifier dans le vrai jeu : la langue de l'API et le
   texte de l'énergie (le jeu affiche « 100% 35 laps », l'API peut ne donner que « 100% »).

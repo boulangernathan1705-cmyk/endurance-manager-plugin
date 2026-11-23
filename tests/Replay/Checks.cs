@@ -95,6 +95,8 @@ namespace EnduranceManager.SimHub.Replay
             Is((bool)V("BlackBox.7.Choisie"), "Pression AvG en 7e ligne visible");
             for (int k = 0; k < 20; k++) box.Move(1);
             Is(box.Chosen == "REPLACE BRAKES" && box.Top == names.Length - BlackBox.Rows, "Descendre au bout : dernière ligne");
+            box.Select(0);
+            Is(box.Chosen == names[box.Top], "Toucher la 1re ligne visible la choisit");
             Is((string)V("BlackBox.Page") == "Arrêt aux stands" && (string)V("BlackBox.Message") == "", "Titre de la page, pas de message");
             // − + comme la black box du jeu : tour complet dans les deux sens, « Pneus » règle les 4 roues.
             JObject Line(string name, int current, params string[] choices) => new JObject
