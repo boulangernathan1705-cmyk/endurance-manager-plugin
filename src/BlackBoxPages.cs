@@ -209,18 +209,23 @@ namespace EnduranceManager.SimHub
             Add(s.TCCutMax > 0, "TC2", "TC Power cut", N(s.TCCut), "TC2.Previous", "TC2.Next");
             Add(s.TCSlipMax > 0, "TCSlip", "TC Slip angle", N(s.TCSlip), "TCSlip.Previous", "TCSlip.Next");
             Add(s.ABSMax > 0, "ABS", "ABS", N(s.ABS), "ABS.Previous", "ABS.Next");
-            // « P4 », « P1 » in the game: the level from 1 (to check in game).
-            Add(s.AntiSwayFrontMax > 0, "FrontARB", "ARB avant", "P" + N(s.AntiSwayFront + 1), "FrontARB.Previous", "FrontARB.Next");
-            Add(s.AntiSwayRearMax > 0, "RearARB", "ARB arrière", "P" + N(s.AntiSwayRear + 1), "RearARB.Previous", "RearARB.Next");
+            // As the game (Nathan's captures, 23/11): 0 is « Detached », then P1, P2… (P15 at most on the Peugeot).
+            string Arb(int level) => level <= 0 ? "Detached" : "P" + N(level);
+            Add(s.AntiSwayFrontMax > 0, "FrontARB", "ARB avant", Arb(s.AntiSwayFront), "FrontARB.Previous", "FrontARB.Next");
+            Add(s.AntiSwayRearMax > 0, "RearARB", "ARB arrière", Arb(s.AntiSwayRear), "RearARB.Previous", "RearARB.Next");
             if (s.RearBrakeBias > 0 && s.RearBrakeBias < 1)
             {
                 double front = Math.Round((1 - s.RearBrakeBias) * 100, 1, MidpointRounding.AwayFromZero);
                 Add(true, "Bias", "Répartition des freins", front.ToString("0.0", Inv) + ":" + (100 - front).ToString("0.0", Inv), "Bias.Rearward", "Bias.Forward");
             }
-            // The game writes « 1.5% F », « 120kW », « 200kW »: the memory only has the level (to refine).
-            Add(s.MigrationMax > 0, "Migration", "Répartition des freins", N(s.Migration), "Migration.Rearward", "Migration.Forward");
-            Add(s.MotorMapMax > 0, "MotorMap", "Cartographie moteur", N(s.MotorMap), "MotorMap.Previous", "MotorMap.Next");
-            Add(s.MotorState != 0, "Regen", "Niveau de recharge", v?.RegenLevel is int regen ? N(regen) : "-", "Regen.Previous", "Regen.Next");
+            // As the game (Nathan's captures on the Peugeot, 23/11): migration 0 is « 2.5% F », each step 0.5 % less, the last
+            // « Disabled »; motor map 0 « Off », then 20 kW a step (10 is « 200kW »); regen from the memory, in kW (the garage
+            // value was read only in the pits and stayed on 10). To check on other cars.
+            double migration = (s.MigrationMax - s.Migration) * 0.5;
+            Add(s.MigrationMax > 0, "Migration", "Répartition des freins", migration > 0 ? migration.ToString("0.0", Inv) + "% F" : "Disabled", "Migration.Rearward", "Migration.Forward");
+            Add(s.MotorMapMax > 0, "MotorMap", "Cartographie moteur", s.MotorMap <= 0 ? "Off" : N(s.MotorMap * 20) + "kW", "MotorMap.Previous", "MotorMap.Next");
+            string regen = s.Regen > 0 ? Math.Round(s.Regen).ToString("0", Inv) + "kW" : v?.RegenLevel is int level ? N(level) : "-";
+            Add(s.MotorState != 0, "Regen", "Niveau de recharge", regen, "Regen.Previous", "Regen.Next");
             return list;
         }
 
@@ -286,6 +291,8 @@ namespace EnduranceManager.SimHub
         {
             public int Place; public string Name, Class; public double Dist; public bool Pits, Garage, Me;
             public double BestS1, BestS2, BestLap, LastS1, LastS2, LastLap;
+            // The time into the lap and the game's estimate of the car's lap (seconds): the game's Relatif works in time.
+            public double IntoLap, Estimate;
         }
 
         static double F64(byte[] b, int at) => BitConverter.ToDouble(b, at);
@@ -309,7 +316,8 @@ namespace EnduranceManager.SimHub
                     Place = b[at + 199], Name = Text(b, at + 4, 32), Class = Text(b, at + 200, 32), Dist = F64(b, at + 104),
                     Pits = b[at + 198] != 0, Garage = b[at + 507] != 0, Me = I32(b, at) == s.Id,
                     BestS1 = F64(b, at + 128), BestS2 = F64(b, at + 136), BestLap = F64(b, at + 144),
-                    LastS1 = F64(b, at + 152), LastS2 = F64(b, at + 160), LastLap = F64(b, at + 168)
+                    LastS1 = F64(b, at + 152), LastS2 = F64(b, at + 160), LastLap = F64(b, at + 168),
+                    IntoLap = F64(b, at + 464), Estimate = F64(b, at + 472)
                 });
             }
             return list;
@@ -348,10 +356,17 @@ namespace EnduranceManager.SimHub
             if (length <= 0) length = Math.Max(1000, cars.Max(c => c.Dist));
             // The pace of a lap: the session's fastest lap (in Nathan's capture a car's time ahead plus behind made 90.8 s,
             // below the laps driven; the average of our laps counted the pit laps and gave 1.8 times too much).
+            // Nathan's capture in the pits (23/11): the game's gaps ahead and behind made 102.7 s, the distance into the lap
+            // put the car on the wrong side: the game works with the time into the lap and its estimate of our lap.
             double fastest = cars.Where(c => c.BestLap > 0).Select(c => c.BestLap).DefaultIfEmpty(0).Min();
-            double lap = fastest > 0 ? fastest : view?.BestLap > 0 ? view.BestLap.Value : s.LastLap > 0 ? s.LastLap : 120;
+            double lap = me.Estimate > 10 && me.Estimate < 3600 ? me.Estimate : fastest > 0 ? fastest : view?.BestLap > 0 ? view.BestLap.Value : s.LastLap > 0 ? s.LastLap : 120;
+            bool timed = me.IntoLap > 0;
             // How far ahead on the lap, 0 to 1.
-            double Ahead(Car c) { double d = (c.Dist - me.Dist) / length; return d - Math.Floor(d); }
+            double Ahead(Car c)
+            {
+                double d = timed && c.IntoLap > 0 ? (c.IntoLap - me.IntoLap) / lap : (c.Dist - me.Dist) / length;
+                return d - Math.Floor(d);
+            }
             // The cars in their garage are not on the track: the game leaves them out.
             var others = cars.Where(c => !c.Me && !c.Garage).ToList();
             var ahead = others.Select(c => (car: c, gap: Ahead(c) * lap)).OrderBy(o => o.gap).Take(3).ToList();

@@ -137,6 +137,10 @@ namespace EnduranceManager.SimHub.Replay
             pages.Update(null, car, cv);
             Is((string)PV("BlackBox.1.Nom") == "Contrôle de traction" && (string)PV("BlackBox.1.Valeur") == "3" && (bool)PV("BlackBox.1.Choisie"), "Électronique : TC en 1re ligne, choisi");
             Is((string)PV("BlackBox.2.Nom") == "Répartition des freins" && (string)PV("BlackBox.2.Valeur") == "52.3:47.7", "Électronique : répartition avant:arrière");
+            var peugeot = BlackBoxPages.Settings(new Sample { AntiSwayFront = 4, AntiSwayFrontMax = 15, AntiSwayRear = 0, AntiSwayRearMax = 15, Migration = 1, MigrationMax = 5,
+                MotorMap = 10, MotorMapMax = 10, MotorState = 2, Regen = 60 }, null).ToDictionary(x => x.Key, x => x.Value);
+            Is(peugeot["FrontARB"] == "P4" && peugeot["RearARB"] == "Detached" && peugeot["Migration"] == "2.0% F" && peugeot["MotorMap"] == "200kW" && peugeot["Regen"] == "60kW",
+                "Électronique : textes du jeu (ARB, migration, carto, recharge)");
             Is((string)PV("BlackBox.3.Nom") == "Niveau de recharge" && (string)PV("BlackBox.4.Nom") == "", "Électronique : seulement les réglages de la voiture");
             pages.Move(1); pages.Change(1); pages.Change(-1);
             System.Threading.Thread.Sleep(300);
