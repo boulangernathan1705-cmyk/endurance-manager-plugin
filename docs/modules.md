@@ -37,8 +37,7 @@ sont plus un module : ils tournent quand Overlay relais ou Mur des stands est ac
   site sert encore la 2.2.0 aux anciens plugins.
 - Pas encore vérifié dans le vrai SimHub : les profils (appels Control Mapper signalés par `ApiCheck`), Black box sur
   boutons intégré, le mur dans Dash Studio (liaisons de position, `blink`, polices).
-- Branche `mur-dash-maquette` : une refonte du dash du mur (le dash généré depuis la maquette HTML validée, commit
-  « le dash est la maquette validée elle-même ») faite en parallèle et jamais fusionnée. À reprendre ou abandonner
-  (voir [mur-des-stands.md](mur-des-stands.md)).
+- Ancienne branche `mur-dash-maquette` (supprimée le 23/11/2026, dernier commit `48531fc`) : une refonte du dash du
+  mur jamais fusionnée, abandonnée au profit du mur en fenêtre de la 0.1.0 (voir [mur-des-stands.md](mur-des-stands.md)).
 - En discussion : remplacer l'écran en onglets par une page d'accueil avec tous les modules, et servir le mur et
   l'overlay en page web locale (voir [limites-simhub.md](limites-simhub.md)).
