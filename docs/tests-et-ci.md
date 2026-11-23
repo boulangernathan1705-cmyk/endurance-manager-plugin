@@ -43,7 +43,8 @@ Sur une PR, la CI les range dans `maquettes/apercus-plugin/` sur la branche (com
 ## La CI (`.github/workflows/plugin.yml`, Windows)
 
 Compilation (façade) → ApiCheck → rejeu .NET Framework 4.8 → rejeu des enregistrements → photos → zip joint
-(*Artifacts*, 30 jours). Sur `main` : Release GitHub si la version est nouvelle.
+(*Artifacts*, 30 jours ; sur une PR, aussi en pré-version `pr-N` dans Releases, remplacée à chaque envoi et retirée à la
+fermeture de la PR). Sur `main` : Release GitHub si la version est nouvelle.
 
 ## Ce que seul Nathan peut tester
 

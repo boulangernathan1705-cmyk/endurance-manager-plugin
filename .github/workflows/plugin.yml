@@ -9,6 +9,7 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, closed]
 
 permissions:
   contents: read
@@ -23,8 +24,22 @@ env:
   SITE_REF: dev
 
 jobs:
+  # PR fermée (fusionnée ou non) : sa pré-version « pr-N » part.
+  nettoyage:
+    name: zip de test retiré
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release delete "pr-${{ github.event.pull_request.number }}" --cleanup-tag --yes || true
+
   plugin:
     name: compilation et rejeu
+    if: github.event.action != 'closed'
     runs-on: windows-latest
     timeout-minutes: 20
     # Write: the pictures of the plugin's screen go back on the pull request's branch, and releases on main.
@@ -114,6 +129,23 @@ jobs:
             replay-out/*.sessions.json
           if-no-files-found: ignore
           retention-days: 14
+
+      # Une PR : son zip en pré-version « pr-N » (remplacée à chaque envoi, supprimée à la fermeture de la PR), pour
+      # l'essayer depuis Releases sans fouiller dans Actions. Jamais « latest » : les pilotes ne la voient pas.
+      - name: Publier le zip de test de la PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.zip.outputs.version }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          $tag = "pr-$env:PR"
+          gh release delete $tag --cleanup-tag --yes *> $null
+          $notes = "Zip de test de la PR #$env:PR (commit $($env:HEAD_SHA.Substring(0,7))), pas encore fusionnée. Dézipper, double-cliquer sur « Installer le plugin.cmd »."
+          gh release create $tag "plugin-endurance-manager-$env:VERSION.zip" --target $env:HEAD_SHA --prerelease --latest=false --title "Test PR #$env:PR · $env:VERSION" --notes $notes
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "Zip de test aussi dans Releases : $env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/releases/tag/$tag" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
 
       # Une version nouvelle sur main : une Release GitHub avec le zip (ce que les pilotes installent).
       - name: Publier la Release
