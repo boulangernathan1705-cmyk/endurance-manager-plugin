@@ -1,6 +1,20 @@
 {
-  "version": "0.1.1",
+  "version": "0.1.2",
   "changes": [
-    { "type": "nouveau", "text": "FMT companion livré avec le plugin : rien à installer à part", "page": "bb" }
+    {
+      "type": "corrige",
+      "text": "Prochain arrêt : cases et libellés alignés dans les profils",
+      "page": "profils"
+    },
+    {
+      "type": "corrige",
+      "text": "Black box : un démarrage bloqué affiche sa cause au lieu de demander un redémarrage",
+      "page": "bb"
+    },
+    {
+      "type": "corrige",
+      "text": "Mises à jour : une vérification impossible ne dit plus « À jour »",
+      "page": "maj"
+    }
   ]
 }

@@ -97,10 +97,12 @@ h1{font-size:30px;line-height:1.15;margin-top:4px;color:var(--cream)}
 .met div{background:var(--panel2);border:1px solid rgba(255,255,255,.04);border-radius:7px;padding:6px 9px;min-width:0}
 .met small{display:block;font-size:12px;color:var(--muted)}.met b{font-size:15px;font-variant-numeric:tabular-nums}
 .prof.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
-.prof input{width:100%;background:transparent;border:1px solid transparent;border-radius:6px;padding:2px 6px;margin-left:-6px;font-weight:700;font-size:18px;color:var(--text)}
-.prof input:hover,.prof input:focus{border-color:rgba(66,103,108,.72);background:rgba(15,22,24,.96)}
+.prof input[data-rename]{width:100%;background:transparent;border:1px solid transparent;border-radius:6px;padding:2px 6px;margin-left:-6px;font-weight:700;font-size:18px;color:var(--text)}
+.prof input[data-rename]:hover,.prof input[data-rename]:focus{border-color:rgba(66,103,108,.72);background:rgba(15,22,24,.96)}
 details summary{cursor:pointer;font-size:13px;color:var(--muted);margin-top:10px}
-details label{display:flex;gap:8px;align-items:center;font-size:13.5px;padding:2px 0}
+details label{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;padding:4px 0;overflow-wrap:anywhere}
+details input[type="checkbox"]{flex:0 0 auto;width:14px;height:14px;margin:3px 0 0;accent-color:var(--accent)}
+details label span{min-width:0}
 .field{width:100%;background:rgba(15,22,24,.96);border:1px solid rgba(66,103,108,.72);border-radius:7px;padding:10px 12px;color:var(--text)}
 .field:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 2px rgba(89,211,216,.09)}
 .addr{display:flex;align-items:center;gap:10px;background:rgba(15,22,24,.96);border:1px solid rgba(66,103,108,.72);border-radius:7px;padding:6px 6px 6px 12px}
@@ -331,7 +333,7 @@ const PAGES = {
         <div class="mut small">Bouton « Profil${x.i + 1} »</div>
         ${x.drive.length ? `<div class="met" style="margin-top:10px">${x.drive.map((d) => `<div><small>${esc(d.k)}</small><b>${esc(d.v)}</b></div>`).join('')}</div>`
           : '<p class="mut small" style="margin-top:10px">Vide : roule, règle la voiture, puis maintiens le bouton 2 s (ou « Mémoriser »).</p>'}
-        ${x.pit.length ? `<details><summary>Prochain arrêt · ${x.pit.filter((l) => l.on).length} lignes sur ${x.pit.length}</summary>${x.pit.map((l) => `<label><input type="checkbox" data-pit="${x.i}" data-key="${esc(l.key)}" ${l.on ? 'checked' : ''}>${esc(l.k)} : ${esc(l.v)}</label>`).join('')}</details>` : ''}
+        ${x.pit.length ? `<details><summary>Prochain arrêt · ${x.pit.filter((l) => l.on).length} lignes sur ${x.pit.length}</summary>${x.pit.map((l) => `<label><input type="checkbox" data-pit="${x.i}" data-key="${esc(l.key)}" ${l.on ? 'checked' : ''}><span>${esc(l.k)} : ${esc(l.v)}</span></label>`).join('')}</details>` : ''}
         <div class="btns" style="margin-top:12px"><button type="button" class="btn s" data-memorise="${x.i}">Mémoriser</button><button type="button" class="btn s" data-apply="${x.i}">Appliquer</button></div>
       </article>`;
     return `<div class="page">${head('profils', '', 'Un bouton du volant par profil.')}
@@ -359,6 +361,7 @@ const PAGES = {
     const b = S.bb;
     return `<div class="page">${head('bb', '', 'Les réglages de la voiture et le menu des stands sur ton volant ou ton Stream Deck.')}
       ${b.pending ? stateCard('Au prochain lancement de SimHub', S.modules.bb ? 'Le module démarre quand SimHub redémarre.' : 'Le module s\u2019arrête quand SimHub redémarre.', 'wait', 'En attente') : ''}
+      ${S.modules.bb && !b.running && !b.pending ? stateCard('FMT companion bloqué', esc(b.status), 'bad', 'À corriger') : ''}
       <section class="card" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
         <div style="flex:1;min-width:260px"><h2>Mes boutons</h2><p class="mut small">${esc(b.status)}</p></div>
         <button type="button" class="btn p" data-act="companion" ${b.running ? '' : 'disabled'}>Régler mes boutons</button>
@@ -423,7 +426,8 @@ const PAGES = {
     const busy = S.update && !!S.upd.phase;
     return `<div class="page" style="max-width:720px">${plain('Assistance', 'Mises à jour')}
       <section class="card" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap"><div style="flex:1"><div class="cap">Version installée</div><div style="font-size:22px;font-weight:700">${esc(S.build)}</div></div>
-        ${S.update ? `<span class="pill team">${esc(S.update)} disponible</span><button type="button" class="btn p" data-act="update" ${busy ? 'disabled' : ''}>${updateLabel()}</button>` : '<span class="pill on">✓ À jour</span>'}</section>
+        ${S.update ? `<span class="pill team">${esc(S.update)} disponible</span><button type="button" class="btn p" data-act="update" ${busy ? 'disabled' : ''}>${updateLabel()}</button>` : S.upd.checkedOk ? '<span class="pill on">✓ À jour</span>' : `<span class="pill">${S.upd.checkError ? 'Non vérifié' : 'Vérification…'}</span>`}</section>
+      ${S.upd.checkError ? `<p class="note" role="alert">${esc(S.upd.checkError)}</p>` : ''}
       ${S.update && S.upd.error ? `<p class="note" role="alert" style="margin-top:12px">${esc(S.upd.error)}</p>` : ''}
       ${S.update && S.upd.changes.length ? `<div class="stack" style="gap:8px;margin-top:18px"><div class="cap">Ce qui change dans la ${esc(S.update)}</div>${changeList(S.upd.changes, false)}</div>` : ''}
       ${!S.update && S.installed && S.installed.length ? `<div class="stack" style="gap:8px;margin-top:18px"><div class="cap">Nouveautés de ta version</div>${changeList(S.installed, true)}</div>` : ''}

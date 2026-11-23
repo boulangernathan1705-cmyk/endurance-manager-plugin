@@ -30,9 +30,12 @@ namespace EnduranceManager.SimHub
 
         public string Status { get; private set; } = "Module coupé.";
         public bool Running => plugin != null;
+        // A failed start is not a change waiting for the next launch.
+        public bool StartAttempted { get; private set; }
 
         public void Start(PluginManager manager)
         {
+            StartAttempted = true;
             try
             {
                 if (File.Exists(Alone)) { Status = "FMT companion est encore installé seul dans SimHub : relance l'installeur du plugin, il le range ici."; return; }

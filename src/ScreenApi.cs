@@ -61,7 +61,7 @@ namespace EnduranceManager.SimHub
                 version = Updater.Current.ToString(3),
                 build = Updater.Build,
                 update = plugin.Updater.Available?.ToString(3),
-                upd = new { changes = Lines(plugin.Updater.Changes), phase = plugin.Updater.Phase, error = plugin.Updater.Error },
+                upd = new { changes = Lines(plugin.Updater.Changes), phase = plugin.Updater.Phase, error = plugin.Updater.Error, checkedOk = plugin.Updater.CheckSucceeded, checkError = plugin.Updater.CheckError },
                 installed = plugin.Updater.Installed() is var done && done != null ? Lines(done.Value.Changes) : null,
                 go = new { n = plugin.GoCount, page = plugin.GoPage },
                 guideDone = s.GuideDone,
@@ -69,7 +69,7 @@ namespace EnduranceManager.SimHub
                 game = new { game.state, game.title, game.detail },
                 modules = new { relais = s.Overlays, profils = s.Profiles, bb = s.CompanionOn, mur = s.Wall, memo = s.Enabled, equipe = s.Share, dev = s.Report },
                 laps = s.StintLaps,
-                bb = new { running = plugin.Companion.Running, pending = s.CompanionOn != plugin.Companion.Running, status = plugin.Companion.Status },
+                bb = new { running = plugin.Companion.Running, pending = s.CompanionOn != plugin.Companion.StartAttempted, status = plugin.Companion.Status },
                 mur = new
                 {
                     running = server?.Running == true && s.Wall,

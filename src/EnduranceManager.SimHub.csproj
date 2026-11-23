@@ -7,7 +7,7 @@
     <UseWPF Condition="'$(OS)' == 'Windows_NT'">true</UseWPF>
     <AssemblyName>EnduranceManager.SimHub</AssemblyName>
     <!-- The plugin's version: raised for each new build given to the pilots (docs/publier.md). -->
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
     <!-- The commit in the build's identity (2.6.0+sha, shown « 2.6.0 (abc1234) » on the plugin's screen). -->
     <SourceRevisionId Condition="'$(GITHUB_SHA)' != ''">$(GITHUB_SHA)</SourceRevisionId>
     <RootNamespace>EnduranceManager.SimHub</RootNamespace>
