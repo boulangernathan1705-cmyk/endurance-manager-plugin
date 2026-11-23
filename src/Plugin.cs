@@ -113,6 +113,9 @@ namespace EnduranceManager.SimHub
         public Profiles Profiles { get; private set; }
         // FMT companion 0.5 as it is, its DLL run from here when its module is on (Companion.cs).
         public Companion Companion { get; } = new Companion();
+        // Its page in the plugin's screen (CompanionPage.cs), talking to the FMT companion that runs.
+        CompanionPage companionPage;
+        public CompanionPage CompanionPage => companionPage ?? (companionPage = new CompanionPage(Companion));
         // Our own calculations after LMU Drive's ideas (Computed.cs): pit timing and out-laps per car, optimal and predicted lap.
         public Computed Computed { get; } = new Computed();
         // The game's live standings (penalties by kind, finish status) and Lovely's track and car files.
@@ -315,7 +318,7 @@ namespace EnduranceManager.SimHub
                 if (Settings.MurX == x && Settings.MurY == y && Settings.MurW == w && Settings.MurH == h) return;
                 Settings.MurX = x; Settings.MurY = y; Settings.MurW = w; Settings.MurH = h;
                 this.SaveCommonSettings("GeneralSettings", Settings);
-            }, () => screenApi.State(), body => screenApi.Act(body));
+            }, query => screenApi.State(query), body => screenApi.Act(body));
         }
 
         // The profiles' popup on screen now, or null.

@@ -10,13 +10,16 @@
    taille, empreinte SHA-256, changements).
    Si aucune exécution « push » n'apparaît dans Actions après la fusion (fusion faite par une appli), lancer
    Actions › Plugin › Run workflow sur `main` : la Release part de la même façon.
-3. Pour que les plugins installés (0.x) se mettent à jour : dans le dépôt du site, une PR vers `dev` qui met la DLL de
-   la Release, son `plugin.json` (tel quel : le plugin vérifie taille et empreinte) et `Installer le plugin.cmd` dans `connectors/simhub-plugin/v0/`,
-   servis dans `/downloads/simhub/v0/` (voir [lien-avec-le-site.md](lien-avec-le-site.md) ; la première fois, ajouter
-   ce dossier à `scripts/build.mjs`). Ne pas toucher `connectors/simhub-plugin/release/` : c'est la 2.2.0 des
-   anciens plugins (seule exception : le passage unique des 2.x à la 0.x, voir lien-avec-le-site.md). Le site publie la mise à jour à son
-   déploiement (dev d'abord, puis production avec la release du site). Ne jamais monter `plugin.json` sans la DLL
-   correspondante (boucle de mise à jour).
+3. La même exécution de la CI ouvre la PR du site (`app-endurance-manager`, branche `plugin-x.y.z` vers `dev`) qui
+   remplace `connectors/simhub-plugin/v0/` par la DLL, le `plugin.json` et l'installeur de la Release. Il faut une fois
+   pour toutes le secret `SITE_TOKEN` dans ce dépôt (Settings › Secrets and variables › Actions) : un jeton GitHub
+   « fine-grained » limité au dépôt du site, avec Contents et Pull requests en écriture. Sans lui, la CI avertit et
+   rien ne part : faire alors cette PR à la main avec les mêmes fichiers.
+4. Fusionner la PR du site dans `dev` (CI verte), puis elle part en production avec la release du site, après le
+   « go prod » de Nathan. Alors seulement les plugins installés la proposent dans SimHub. Le site sert `v0/` deux fois
+   (`scripts/build.mjs`) : `/downloads/simhub/v0/` pour les 0.x et la page Télémétrie Mémo, `/downloads/simhub/` (même
+   DLL annoncée 2.99.0) pour que les anciens 2.x passent une fois à la 0.x. Le build du site refuse un `plugin.json`
+   qui ne correspond pas à la DLL.
 
 Le zip de la Release s'installe aussi tout seul : son installeur prend la DLL posée à côté de lui.
 

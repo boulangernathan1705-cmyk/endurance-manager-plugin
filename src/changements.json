@@ -1,20 +1,6 @@
 {
-  "version": "0.1.2",
+  "version": "0.1.3",
   "changes": [
-    {
-      "type": "corrige",
-      "text": "Prochain arrêt : cases et libellés alignés dans les profils",
-      "page": "profils"
-    },
-    {
-      "type": "corrige",
-      "text": "Black box : un démarrage bloqué affiche sa cause au lieu de demander un redémarrage",
-      "page": "bb"
-    },
-    {
-      "type": "corrige",
-      "text": "Mises à jour : une vérification impossible ne dit plus « À jour »",
-      "page": "maj"
-    }
+    { "type": "nouveau", "text": "Black box sur boutons : tout FMT companion dans la page (commandes, Préparer LMU, Tester, Stream Deck)", "page": "bb" }
   ]
 }

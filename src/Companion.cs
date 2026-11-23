@@ -30,6 +30,8 @@ namespace EnduranceManager.SimHub
 
         public string Status { get; private set; } = "Module coupé.";
         public bool Running => plugin != null;
+        // FMT companion itself, for its page in the plugin's screen (CompanionPage.cs): read and asked, never changed.
+        public object Instance => plugin;
         // A failed start is not a change waiting for the next launch.
         public bool StartAttempted { get; private set; }
 
