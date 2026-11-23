@@ -40,7 +40,7 @@ namespace SimHub.Plugins
         string LeftMenuTitle { get; }
     }
 
-    public class PluginManager
+    public partial class PluginManager
     {
         public delegate void InputToActionTriggeredDelegate(string input, string action);
 

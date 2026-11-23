@@ -53,40 +53,74 @@ th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;le
 .y{color:#1a9a55;font-weight:600} .p{color:#c47f00;font-weight:600} .n{color:#d0453b;font-weight:600}
 ul{margin:0;padding-left:20px} li{margin:6px 0}
 @media (max-width:560px){.pair{grid-template-columns:1fr}}
+
+.row{cursor:pointer}
+.row.sel b em{cursor:pointer}
+.zone{position:absolute;top:0;bottom:0;border:2px dashed rgba(58,168,255,.0);pointer-events:auto}
+.show .zone{border-color:rgba(58,168,255,.9);background:rgba(58,168,255,.12)}
+.zone.minus{right:calc(var(--u)*20);width:calc(var(--u)*30)}
+.zone.plus{right:0;width:calc(var(--u)*20)}
+.zone.up,.zone.down{left:35%;right:35%;height:calc(var(--u)*5);top:auto;bottom:auto}
+.zone.up{top:0}.zone.down{bottom:0}
+.wheel{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:14px 0 4px}
+.wheel button{font:600 15px var(--body);min-width:52px;height:44px;border-radius:22px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+.wheel button:focus-visible{outline:2px solid #3aa8ff;outline-offset:2px}
+.wheel label{margin-left:auto;font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.log{font-size:13px;color:var(--muted);min-height:20px}
 </style>
 <div class="wrap">
 <h1>Black box sur l'écran VoCore</h1>
-<p class="sub">Version 3, d'après tes captures du jeu. Page « Arrêt aux stands » en plein écran 800 × 480. Valeurs d'exemple.</p>
-<div class="vocore"><div class="mfd "><div class="hd"><span class="tt">Arrêt aux stands</span><span class="ics"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6.5" cy="8" r="1.6" fill="currentColor"/><circle cx="17.5" cy="16" r="1.6" fill="currentColor"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><rect x="10.8" y="10" width="2.4" height="8" rx="1" fill="var(--panel)"/><circle cx="12" cy="6.8" r="1.5" fill="var(--panel)"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="10" y="1.5" width="4" height="2.4" fill="currentColor"/><path d="M12 13V8" stroke="currentColor" stroke-width="2.2"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v6M12 16v6M2 12h6M16 12h6" stroke="currentColor" stroke-width="1.6"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="10" height="18" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="6" y="5" width="6" height="5" fill="currentColor"/><path d="M14 9h3l2 2v8a1.5 1.5 0 0 1-3 0v-4h-2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><path d="M14 2 5 14h6l-2 8 9-12h-6z" fill="currentColor"/></svg></span><span class="ic on"><svg viewBox="0 0 24 24"><circle cx="9" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="3 2.2"/><path d="M13 14l7 7" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg></span></span></div><div class="bd"><div class="row"><span>Dommages</span><b>N/A</b></div><div class="row sel"><span>Énergie Virtuelle:</span><i class="ud">▴<br>▾</i><b>100% 35 laps <em>◂ ▸</em></b></div><div class="row"><span>Ratio carburant</span><b>0.76</b></div><div class="row"><span>Pneus:</span><b>Aucun changement</b></div><div class="row"><span>Pneu AvG</span><b>Aucun changement</b></div><div class="row"><span>Pneu AvD</span><b>Aucun changement</b></div><div class="row"><span>Pneu ArrG</span><b>Aucun changement</b></div><div class="scroll dn">▼</div></div></div></div>
-<div class="pair">
- <div><div class="thumb"><div class="mfd small"><div class="hd"><span class="tt">Électronique</span><span class="ics"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6.5" cy="8" r="1.6" fill="currentColor"/><circle cx="17.5" cy="16" r="1.6" fill="currentColor"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><rect x="10.8" y="10" width="2.4" height="8" rx="1" fill="var(--panel)"/><circle cx="12" cy="6.8" r="1.5" fill="var(--panel)"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="10" y="1.5" width="4" height="2.4" fill="currentColor"/><path d="M12 13V8" stroke="currentColor" stroke-width="2.2"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v6M12 16v6M2 12h6M16 12h6" stroke="currentColor" stroke-width="1.6"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="10" height="18" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="6" y="5" width="6" height="5" fill="currentColor"/><path d="M14 9h3l2 2v8a1.5 1.5 0 0 1-3 0v-4h-2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span><span class="ic on"><svg viewBox="0 0 24 24"><path d="M14 2 5 14h6l-2 8 9-12h-6z" fill="currentColor"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="9" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="3 2.2"/><path d="M13 14l7 7" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg></span></span></div><div class="bd"><div class="row sel"><span>Contrôle de traction</span><i class="ud">▴<br>▾</i><b>7 <em>◂ ▸</em></b></div><div class="row"><span>TC Power cut</span><b>7</b></div><div class="row"><span>TC Slip angle</span><b>8</b></div><div class="row"><span>ARB avant</span><b>P4</b></div><div class="row"><span>ARB arrière</span><b>P1</b></div><div class="row"><span>Répartition des freins</span><b>52.3:47.7</b></div><div class="row"><span>Répartition des freins</span><b>1.5% F</b></div><div class="scroll dn">▼</div></div></div></div><div class="cap">Électronique (2ᵉ étape)</div></div>
- <div><div class="thumb"><div class="mfd small"><div class="hd"><span class="tt">Pneus</span><span class="ics"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6.5" cy="8" r="1.6" fill="currentColor"/><circle cx="17.5" cy="16" r="1.6" fill="currentColor"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><rect x="10.8" y="10" width="2.4" height="8" rx="1" fill="var(--panel)"/><circle cx="12" cy="6.8" r="1.5" fill="var(--panel)"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="10" y="1.5" width="4" height="2.4" fill="currentColor"/><path d="M12 13V8" stroke="currentColor" stroke-width="2.2"/></svg></span><span class="ic on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v6M12 16v6M2 12h6M16 12h6" stroke="currentColor" stroke-width="1.6"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="10" height="18" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="6" y="5" width="6" height="5" fill="currentColor"/><path d="M14 9h3l2 2v8a1.5 1.5 0 0 1-3 0v-4h-2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><path d="M14 2 5 14h6l-2 8 9-12h-6z" fill="currentColor"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="9" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="3 2.2"/><path d="M13 14l7 7" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg></span></span></div><div class="bd"><div class="ty">
- <div class="w">100%<small>M</small></div><div class="c"><s>124.2kPa</s><b>22.9°C</b><s>20.0°C</s></div><div class="c r"><s>124.1kPa</s><b>22.9°C</b><s>20.0°C</s></div><div class="w">100%<small>M</small></div>
- <div class="mid">∞ Pneus</div>
- <div class="w">100%<small>M</small></div><div class="c"><s>20.0°C</s><b>22.8°C</b><s>124.1kPa</s></div><div class="c r"><s>20.0°C</s><b>22.8°C</b><s>124.1kPa</s></div><div class="w">100%<small>M</small></div>
-</div></div></div></div><div class="cap">Pneus (2ᵉ étape)</div></div>
+<p class="sub">Version 5 : naviguer dans le menu depuis le VoCore, sans ouvrir la black box du jeu. Maquette cliquable, valeurs d'exemple.</p>
+<div class="vocore"><div class="mfd "><div class="hd"><span class="tt">Arrêt aux stands</span><span class="ics"><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6.5" cy="8" r="1.6" fill="currentColor"/><circle cx="17.5" cy="16" r="1.6" fill="currentColor"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><rect x="10.8" y="10" width="2.4" height="8" rx="1" fill="var(--panel)"/><circle cx="12" cy="6.8" r="1.5" fill="var(--panel)"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="2.2"/><rect x="10" y="1.5" width="4" height="2.4" fill="currentColor"/><path d="M12 13V8" stroke="currentColor" stroke-width="2.2"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v6M12 16v6M2 12h6M16 12h6" stroke="currentColor" stroke-width="1.6"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="10" height="18" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="6" y="5" width="6" height="5" fill="currentColor"/><path d="M14 9h3l2 2v8a1.5 1.5 0 0 1-3 0v-4h-2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span><span class="ic"><svg viewBox="0 0 24 24"><path d="M14 2 5 14h6l-2 8 9-12h-6z" fill="currentColor"/></svg></span><span class="ic on"><svg viewBox="0 0 24 24"><circle cx="9" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="3 2.2"/><path d="M13 14l7 7" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg></span></span></div><div class="bd" id="bd"></div></div></div>
+<div class="wheel" role="group" aria-label="Boutons du volant">
+ <button id="b-up" aria-label="Ligne au-dessus">▲</button><button id="b-dn" aria-label="Ligne en dessous">▼</button>
+ <button id="b-pg" aria-label="Page précédente">◂ page</button><button id="b-pn" aria-label="Page suivante">page ▸</button>
+ <button id="b-mi" aria-label="Baisser la valeur">−</button><button id="b-pl" aria-label="Augmenter la valeur">+</button>
+ <label><input type="checkbox" id="zones"> Montrer les zones tactiles</label>
 </div>
+<div class="log" id="log">Boutons du volant ci-dessus, ou touche l'écran : une ligne pour la choisir, puis − ou + sur la ligne rouge.</div>
 
-<h2>Ce qu'on peut reproduire</h2>
-<div class="card tw"><table>
-<tr><th>Page du jeu</th><th>Données</th><th>Fidélité</th></tr>
-<tr><td>Arrêt aux stands</td><td>Le menu du jeu lui-même, ligne par ligne. Dommages, pénalités et pilote suivant apparaissent tout seuls quand le jeu les ajoute.</td><td class="y">Identique</td></tr>
-<tr><td>Pneus</td><td>Usure, gomme, pressions, températures pneus et freins : lus dans le jeu.</td><td class="y">Identique</td></tr>
-<tr><td>Chrono</td><td>Secteurs actuel, meilleur, dernier, optimal : lus ou calculés par le plugin.</td><td class="p">Très proche</td></tr>
-<tr><td>Électronique</td><td>TC, ABS, carto, migration lus. Power cut, slip angle, barres : à vérifier.</td><td class="p">Partielle</td></tr>
-<tr><td>Carburant</td><td>Carburant, énergie, batterie lus. Les estimations du jeu (Pousser, Objectif) ne sont pas données : on mettrait les nôtres.</td><td class="p">Proche</td></tr>
-<tr><td>Séance, Relatif</td><td>Heure, météo, piste, classement autour : lus.</td><td class="p">Très proche</td></tr>
-</table></div>
-
-<h2>Les deux limites</h2>
+<h2>Comment ça marche</h2>
 <div class="card"><ul>
-<li><b>La ligne en rouge.</b> Le jeu ne donne pas la position de son curseur. On surligne la dernière ligne changée. Avec tes boutons directs, c'est justement celle que tu viens de régler.</li>
-<li><b>La page affichée.</b> Le jeu ne dit pas quelle page il montre. Le VoCore change de page avec un bouton à lui (action SimHub « page suivante »), ou reste sur « Arrêt aux stands ».</li>
+<li><b>Le curseur est celui du VoCore.</b> La ligne rouge est maintenant celle que tu choisis, plus la dernière changée. La black box du jeu peut rester fermée.</li>
+<li><b>6 boutons du volant</b> : ▲ ▼ changent de ligne (rien n'est envoyé au jeu), ◂ ▸ changent de page, − + baissent ou montent la valeur. Ce sont 6 actions SimHub à relier dans « Contrôles et événements ».</li>
+<li><b>Les pages</b> : d'abord « Arrêt aux stands » seule (◂ ▸ prêts mais sans effet). Ensuite les autres pages, puis le − + sur Électronique (TC, ABS… passent par les commandes de FMT companion, pas par le menu des stands).</li>
+<li><b>Au toucher</b> : touche une ligne pour la choisir, puis la zone − ou + de la ligne rouge (à gauche et à droite de la valeur). Les flèches ▲ ▼ en haut et en bas font défiler, le titre change de page.</li>
+<li><b>Le réglage part au jeu tout de suite</b>, de la même façon que les profils de black box (menu envoyé puis relu). La valeur affichée est toujours celle relue dans le jeu.</li>
+<li>Les boutons directs de FMT companion marchent toujours à côté.</li>
 </ul></div>
 
-<h2>Je propose</h2>
+<h2>À vérifier dans le vrai SimHub</h2>
 <div class="card"><ul>
-<li><b>Étape 1</b> : la page « Arrêt aux stands » seule, à l'identique. C'est celle qu'on règle avec les boutons.</li>
-<li><b>Étape 2</b> : les autres pages et un bouton pour passer de l'une à l'autre.</li>
+<li>Le toucher dépend de l'écran : un écran tactile branché en écran Windows, ou un téléphone / une tablette avec le dash, marchent avec SimHub. Un VoCore tactile : à essayer.</li>
+<li>Les boutons tactiles de Dash Studio reliés aux actions du plugin : jamais testés ici, Nathan essaie avec le zip de test.</li>
 </ul></div>
 </div>
+<script>
+const lines=[
+ ["Dommages",["N/A"]],["Énergie Virtuelle:",["90% 32 laps","95% 33 laps","100% 35 laps"]],["Ratio carburant",["0.74","0.75","0.76","0.77"]],
+ ["Pneus:",["Aucun changement","Medium","Soft","Hard"]],["Pneu AvG",["Aucun changement","Medium","Soft"]],["Pneu AvD",["Aucun changement","Medium","Soft"]],
+ ["Pneu ArrG",["Aucun changement","Medium","Soft"]],["Pneu ArrD",["Aucun changement","Medium","Soft"]],["Aileron",["P9","P10","P11"]],["Grille",["0","1","2"]],
+ ["Pression AvG",["130","131","132"]],["Pression AvD",["130","131","132"]],["Pression ArrG",["130","131","132"]],["Pression ArrD",["130","131","132"]],
+ ["CONDUIT FREIN AVANT :",["Fermé","Ouvert"]],["CONDUIT FREIN ARR :",["Fermé","Ouvert"]],["Remplacer les freins",["Non","Oui"]]];
+const pick=[0,2,2,0,0,0,0,0,1,1,1,1,1,1,1,1,0];
+let cur=1,first=0;const R=7;const bd=document.getElementById('bd'),log=document.getElementById('log');
+function render(){
+ if(cur<first)first=cur;if(cur>=first+R)first=cur-R+1;
+ let h=first>0?'<div class="scroll up">▲</div><div class="zone up" data-a="up"></div>':'';
+ for(let k=first;k<Math.min(lines.length,first+R);k++){const[n,o]=lines[k];const v=o[pick[k]];
+  h+=k===cur?`<div class="row sel" data-k="${k}"><span>${n}</span><i class="ud">▴<br>▾</i><b>${v} <em>◂ ▸</em></b><div class="zone minus" data-a="mi"></div><div class="zone plus" data-a="pl"></div></div>`
+   :`<div class="row" data-k="${k}"><span>${n}</span><b>${v}</b></div>`;}
+ if(first+R<lines.length)h+='<div class="scroll dn">▼</div><div class="zone down" data-a="dn"></div>';
+ bd.innerHTML=h;}
+function act(a){
+ if(a==='up'&&cur>0)cur--;else if(a==='dn'&&cur<lines.length-1)cur++;
+ else if(a==='pg'){log.textContent='Une seule page pour l\'instant : Arrêt aux stands';return;}
+ else if(a==='mi'||a==='pl'){const o=lines[cur][1];const before=pick[cur];pick[cur]=Math.max(0,Math.min(o.length-1,pick[cur]+(a==='pl'?1:-1)));
+  log.textContent=pick[cur]!==before?`Envoyé au jeu : ${lines[cur][0]} ${o[pick[cur]]}`:`${lines[cur][0]} : pas d'autre choix dans ce sens`;render();return;}
+ log.textContent='Ligne choisie : '+lines[cur][0]+' (rien envoyé au jeu)';render();}
+bd.addEventListener('click',ev=>{const z=ev.target.closest('.zone');if(z){act(z.dataset.a);return;}const r=ev.target.closest('.row');if(r){cur=+r.dataset.k;log.textContent='Ligne choisie : '+lines[cur][0]+' (rien envoyé au jeu)';render();}});
+[['b-up','up'],['b-dn','dn'],['b-mi','mi'],['b-pl','pl'],['b-pg','pg'],['b-pn','pg']].forEach(([id,a])=>document.getElementById(id).onclick=()=>act(a));
+document.getElementById('zones').onchange=e=>document.querySelector('.vocore').classList.toggle('show',e.target.checked);
+render();
+</script>

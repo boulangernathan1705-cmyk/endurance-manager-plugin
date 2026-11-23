@@ -13,7 +13,9 @@ du site). Deux groupes, noms choisis par Nathan le 19/11/2026 :
 | **Mur des stands** | Le mur de sa propre voiture dans SimHub (dash « Endurance Manager · Mur », 2560 × 1440), sans le site. | `Wall.cs`, `WallDash.cs`, `WallProperties.cs`, `LocalRoom.cs` | `Wall` (coupé) |
 
 Les « chiffres de course » (propriétés façon NeoRed pour les dashs, `Course.cs`, `Telemetry.cs`, `Computed.cs`) ne
-sont plus un module : ils tournent quand Overlay relais ou Mur des stands est activé.
+sont plus un module : ils tournent quand Overlay relais ou Mur des stands est activé, et seulement si un dash les lit ou
+si la black box est affichée (`Watched.cs`) ; `Computed.cs` garde un historique (arrêts de chaque voiture) et tourne donc
+tant que l'un de ces deux modules ou le partage avec l'équipe est actif.
 
 ## Avec mon équipe (via le site, code de liaison)
 

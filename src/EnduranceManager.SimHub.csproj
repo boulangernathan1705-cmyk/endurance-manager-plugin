@@ -41,14 +41,26 @@
   <!-- Les tests et la façade ont leurs propres projets : pas compilés dans la DLL du plugin. -->
   <ItemGroup>
     <Compile Remove="bin\**;obj\**" />
+    <!-- FMT companion has its own project (fmt/FmtCompanion.csproj): its code is not compiled into this DLL. -->
+    <Compile Remove="fmt\**" />
+    <None Remove="fmt\**" />
+    <EmbeddedResource Remove="fmt\**" />
     <!-- The mur's page, served by WallServer.cs from the DLL. -->
     <EmbeddedResource Include="mur\**\*" LogicalName="mur/%(RecursiveDir)%(Filename)%(Extension)" />
     <!-- The plugin's screen as a web page (ScreenApi.cs, WebScreen.cs), served under /ecran/. -->
     <EmbeddedResource Include="ecran\**\*" LogicalName="ecran/%(RecursiveDir)%(Filename)%(Extension)" />
-    <!-- FMT companion 0.5 (its DLL, source lost), carried inside the plugin: the update gives it to every pilot (Companion.cs). -->
-    <EmbeddedResource Include="fmt\FMTCompanion.dll" LogicalName="fmt/FMTCompanion.dll" />
-    
   </ItemGroup>
+  <!-- FMT companion, built from its code (fmt/) and carried inside the plugin: the update gives it to every pilot
+       (Companion.cs). -->
+  <ItemGroup>
+    <ProjectReference Include="fmt\FmtCompanion.csproj" ReferenceOutputAssembly="false" Private="false" OutputItemType="EmFmtDll" />
+  </ItemGroup>
+  <Target Name="EmEmbedFmt" AfterTargets="ResolveProjectReferences" BeforeTargets="PrepareResources">
+    <ItemGroup>
+      <EmbeddedResource Include="@(EmFmtDll)" Condition="'%(Extension)' == '.dll'" LogicalName="fmt/FMTCompanion.dll" />
+    </ItemGroup>
+    <Error Condition="'@(EmFmtDll)' == ''" Text="FMTCompanion.dll n'a pas été construit (src/fmt)." />
+  </Target>
   <ItemGroup>
     <!-- L'installeur en double-clic, à donner aux pilotes avec la DLL. -->
     <None Update="Installer le plugin.cmd" CopyToOutputDirectory="PreserveNewest" />

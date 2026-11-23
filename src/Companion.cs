@@ -1,10 +1,12 @@
-// Module FMT companion : le plugin FMT companion de Nathan (0.5, FMTCompanion.dll), tel quel, porté par ce plugin.
-// Sa DLL est dans celle du plugin (src/fmt/, ressource « fmt/FMTCompanion.dll ») : la mise à jour du plugin la donne à
-// chaque pilote. Au lancement elle est écrite à part (dossier EnduranceManager de SimHub, que SimHub ne charge pas tout
-// seul, sinon %LOCALAPPDATA%\EnduranceManager si ce dossier demande les droits admin) et lancée d'ici quand le module est
-// activé : SimHub ne voit qu'un plugin, FMT companion garde tout ce qu'il fait, ses réglages, ses rôles du
-// Control Mapper et ses propriétés (même nom de classe, donc mêmes noms pour SimHub). Rien n'est réécrit : c'est sa DLL qui
-// tourne. Activé ou coupé, le changement prend effet au prochain lancement de SimHub.
+// Module FMT companion : le plugin FMT companion de Nathan, porté par ce plugin. Son code (retrouvé le 23/11/2026 en
+// décompilant sa DLL 0.5) est dans src/fmt/ et compilé par la CI en FMTCompanion.dll, embarquée dans la DLL du plugin
+// (ressource « fmt/FMTCompanion.dll ») : la mise à jour du plugin la donne à chaque pilote. Au lancement elle est écrite à
+// part (dossier EnduranceManager de SimHub, que SimHub ne charge pas tout seul, sinon %LOCALAPPDATA%\EnduranceManager si
+// ce dossier demande les droits admin) et lancée d'ici quand le module est activé : SimHub ne voit qu'un plugin, FMT
+// companion garde tout ce qu'il fait, ses réglages, ses rôles du Control Mapper et ses propriétés (même nom de classe,
+// donc mêmes noms pour SimHub). Depuis 0.6.0, il ne lit plus le menu des stands en boucle : il prend celui que ce plugin
+// lit (Offer), sait par ce plugin si LMU tourne (LmuOpen), et ne lit lui-même le menu que si un écran montre ses valeurs.
+// Activé ou coupé, le changement prend effet au prochain lancement de SimHub.
 using System;
 using System.IO;
 using System.Linq;
@@ -35,7 +37,14 @@ namespace EnduranceManager.SimHub
         // A failed start is not a change waiting for the next launch.
         public bool StartAttempted { get; private set; }
 
-        public void Start(PluginManager manager)
+        // Endurance Manager's side (0.6.0): whether LMU runs, the pit menu each time this plugin reads it, and its page open.
+        Action<string> offer;
+        Action touch;
+
+        public void Offer(string menu) { try { offer?.Invoke(menu); } catch { } }
+        public void Touch() { try { touch?.Invoke(); } catch { } }
+
+        public void Start(PluginManager manager, Func<bool> lmuOpen = null)
         {
             StartAttempted = true;
             try
@@ -50,6 +59,7 @@ namespace EnduranceManager.SimHub
                 instance.PluginManager = manager;
                 instance.Init(manager);
                 plugin = instance;
+                Hook(instance, lmuOpen);
                 Status = "FMT companion " + (assembly.GetName().Version?.ToString(3) ?? "") + " lancé.";
             }
             catch (Exception e)
@@ -83,6 +93,24 @@ namespace EnduranceManager.SimHub
             return File.Exists(Kept) ? Kept : null;
         }
 
+        // FMT companion's hooks (FMTCompanionPlugin.LmuOpen, Touch, Service.Offer), by name: an older FMT companion without
+        // them runs as it always did.
+        void Hook(IPlugin instance, Func<bool> lmuOpen)
+        {
+            const BindingFlags Any = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+            try
+            {
+                var type = instance.GetType();
+                if (lmuOpen != null) type.GetField("LmuOpen", Any)?.SetValue(instance, lmuOpen);
+                var touchMethod = type.GetMethod("Touch", Any, null, Type.EmptyTypes, null);
+                if (touchMethod != null) touch = (Action)Delegate.CreateDelegate(typeof(Action), instance, touchMethod);
+                var service = type.GetField("Service", Any)?.GetValue(instance);
+                var offerMethod = service?.GetType().GetMethod("Offer", Any, null, new[] { typeof(string) }, null);
+                if (offerMethod != null) offer = (Action<string>)Delegate.CreateDelegate(typeof(Action<string>), service, offerMethod);
+            }
+            catch { }
+        }
+
         static Type[] Loadable(Assembly assembly)
         {
             try { return assembly.GetTypes(); }
@@ -106,6 +134,7 @@ namespace EnduranceManager.SimHub
 
         public void End(PluginManager manager)
         {
+            offer = null; touch = null;
             try { plugin?.End(manager); } catch { }
             plugin = null;
         }

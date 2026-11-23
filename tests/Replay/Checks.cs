@@ -68,10 +68,10 @@ namespace EnduranceManager.SimHub.Replay
                 Text = n == "FL TIRE" ? "No Change" : n == "REPLACE BRAKES" ? "No" : "1"
             }).ToList();
             var box = new BlackBox();
-            var props = box.Properties().ToDictionary(p => p.name, p => p.get);
+            var props = new BlackBoxPages(box).Properties().ToDictionary(p => p.name, p => p.get);
             object V(string name) => props[name]();
             box.Update(Menu());
-            Is(box.Chosen == "" && box.Top == 0, "Premier menu lu : aucune ligne choisie, fenêtre en haut");
+            Is(box.Chosen == "DAMAGE" && box.Top == 0, "Premier menu lu : curseur sur la 1re ligne, fenêtre en haut");
             Is((string)V("BlackBox.1.Nom") == "Dommages" && (string)V("BlackBox.2.Nom") == "Énergie Virtuelle:", "Noms du jeu en français");
             Is((string)V("BlackBox.5.Valeur") == "Aucun changement", "« No Change » écrit « Aucun changement »");
             Is((bool)V("BlackBox.Bas") && !(bool)V("BlackBox.Haut"), "Flèche du bas seulement");
@@ -85,6 +85,97 @@ namespace EnduranceManager.SimHub.Replay
             Is(box.Chosen == "FL PRESS" && box.Top == names.Length - BlackBox.Rows, "Pression AvG visible : la fenêtre ne bouge pas");
             box.Update(Menu(("VIRTUAL ENERGY", 4), ("REPLACE BRAKES", 1), ("FL PRESS", 2)));
             Is(box.Chosen == "VIRTUAL ENERGY" && box.Top == 1, "Énergie au-dessus : la fenêtre remonte juste assez");
+            // ▲ ▼ du volant : le curseur du dash bouge, s'arrête aux bouts, la fenêtre le suit.
+            box.Move(-1);
+            Is(box.Chosen == "DAMAGE" && box.Top == 0, "Monter : énergie puis dommages, fenêtre tout en haut");
+            box.Move(-1);
+            Is(box.Chosen == "DAMAGE", "Monter sur la 1re ligne : on y reste");
+            for (int k = 0; k < 10; k++) box.Move(1);
+            Is(box.Chosen == "FL PRESS" && box.Top == 4, "Descendre 10 fois : Pression AvG, la fenêtre descend juste assez");
+            Is((bool)V("BlackBox.7.Choisie"), "Pression AvG en 7e ligne visible");
+            for (int k = 0; k < 20; k++) box.Move(1);
+            Is(box.Chosen == "REPLACE BRAKES" && box.Top == names.Length - BlackBox.Rows, "Descendre au bout : dernière ligne");
+            int before = box.Top;
+            box.Select(0);
+            Is(box.Chosen == names[before] && box.Top == before - 1, "Toucher la 1re ligne visible la choisit et remonte d'une ligne");
+            Is((string)V("BlackBox.Page") == "Arrêt aux stands" && (string)V("BlackBox.Message") == "", "Titre de la page, pas de message");
+            // − + comme la black box du jeu : tour complet dans les deux sens, « Pneus » règle les 4 roues.
+            JObject Line(string name, int current, params string[] choices) => new JObject
+            {
+                ["name"] = name, ["currentSetting"] = current, ["settings"] = new JArray(choices.Select(c => new JObject { ["text"] = c }))
+            };
+            string[] tyres = { "No Change", "Soft", "Medium", "Hard", "Wet", "INVALID" };
+            var menu = new JArray(Line("TIRES:", 0, tyres), Line("FL TIRE:", 0, tyres), Line("FR TIRE:", 0, tyres), Line("RL TIRE:", 0, tyres), Line("RR TIRE:", 0, tyres),
+                Line("VIRTUAL ENERGY:", 2, "98%", "99%", "100%"), Line("DAMAGE:", 0, "N/A"));
+            int At(string name) => (int)menu.OfType<JObject>().First(l => PitMenu.Key(l) == name)["currentSetting"];
+            Is(BlackBox.Step(menu, "TIRES", -1) && At("TIRES") == 4, "Pneus : moins depuis « Aucun changement » donne pluie (« INVALID » sauté)");
+            Is(At("FL TIRE") == 4 && At("FR TIRE") == 4 && At("RL TIRE") == 4 && At("RR TIRE") == 4, "Pneus : les 4 roues suivent");
+            Is(BlackBox.Step(menu, "TIRES", 1) && At("TIRES") == 0 && At("RR TIRE") == 0, "Pneus : plus depuis pluie revient à « Aucun changement »");
+            var mixed = new JArray(Line("TIRES:", 0, "No Change", "Mixed", "Soft"));
+            Is(BlackBox.Step(mixed, "TIRES", 1) && (int)mixed[0]["currentSetting"] == 2, "Pneus : « Mixte » jamais proposé par − +, comme les touches du jeu");
+            Is(BlackBox.Step(menu, "FL TIRE", 1) && At("FL TIRE") == 1 && At("FR TIRE") == 0, "Une roue seule : les autres ne bougent pas");
+            Is(BlackBox.Step(menu, "VIRTUAL ENERGY", 1) && At("VIRTUAL ENERGY") == 0, "Énergie : plus après le dernier choix revient au premier");
+            Is(!BlackBox.Step(menu, "DAMAGE", 1), "Un seul choix : rien ne bouge");
+            // Les 7 pages (BlackBoxPages.cs) : ◂ ▸ font le tour, chaque page ses boutons, comme la black box du jeu.
+            var sent = new List<string>();
+            var pages = new BlackBoxPages(box, id => { sent.Add(id); return null; });
+            var pv = pages.Properties().ToDictionary(p => p.name, p => p.get);
+            object PV(string name) => pv[name]();
+            Is(pages.Page == BlackBoxPages.Stands, "Première page : Arrêt aux stands");
+            pages.Turn(1);
+            Is((string)PV("BlackBox.Page") == "Relatif" && (int)PV("BlackBox.PageNo") == 0, "Page suivante après Arrêt aux stands : Relatif (le tour)");
+            pages.Turn(-1);
+            Is((string)PV("BlackBox.Page") == "Relatif", "Le même appui reçu deux fois de suite (moins de 250 ms) : compté une fois");
+            System.Threading.Thread.Sleep(300); pages.Turn(-1); System.Threading.Thread.Sleep(300); pages.Turn(-1);
+            Is((string)PV("BlackBox.Page") == "Électronique", "Page précédente deux fois : Électronique");
+            Is(pages.Presses.Contains("page précédente"), "Appuis notés");
+            var car = new Sample { Fuel = 60, Energy = 80, MotorState = 2, Battery = 0.5, TC = 3, TCMax = 9, RearBrakeBias = 0.477, LapsDone = 3, Wheels = new Wheel[4],
+                FrontCompound = "Medium", RearCompound = "Medium" };
+            car.Wheels[0] = new Wheel { Wear = 0.99, Pressure = 122.7, Temp = 22.4, TreadIn = 33, TreadMid = 34, TreadOut = 35, Brake = 85.5 };
+            car.Wheels[1] = new Wheel { Wear = 0.5, Off = true };
+            var cv = new CourseView { FuelAvg5 = 3, FuelLastLap = 2.5, VeAvg5 = 4, VeLastLap = 5, LapTimeAvg10 = 120, RegenLevel = 2 };
+            pages.Update(null, car, cv);
+            Is((string)PV("BlackBox.1.Nom") == "Contrôle de traction" && (string)PV("BlackBox.1.Valeur") == "3" && (bool)PV("BlackBox.1.Choisie"), "Électronique : TC en 1re ligne, choisi");
+            Is((string)PV("BlackBox.2.Nom") == "Répartition des freins" && (string)PV("BlackBox.2.Valeur") == "52.3:47.7", "Électronique : répartition avant:arrière");
+            var peugeot = BlackBoxPages.Settings(new Sample { AntiSwayFront = 4, AntiSwayFrontMax = 15, AntiSwayRear = 0, AntiSwayRearMax = 15, Migration = 1, MigrationMax = 5,
+                MotorMap = 10, MotorMapMax = 10, MotorState = 2, Regen = 60 }, null).ToDictionary(x => x.Key, x => x.Value);
+            Is(peugeot["FrontARB"] == "P4" && peugeot["RearARB"] == "Detached" && peugeot["Migration"] == "2.0% F" && peugeot["MotorMap"] == "200kW" && peugeot["Regen"] == "60kW",
+                "Électronique : textes du jeu (ARB, migration, carto, recharge)");
+            Is((string)PV("BlackBox.3.Nom") == "Niveau de recharge" && (string)PV("BlackBox.4.Nom") == "", "Électronique : seulement les réglages de la voiture");
+            pages.Move(1); pages.Change(1); pages.Change(-1);
+            System.Threading.Thread.Sleep(300);
+            Is(sent.SequenceEqual(new[] { "Bias.Forward", "Bias.Rearward" }), "Électronique : − + passent par les commandes de FMT companion");
+            pages.Turn(-1);
+            Is((string)PV("BlackBox.1.Nom") == "◂ ▸  Virtual Energy" && (string)PV("BlackBox.1.Valeur") == "80%", "Carburant : Virtual Energy d'abord");
+            Is((string)PV("BlackBox.4.Nom") == "Pousser" && (string)PV("BlackBox.4.C1") == "16.0" && (string)PV("BlackBox.4.C2") == "32 mins" && (string)PV("BlackBox.4.C3") == "5.00%", "Carburant : pousser");
+            pages.Change(1);
+            Is((string)PV("BlackBox.1.Nom") == "◂ ▸  Carburant" && (string)PV("BlackBox.1.Valeur") == "60.00L", "Carburant : − + passent au carburant");
+            pages.Move(-1);
+            Is((string)PV("BlackBox.2.Valeur") == "+1 Tours  ▴▾" && (string)PV("BlackBox.4.Nom") == "Objectif" && (string)PV("BlackBox.4.C1") == "21.0", "Carburant : ▲ un tour de plus à sauver");
+            Is((string)PV("BlackBox.5.Nom") == "Estimation  ⚠", "Carburant : estimation trop courte signalée");
+            pages.Move(1); pages.Move(1);
+            Is((string)PV("BlackBox.2.Valeur") == "Aucun  ▴▾", "Carburant : ▼ jusqu'à « Aucun », pas en dessous");
+            System.Threading.Thread.Sleep(300);
+            pages.Turn(-1);
+            Is((string)PV("BlackBox.Pneus.AVG.Usure") == "99%" && (string)PV("BlackBox.Pneus.AVG.Gomme") == "M" && (string)PV("BlackBox.Pneus.AVG.Pression") == "122.7kPa"
+                && (string)PV("BlackBox.Pneus.AVG.Temp") == "34.0°C" && (string)PV("BlackBox.Pneus.Jeux") == "∞ Pneus", "Pneus : usure, gomme, pression, température, jeux");
+            Is((double)PV("BlackBox.Pneus.AVG.Reste") == 99.0 && (string)PV("BlackBox.Pneus.AVG.GommeCouleur") == "#FFFFD400", "Pneus : anneau qui s'use, medium en jaune");
+            Is((string)PV("BlackBox.Pneus.AVD.Etat") == "Perdue" && (string)PV("BlackBox.Pneus.AVD.Couleur") == "#FFE83A4C", "Pneus : roue perdue en rouge");
+            System.Threading.Thread.Sleep(300);
+            pages.Turn(-1);
+            Is((string)PV("BlackBox.1.Nom") == "◂ ▸  Delta" && (string)PV("BlackBox.3.Nom") == "▴ ▾  Timing" && (string)PV("BlackBox.4.Nom") == "Meilleur", "Chrono : Delta et Timing d'abord");
+            pages.Change(1); pages.Move(1);
+            car.LapsDone = 4; car.LastSector1 = 30; car.LastSector2 = 65; car.LastLap = 100;
+            pages.Update(null, car, cv);
+            Is((string)PV("BlackBox.1.Nom") == "◂ ▸  Secteur" && (string)PV("BlackBox.4.Nom") == "Dernier" && (string)PV("BlackBox.4.C2") == "1:05.000", "Chrono : Secteur, Relatif, temps à la fin de chaque secteur");
+            pages.Change(1);
+            Is((string)PV("BlackBox.4.C3") == "0:35.000", "Chrono : Split, temps de chaque secteur");
+            Is(BlackBoxPages.Short("Nathan Boulanger") == "N Boulanger" && BlackBoxPages.Badge("Hypercar").badge == "HY", "Relatif : nom court et catégorie");
+            Is(BlackBoxPages.Badge("LMP2 ELMS").color != BlackBoxPages.Badge("LMP2").color && BlackBoxPages.Badge("LMGT3").badge == "GT3" && BlackBoxPages.Badge("GTE").badge == "GTE"
+                && BlackBoxPages.Badge("LMP3").badge == "P3", "Relatif : toutes les catégories de LMU");
+            // Watched.cs : rien n'est calculé pour un écran fermé ; il compte comme ouvert dès qu'il lit une propriété.
+            var screen = new Watched(); bool closed = !screen.Now; screen.Wrap(() => 1)();
+            Is(closed && screen.Now, "Écran : fermé au départ, ouvert dès qu'il lit");
             foreach (var failure in failures) Console.WriteLine("ÉCHEC Black box : " + failure);
             if (failures.Count == 0) Console.WriteLine("OK    Black box : ligne choisie, défilement et noms");
             return failures.Count == 0;

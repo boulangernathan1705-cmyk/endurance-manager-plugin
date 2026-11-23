@@ -20,6 +20,8 @@ namespace EnduranceManager.SimHub
         const string Text = "SimHub.Plugins.OutputPlugins.GraphicalDash.Models.TextItem, SimHub.Plugins";
         const string Rectangle = "SimHub.Plugins.OutputPlugins.GraphicalDash.Models.RectangleItem, SimHub.Plugins";
         const string Layer = "SimHub.Plugins.OutputPlugins.GraphicalDash.Models.Layer, SimHub.Plugins";
+        // At most 10 images a second (none before): the overlays change once a second, the mur 10 times a second.
+        const double RefreshMs = 100;
         const string Grey = "#FF9CAABD", Body = "Bahnschrift", Digits = "Bahnschrift";
         // Full-width cards: a large figure, signed delta on the right, and the target below.
         const int BlockWidth = 485, BlockHeight = 140, Gap = 8, RowGap = 5;
@@ -87,7 +89,7 @@ namespace EnduranceManager.SimHub
             var layer = new JObject
             {
                 ["$type"] = Layer, ["Group"] = true, ["Repetitions"] = 0, ["Visible"] = true, ["Name"] = "Endurance Manager", ["RenderingSkip"] = 0,
-                ["MinimumRefreshIntervalMS"] = 0.0, ["Top"] = 0, ["Left"] = 0, ["Height"] = height, ["Width"] = width, ["BackgroundColor"] = "#00FFFFFF",
+                ["MinimumRefreshIntervalMS"] = RefreshMs, ["Top"] = 0, ["Left"] = 0, ["Height"] = height, ["Width"] = width, ["BackgroundColor"] = "#00FFFFFF",
                 ["Bindings"] = new JObject { ["Visible"] = Bind("Visible", P("EnEssais") + " || " + P("EnCourse")) }, ["Childrens"] = children
             };
             var metadata = new JObject
@@ -120,7 +122,7 @@ namespace EnduranceManager.SimHub
             var layer = new JObject
             {
                 ["$type"] = Layer, ["Group"] = true, ["Repetitions"] = 0, ["Visible"] = true, ["Name"] = "Mur", ["RenderingSkip"] = 0,
-                ["MinimumRefreshIntervalMS"] = 0.0, ["Top"] = 0, ["Left"] = 0, ["Height"] = height, ["Width"] = width, ["BackgroundColor"] = "#00FFFFFF",
+                ["MinimumRefreshIntervalMS"] = RefreshMs, ["Top"] = 0, ["Left"] = 0, ["Height"] = height, ["Width"] = width, ["BackgroundColor"] = "#00FFFFFF",
                 ["Childrens"] = WallDash.Items()
             };
             var metadata = new JObject
