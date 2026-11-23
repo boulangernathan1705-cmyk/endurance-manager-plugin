@@ -185,6 +185,8 @@ namespace EnduranceManager.SimHub
                 ["EM - Black box - Moins"] = () => BlackBox.Change(-1)
             });
             if (Settings.CompanionOn) blackBoxRoles.Start();
+            // Where the roles stand (created, Control Mapper missing…), readable in SimHub's property list.
+            this.AttachDelegate("BlackBox.Roles", () => blackBoxRoles.Status);
             this.AttachDelegate("Profils.Actif", () => Settings.Profiles ? Profiles.Active ?? "" : "");
             this.AttachDelegate("Profils.Applique", () => Settings.Profiles ? Profiles.Applied ?? "" : "");
             this.AttachDelegate("Profils.NonActif", () => Settings.Profiles && Profiles.NotActive);
