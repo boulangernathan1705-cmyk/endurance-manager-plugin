@@ -45,6 +45,8 @@
     <EmbeddedResource Include="mur\**\*" LogicalName="mur/%(RecursiveDir)%(Filename)%(Extension)" />
     <!-- The plugin's screen as a web page (ScreenApi.cs, WebScreen.cs), served under /ecran/. -->
     <EmbeddedResource Include="ecran\**\*" LogicalName="ecran/%(RecursiveDir)%(Filename)%(Extension)" />
+    <!-- FMT companion 0.5 (its DLL, source lost), carried inside the plugin: the update gives it to every pilot (Companion.cs). -->
+    <EmbeddedResource Include="fmt\FMTCompanion.dll" LogicalName="fmt/FMTCompanion.dll" />
     
   </ItemGroup>
   <ItemGroup>

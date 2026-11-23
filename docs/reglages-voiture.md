@@ -3,8 +3,11 @@
 ## Black box sur boutons (FMT companion)
 
 - FMT companion = plugin SimHub de Nathan (`FMTCompanionPlugin`, version 0.5). **Son code source est perdu**, seule la
-  DLL existe (sur le PC de Nathan : `Documents\Projets\FMT companion\FMT Companion 0.5.zip`).
-- `Companion.cs` la charge telle quelle (`Assembly.LoadFrom` depuis `SimHub\EnduranceManager\FMTCompanion.dll`), lui
+  DLL existe : `src/fmt/FMTCompanion.dll` (copie de `FMT Companion 0.5.zip`, SHA-256 `aac2eba5…2e4f`).
+- Elle est **dans la DLL du plugin** (ressource `fmt/FMTCompanion.dll`) : la mise à jour du plugin la donne à chaque
+  pilote, rien à installer à part. Au lancement, module activé, `Companion.Unpack` l'écrit dans
+  `SimHub\EnduranceManager\` (ou `%LOCALAPPDATA%\EnduranceManager\` si le dossier de SimHub demande les droits admin).
+- `Companion.cs` la charge telle quelle (`Assembly.LoadFrom` depuis ce fichier), lui
   passe `Init` / `DataUpdate` / `End`, et affiche son écran WPF dans l'onglet du module. L'installeur déplace un
   `FMTCompanion.dll` installé seul dans ce dossier (jamais deux fois dans SimHub).
 - Comment FMT companion agit : le menu des stands est **écrit par l'API LMU** (`GET rest/garage/PitMenu/receivePitMenu`,

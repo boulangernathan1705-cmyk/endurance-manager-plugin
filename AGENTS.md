@@ -18,7 +18,7 @@ suprême » : écran le plus simple, textes courts.
   moi » ne doit dépendre du site.
 - **Ne pas changer le comportement** de la lecture LMU (`Live.cs`, `Telemetry.cs`, `LmuApi.cs`, `GameApi.cs`) ni des
   boutons de la black box (`Profiles.cs`, `Companion.cs`) sans le dire clairement dans la PR : ils sont validés en piste.
-- FMT companion 0.5 est intégré tel quel (sa DLL, `Companion.cs`) ; son code source est perdu. Ne jamais le simplifier.
+- FMT companion 0.5 est intégré tel quel (sa DLL `src/fmt/FMTCompanion.dll`, embarquée dans le plugin ; `Companion.cs`) ; son code source est perdu. Ne jamais le simplifier.
 - Jamais de code copié de Strat Calculator (logiciel payant) ou d'un autre produit.
 - Le format envoyé au site est un contrat : `shared/live.mjs` et `shared/combos.mjs` du dépôt
   [app-endurance-manager](https://github.com/boulangernathan1705-cmyk/app-endurance-manager). Un changement de format se

@@ -1,6 +1,8 @@
 // Module FMT companion : le plugin FMT companion de Nathan (0.5, FMTCompanion.dll), tel quel, porté par ce plugin.
-// Sa DLL est rangée à part (dossier EnduranceManager de SimHub, que SimHub ne charge pas tout seul) et lancée d'ici quand
-// le module est activé : SimHub ne voit qu'un plugin, FMT companion garde tout ce qu'il fait, ses réglages, ses rôles du
+// Sa DLL est dans celle du plugin (src/fmt/, ressource « fmt/FMTCompanion.dll ») : la mise à jour du plugin la donne à
+// chaque pilote. Au lancement elle est écrite à part (dossier EnduranceManager de SimHub, que SimHub ne charge pas tout
+// seul, sinon %LOCALAPPDATA%\EnduranceManager si ce dossier demande les droits admin) et lancée d'ici quand le module est
+// activé : SimHub ne voit qu'un plugin, FMT companion garde tout ce qu'il fait, ses réglages, ses rôles du
 // Control Mapper et ses propriétés (même nom de classe, donc mêmes noms pour SimHub). Rien n'est réécrit : c'est sa DLL qui
 // tourne. Activé ou coupé, le changement prend effet au prochain lancement de SimHub.
 using System;
@@ -17,9 +19,12 @@ namespace EnduranceManager.SimHub
         public const string FileName = "FMTCompanion.dll";
         IPlugin plugin;
 
-        // Where the DLL is kept: SimHub\EnduranceManager\FMTCompanion.dll (put there by the installer).
+        public const string Resource = "fmt/FMTCompanion.dll";
+        // Where the DLL is run from: SimHub\EnduranceManager\FMTCompanion.dll, written there from the copy in this plugin
+        // (or left there by an older installer); %LOCALAPPDATA%\EnduranceManager when SimHub's folder needs admin rights.
         public static string Folder => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "EnduranceManager");
         public static string Kept => Path.Combine(Folder, FileName);
+        public static string Spare => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EnduranceManager", FileName);
         // The old way: FMT companion as its own plugin in SimHub's folder. Both at once would run it twice.
         public static string Alone => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, FileName);
 
@@ -31,8 +36,9 @@ namespace EnduranceManager.SimHub
             try
             {
                 if (File.Exists(Alone)) { Status = "FMT companion est encore installé seul dans SimHub : relance l'installeur du plugin, il le range ici."; return; }
-                if (!File.Exists(Kept)) { Status = "FMTCompanion.dll manque dans " + Folder + " : relance l'installeur du plugin."; return; }
-                var assembly = Assembly.LoadFrom(Kept);
+                var path = Unpack();
+                if (path == null) { Status = "FMTCompanion.dll n'a pas pu être écrit dans " + Folder + " ni dans " + Path.GetDirectoryName(Spare) + "."; return; }
+                var assembly = Assembly.LoadFrom(path);
                 var type = Loadable(assembly).FirstOrDefault(t => typeof(IPlugin).IsAssignableFrom(t) && !t.IsAbstract && t.GetConstructor(Type.EmptyTypes) != null);
                 if (type == null) { Status = "Aucun plugin SimHub trouvé dans FMTCompanion.dll."; return; }
                 var instance = (IPlugin)Activator.CreateInstance(type);
@@ -46,6 +52,30 @@ namespace EnduranceManager.SimHub
                 plugin = null;
                 Status = "FMT companion n'a pas pu démarrer : " + (e.InnerException ?? e).Message;
             }
+        }
+
+        // The DLL carried in this plugin, written where it can run (same bytes already there: left as it is). Without the
+        // carried copy (a build without it), the one an installer left.
+        static string Unpack()
+        {
+            byte[] carried;
+            using (var stream = typeof(Companion).Assembly.GetManifestResourceStream(Resource))
+            {
+                if (stream == null) return File.Exists(Kept) ? Kept : null;
+                using (var memory = new MemoryStream()) { stream.CopyTo(memory); carried = memory.ToArray(); }
+            }
+            foreach (var path in new[] { Kept, Spare })
+            {
+                try
+                {
+                    if (File.Exists(path) && File.ReadAllBytes(path).SequenceEqual(carried)) return path;
+                    Directory.CreateDirectory(Path.GetDirectoryName(path));
+                    File.WriteAllBytes(path, carried);
+                    return path;
+                }
+                catch { }
+            }
+            return File.Exists(Kept) ? Kept : null;
         }
 
         static Type[] Loadable(Assembly assembly)
