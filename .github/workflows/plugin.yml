@@ -24,18 +24,24 @@ env:
   SITE_REF: dev
 
 jobs:
-  # PR fermée (fusionnée ou non) : sa pré-version « pr-N » part.
+  # Les pré-versions « pr-N » des PR fermées (fusionnées ou non) partent : à la fermeture, et à chaque passage sur main
+  # (une fusion faite par une appli ne déclenche pas toujours l'événement « closed »).
   nettoyage:
-    name: zip de test retiré
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    name: zips de test des PR fermées retirés
+    if: (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: read
     steps:
       - env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: gh release delete "pr-${{ github.event.pull_request.number }}" --cleanup-tag --yes || true
+        run: |
+          for tag in $(gh release list --limit 100 --json tagName --jq '.[].tagName | select(startswith("pr-"))'); do
+            state=$(gh pr view "${tag#pr-}" --json state --jq .state 2>/dev/null || echo CLOSED)
+            if [ "$state" != "OPEN" ]; then gh release delete "$tag" --cleanup-tag --yes && echo "$tag retirée"; fi
+          done
 
   plugin:
     name: compilation et rejeu
@@ -155,7 +161,9 @@ jobs:
 
       # Une version nouvelle sur main : une Release GitHub avec le zip (ce que les pilotes installent).
       - name: Publier la Release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        # Aussi en lancement manuel sur main (Actions › Plugin › Run workflow) : une fusion faite par une appli ne
+        # déclenche pas toujours la CI.
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.zip.outputs.version }}
