@@ -119,8 +119,11 @@ namespace EnduranceManager.SimHub
         public void Select(int row)
         {
             var list = items; int k = top + row;
-            if (k >= 0 && k < list.Count) chosen = list[k].Name;
-            Follow();
+            if (k < 0 || k >= list.Count) return;
+            chosen = list[k].Name;
+            // The first or last line shown: the page moves by one so the next line comes into view, as with ▲ ▼.
+            if (row == Rows - 1 && top + Rows < list.Count) top++;
+            else if (row == 0 && top > 0) top--;
         }
 
         // − + : the chosen line one choice down or up, round the list both ways as in the game's black box (« Aucun
@@ -150,9 +153,14 @@ namespace EnduranceManager.SimHub
         {
             var line = menu.OfType<JObject>().FirstOrDefault(l => PitMenu.Key(l) == name);
             int count = (line?["settings"] as JArray)?.Count ?? 0;
-            if (count < 2) return false;
-            int next = (((int?)line["currentSetting"] ?? 0) + step) % count;
-            if (next < 0) next += count;
+            int now = (int?)line?["currentSetting"] ?? 0, next = now;
+            // Round the list, past the choices the game never shows (« INVALID », empty).
+            for (int k = 0; k < count; k++)
+            {
+                next = ((next + step) % count + count) % count;
+                if (Usable(Choice(line, next))) break;
+            }
+            if (count < 2 || next == now || !Usable(Choice(line, next))) return false;
             line["currentSetting"] = next;
             if (name == "TIRES")
             {
@@ -166,6 +174,8 @@ namespace EnduranceManager.SimHub
             }
             return true;
         }
+
+        static bool Usable(string text) => text != "" && !string.Equals(text, "INVALID", StringComparison.OrdinalIgnoreCase);
 
         static string Choice(JObject line, int index) => ((string)((line["settings"] as JArray)?[index]?["text"]) ?? "").Trim();
 
@@ -271,21 +281,20 @@ namespace EnduranceManager.SimHub
             }
             items.Add(Text("PlusHaut", Width / 2 - 20, Header, 40, 22, 16, "'▲'", Arrow, 1, P("Haut")));
             items.Add(Text("PlusBas", Width / 2 - 20, Height - 24, 40, 22, 16, "'▼'", Arrow, 1, P("Bas")));
-            // Touch (format of Dash Studio's buttons, read in Lovely Dashboard; Dash Studio has no swipe, only touches): a
-            // line touched is chosen; on the chosen line the left of the value lowers it, the right raises it; the arrows
-            // ▲ ▼ move by one line; a touch on the far left or far right edge changes page. Transparent: the page looks the same.
+            // Touch (format of Dash Studio's buttons, read in Lovely Dashboard; Dash Studio has no swipe, only touches, and
+            // buttons on top of each other all fire: none overlap). Another line touched is chosen (the first or last one
+            // shown also scrolls by one); the chosen line, left half −, right half +; the far left or far right edge changes
+            // page. Transparent: the page looks the same.
             const int Edge = 60;
-            for (int k = 0; k < BlackBox.Rows; k++)
-                items.Add(Button("ToucherLigne" + (k + 1), Edge, Header + k * row, Width - 2 * Edge, row, "BlackBoxLigne" + (k + 1)));
+            double half = (Width - 2 * Edge) / 2.0;
             for (int k = 0; k < BlackBox.Rows; k++)
             {
                 double y = Header + k * row;
                 string chosen = P((k + 1) + ".Choisie");
-                items.Add(Button("ToucherMoins" + (k + 1), 400, y, 170, row, "BlackBoxMoins", chosen));
-                items.Add(Button("ToucherPlus" + (k + 1), 570, y, Width - Edge - 570, row, "BlackBoxPlus", chosen));
+                items.Add(Button("ToucherLigne" + (k + 1), Edge, y, Width - 2 * Edge, row, "BlackBoxLigne" + (k + 1), "!" + chosen));
+                items.Add(Button("ToucherMoins" + (k + 1), Edge, y, half, row, "BlackBoxMoins", chosen));
+                items.Add(Button("ToucherPlus" + (k + 1), Edge + half, y, half, row, "BlackBoxPlus", chosen));
             }
-            items.Add(Button("ToucherMonter", Width / 2 - 60, Header, 120, 30, "BlackBoxMonter", P("Haut")));
-            items.Add(Button("ToucherDescendre", Width / 2 - 60, Height - 30, 120, 30, "BlackBoxDescendre", P("Bas")));
             items.Add(Button("ToucherPagePrecedente", 0, 0, Edge, Height, "BlackBoxPagePrecedente"));
             items.Add(Button("ToucherPageSuivante", Width - Edge, 0, Edge, Height, "BlackBoxPageSuivante"));
             return items;

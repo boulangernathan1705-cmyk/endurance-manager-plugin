@@ -95,19 +95,20 @@ namespace EnduranceManager.SimHub.Replay
             Is((bool)V("BlackBox.7.Choisie"), "Pression AvG en 7e ligne visible");
             for (int k = 0; k < 20; k++) box.Move(1);
             Is(box.Chosen == "REPLACE BRAKES" && box.Top == names.Length - BlackBox.Rows, "Descendre au bout : dernière ligne");
+            int before = box.Top;
             box.Select(0);
-            Is(box.Chosen == names[box.Top], "Toucher la 1re ligne visible la choisit");
+            Is(box.Chosen == names[before] && box.Top == before - 1, "Toucher la 1re ligne visible la choisit et remonte d'une ligne");
             Is((string)V("BlackBox.Page") == "Arrêt aux stands" && (string)V("BlackBox.Message") == "", "Titre de la page, pas de message");
             // − + comme la black box du jeu : tour complet dans les deux sens, « Pneus » règle les 4 roues.
             JObject Line(string name, int current, params string[] choices) => new JObject
             {
                 ["name"] = name, ["currentSetting"] = current, ["settings"] = new JArray(choices.Select(c => new JObject { ["text"] = c }))
             };
-            string[] tyres = { "No Change", "Soft", "Medium", "Hard", "Wet" };
+            string[] tyres = { "No Change", "Soft", "Medium", "Hard", "Wet", "INVALID" };
             var menu = new JArray(Line("TIRES:", 0, tyres), Line("FL TIRE:", 0, tyres), Line("FR TIRE:", 0, tyres), Line("RL TIRE:", 0, tyres), Line("RR TIRE:", 0, tyres),
                 Line("VIRTUAL ENERGY:", 2, "98%", "99%", "100%"), Line("DAMAGE:", 0, "N/A"));
             int At(string name) => (int)menu.OfType<JObject>().First(l => PitMenu.Key(l) == name)["currentSetting"];
-            Is(BlackBox.Step(menu, "TIRES", -1) && At("TIRES") == 4, "Pneus : moins depuis « Aucun changement » donne pluie");
+            Is(BlackBox.Step(menu, "TIRES", -1) && At("TIRES") == 4, "Pneus : moins depuis « Aucun changement » donne pluie (« INVALID » sauté)");
             Is(At("FL TIRE") == 4 && At("FR TIRE") == 4 && At("RL TIRE") == 4 && At("RR TIRE") == 4, "Pneus : les 4 roues suivent");
             Is(BlackBox.Step(menu, "TIRES", 1) && At("TIRES") == 0 && At("RR TIRE") == 0, "Pneus : plus depuis pluie revient à « Aucun changement »");
             Is(BlackBox.Step(menu, "FL TIRE", 1) && At("FL TIRE") == 1 && At("FR TIRE") == 0, "Une roue seule : les autres ne bougent pas");
