@@ -84,7 +84,7 @@ internal sealed class KeyboardCombo
 	public static ushort[] Scancodes(string modifiers)
 	{
 		return (from m in modifiers.Split('+')
-			select m.Trim() switch
+			select (ushort)(m.Trim() switch
 			{
 				"Ctrl" => 29, 
 				"Shift" => 42, 
@@ -92,7 +92,7 @@ internal sealed class KeyboardCombo
 				"CtrlD" => 285, 
 				"AltGr" => 312, 
 				_ => throw new ArgumentException("Touche inconnue : " + m), 
-			}).ToArray();
+			})).ToArray();
 	}
 
 	public static string Help(FmtFunction f)
