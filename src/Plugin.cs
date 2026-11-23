@@ -45,8 +45,8 @@ namespace EnduranceManager.SimHub
         public int? MurH { get; set; }
         // Mur des stands (Wall.cs): our car on the dash « Endurance Manager · Mur », from this PC alone. Off by default.
         public bool Wall { get; set; } = false;
-        // FMT companion, whole, run by this plugin (Companion.cs). Not chosen yet: on when the installer put its DLL in
-        // our folder (it was installed alone before). Takes effect at SimHub's next start.
+        // FMT companion, whole, run by this plugin (Companion.cs). Not chosen yet: on when its DLL is already in our folder
+        // (an older installer moved it there, or the module ran before); off for a new pilot, who turns it on. Takes effect at SimHub's next start.
         public bool? Companion { get; set; }
         // « Aide au développement » (Report.cs): a journal of what the plugin does, for the development. Off by default.
         public bool Report { get; set; } = false;
@@ -54,7 +54,7 @@ namespace EnduranceManager.SimHub
         public bool GuideDone { get; set; } = false;
         // The version the pilot was told about (Update.cs): after an update, the window « Tu as la version… » shows once.
         public string SeenVersion { get; set; }
-        [Newtonsoft.Json.JsonIgnore] public bool CompanionOn => Companion ?? System.IO.File.Exists(EnduranceManager.SimHub.Companion.Kept);
+        [Newtonsoft.Json.JsonIgnore] public bool CompanionOn => Companion ?? (System.IO.File.Exists(EnduranceManager.SimHub.Companion.Kept) || System.IO.File.Exists(EnduranceManager.SimHub.Companion.Spare));
     }
 
     [PluginDescription("Overlay relais, réglages voiture en course, black box sur boutons et mur des stands pour Le Mans Ultimate. Le partage avec l'équipe passe par le site, en option.")]

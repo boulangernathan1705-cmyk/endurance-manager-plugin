@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Black box sur boutons</title>
+<!-- Maquette 23/11/2026 : la page « Black box sur boutons » du plugin, avec tout l'écran de FMT companion 0.5 dedans
+     (commandes à cocher, Préparer LMU, Control Mapper, Stream Deck, Tester). Même charte que src/ecran/index.html. -->
+<style>
+:root{
+  --bg:#07090a;--panel:rgba(12,17,19,.92);--panel2:rgba(18,25,28,.88);--line:rgba(73,118,123,.52);--line2:rgba(76,129,134,.30);
+  --text:#eef3f2;--cream:#f1e3c4;--muted:#91a4a7;--accent:#59d3d8;--ok:#3ecf8e;--warn:#e7b653;--danger:#e4483d;--danger-text:#ff8b82;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font:14.5px/1.45 Arial,Helvetica,sans-serif;color:var(--text);background-color:var(--bg);
+  background-image:linear-gradient(rgba(7,9,10,.80),rgba(7,9,10,.88)),url("../../src/ecran/tech-pattern.svg"),radial-gradient(circle at 18% 4%,rgba(84,205,211,.10),transparent 26rem),radial-gradient(circle at 82% 18%,rgba(228,72,61,.07),transparent 30rem);
+  background-size:auto,720px 480px,auto,auto;background-position:center,40px 10px,center,center;display:flex;flex-direction:column;overflow:hidden}
+h1,h2,h3,p{margin:0}
+button,input,textarea{font:inherit;color:inherit}
+/* The site's banner as a thin band, its title always whole: the picture keeps its proportions (cropped to the
+   title's height, bandeau.jpg), left-aligned when the window is narrow, centred with a blurred fill when wide. */
+.banner{position:relative;flex:none;height:clamp(56px,8.3vw,120px);overflow:hidden;background:#070a0c}
+.banner::before{content:"";position:absolute;inset:-20px;background:url("../../src/ecran/bandeau.jpg") center/cover;filter:blur(16px) brightness(.5)}
+.banner i{position:absolute;top:0;bottom:0;left:max(0px,calc(50% - 6.03 * clamp(56px,8.3vw,120px)));aspect-ratio:2048/170;background:url("../../src/ecran/bandeau.jpg") center/cover}
+.stripes{height:5px;flex:none;display:grid;grid-template-columns:1.35fr .72fr .72fr .55fr}
+.stripes i:nth-child(1){background:linear-gradient(90deg,#3bbcc4,#78dce0)}.stripes i:nth-child(2){background:linear-gradient(90deg,#d9433a,#f05b42)}
+.stripes i:nth-child(3){background:linear-gradient(90deg,#dfa63e,#efca70)}.stripes i:nth-child(4){background:#1c2427}
+.shell{flex:1;display:flex;min-height:0}
+nav{flex:none;width:262px;padding:18px 12px;display:flex;flex-direction:column;overflow-y:auto;border-right:1px solid rgba(92,211,216,.26);background:rgba(7,11,13,.72)}
+.nv{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:0 10px 0 12px;margin-bottom:2px;border-radius:9px;border:1px solid transparent;background:transparent;color:#dce6e3;font-weight:700;font-size:14px;cursor:pointer;text-align:left;position:relative}
+.nv:hover{background:rgba(25,37,40,.8)}
+.nv[aria-current="page"]{background:linear-gradient(180deg,#1f5f64,#17484d);border-color:rgba(91,213,218,.72);color:#eaffff;box-shadow:inset 0 1px rgba(255,255,255,.09)}
+.nv svg{flex:none}.nv .lb{flex:1}
+.dot{width:7px;height:7px;border-radius:50%;flex:none;background:#3a4044}.dot.on{background:var(--ok)}
+.grp{font:700 11.5px Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:18px 12px 6px}
+.sep{display:none;height:1px;background:var(--line);margin:10px 8px}
+.ver{margin-top:auto;padding:18px 12px 4px;font-size:12px;color:var(--muted)}
+main{flex:1;min-width:0;overflow-y:auto;padding:26px 30px 40px}
+.page{display:flex;flex-direction:column;gap:16px;max-width:1180px}
+.head{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.head>div:first-child{flex:1;min-width:240px}
+.eb{font:700 11.5px Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--warn)}
+h1{font-size:30px;line-height:1.15;margin-top:4px;color:var(--cream)}
+.lead{color:var(--muted);margin-top:4px}
+.cap{font:700 11.5px Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.sec{font-size:19px;padding-bottom:8px;margin-bottom:12px;border-bottom:1px solid rgba(76,129,134,.42)}
+.mut{color:var(--muted)}.small{font-size:13px}
+.card{background-color:var(--panel);background-image:linear-gradient(118deg,rgba(89,211,216,.03),transparent 30%,rgba(228,72,61,.02));border:1px solid var(--line);border-radius:9px;padding:16px 18px;min-width:0;box-shadow:0 12px 30px rgba(0,0,0,.16),inset 0 1px rgba(255,255,255,.025)}
+.card h2{font-size:17px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.grid{display:grid;gap:14px}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.duo{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.btn{font-weight:700;font-size:14.5px;min-height:40px;padding:0 16px;border-radius:7px;border:1px solid rgba(71,111,116,.72);background:linear-gradient(180deg,rgba(25,34,37,.96),rgba(15,21,23,.96));color:#dce6e3;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:hover{border-color:rgba(89,207,212,.62);background:#192528}
+.btn.p{border-color:rgba(111,226,229,.32);background:linear-gradient(180deg,#62dce0 0%,#31abb4 100%);color:#061012;box-shadow:inset 0 1px rgba(255,255,255,.26),0 5px 16px rgba(42,170,179,.12)}
+.btn.p:hover{filter:brightness(1.08)}
+.btn.s{min-height:34px;padding:0 12px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:default}
+.link{background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.q{width:22px;height:22px;border-radius:50%;border:1px solid rgba(71,111,116,.72);background:#121a1d;color:var(--muted);font-weight:700;font-size:12px;cursor:pointer;display:inline-grid;place-items:center;padding:0;flex:none}
+.q:hover,.q[aria-expanded="true"]{color:var(--accent);border-color:var(--accent)}
+.tipw{position:relative;display:inline-flex;align-items:center;gap:8px}
+.tip{position:absolute;z-index:20;top:30px;left:-10px;width:min(320px,80vw);background:#0e1a1c;border:1px solid rgba(91,213,218,.72);border-radius:8px;padding:12px 14px;font-size:13px;line-height:1.5;color:var(--text);box-shadow:0 14px 34px rgba(0,0,0,.6);font-weight:400}
+.tip.r{left:auto;right:-10px}
+.sw{width:46px;height:26px;border-radius:999px;border:0;padding:3px;cursor:pointer;display:flex;align-items:center;flex:none;background:#1c2629;justify-content:flex-start}
+.sw span{width:20px;height:20px;border-radius:50%;display:block;background:var(--muted)}
+.sw[aria-checked="true"]{background:linear-gradient(180deg,#62dce0,#31abb4);justify-content:flex-end}
+.sw[aria-checked="true"] span{background:#061012}
+.swl{font-size:13px;color:var(--muted)}
+.row{display:flex;align-items:center;gap:14px;padding:13px 0;border-top:1px solid var(--line2)}
+.row:first-of-type{border-top:0}
+.row .t{flex:1;min-width:0}
+.pill{font-weight:700;font-size:12px;border-radius:999px;padding:2px 9px;white-space:nowrap;background:rgba(255,255,255,.06);color:var(--muted)}
+.pill.team{color:var(--accent);background:rgba(89,211,216,.10)}
+.pill.on{color:var(--ok);background:rgba(62,207,142,.12)}
+.state{background-color:var(--panel);border:1px solid var(--line);border-left:3px solid var(--muted);border-radius:9px;padding:11px 14px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.state .top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.state .sub{font-size:13px;color:var(--muted)}
+.state .btn{align-self:flex-start;margin-top:6px}
+.state.ok{border-left-color:var(--ok)}.state.wait{border-left-color:var(--warn)}.state.bad{border-left-color:var(--danger)}
+
+.st{font-weight:700;font-size:13.5px;white-space:nowrap}.st.ok{color:var(--ok)}.st.wait{color:var(--warn)}.st.bad{color:var(--danger-text)}.st.idle{color:var(--muted)}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--line2);font-size:14px}
+.kv span{color:var(--muted)}.kv b{text-align:right}
+.tile{background-color:var(--panel);border:1px solid var(--line);border-radius:9px;padding:13px 15px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:5px;min-width:0}
+.tile:hover{border-color:rgba(90,205,211,.62);background-color:rgba(15,22,24,.96)}
+.tile .top{display:flex;align-items:center;gap:8px;width:100%}.tile .top b{flex:1;min-width:0}
+.met{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.met div{background:var(--panel2);border:1px solid rgba(255,255,255,.04);border-radius:7px;padding:6px 9px;min-width:0}
+.met small{display:block;font-size:12px;color:var(--muted)}.met b{font-size:15px;font-variant-numeric:tabular-nums}
+.prof.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.prof input{width:100%;background:transparent;border:1px solid transparent;border-radius:6px;padding:2px 6px;margin-left:-6px;font-weight:700;font-size:18px;color:var(--text)}
+.prof input:hover,.prof input:focus{border-color:rgba(66,103,108,.72);background:rgba(15,22,24,.96)}
+details summary{cursor:pointer;font-size:13px;color:var(--muted);margin-top:10px}
+details label{display:flex;gap:8px;align-items:center;font-size:13.5px;padding:2px 0}
+.field{width:100%;background:rgba(15,22,24,.96);border:1px solid rgba(66,103,108,.72);border-radius:7px;padding:10px 12px;color:var(--text)}
+.field:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 2px rgba(89,211,216,.09)}
+.addr{display:flex;align-items:center;gap:10px;background:rgba(15,22,24,.96);border:1px solid rgba(66,103,108,.72);border-radius:7px;padding:6px 6px 6px 12px}
+.addr b{flex:1;color:var(--accent);font-size:16px;word-break:break-all}
+.pop{width:320px;max-width:100%;background:#0c1113;border:2px solid var(--accent);border-radius:12px;padding:14px 16px;box-shadow:0 0 22px rgba(0,0,0,.7);flex:none}
+.pop .l{display:grid;grid-template-columns:1fr auto auto;font-size:15px}.pop .l i{font-style:normal;color:#5f6a6e;padding-right:6px}.pop .l b{color:var(--accent);text-align:right}
+.note{color:var(--warn);font-size:13.5px}
+.stepper{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.stepper .n{font-size:34px;font-weight:700;min-width:56px;text-align:center;font-variant-numeric:tabular-nums}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);max-width:min(560px,90vw);background:#0e1a1c;border:1px solid rgba(91,213,218,.72);border-radius:8px;padding:10px 14px;box-shadow:0 14px 34px rgba(0,0,0,.6);z-index:60}
+.toast.bad{border-color:var(--danger)}
+.shade{position:fixed;inset:0;background:rgba(3,5,6,.78);display:grid;place-items:center;z-index:50;padding:16px}
+.dialog{width:min(640px,100%);max-height:100%;overflow-y:auto;background:#0c1113;border:1px solid rgba(73,118,123,.62);border-radius:10px;padding:24px 26px;display:flex;flex-direction:column;gap:16px;box-shadow:0 30px 80px rgba(0,0,0,.7)}
+.steps{display:flex;gap:6px}.steps div{flex:1;display:flex;flex-direction:column;gap:6px;font-weight:700;font-size:11.5px;color:var(--muted)}
+.steps i{height:4px;border-radius:2px;background:#29454a}.steps .done i{background:var(--accent)}.steps .now{color:var(--text)}
+.gm{display:flex;align-items:center;gap:12px;padding:6px 0}.gm>span{flex:1}
+.foot{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line2);padding-top:14px}
+.ghost{background:transparent!important;border-color:transparent!important;color:var(--muted)!important}
+.empty{color:var(--muted);text-align:center;padding:30px}
+/* The small update window (UpdateWindow.cs, ?fenetre=maj or installee): no banner, no menu. */
+body.win .banner,body.win nav{display:none}
+body.win main{padding:22px 26px 20px}
+.wbox{display:flex;flex-direction:column;gap:16px;min-height:100%}
+.wbox h1{font-size:26px;line-height:1.2;color:var(--cream);margin-top:6px}
+.chg{display:flex;align-items:center;gap:12px;padding:11px 14px}
+.chg b{color:var(--cream)}
+.tag{font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;margin-right:6px;white-space:nowrap}
+.tag.nouveau{background:rgba(89,211,216,.14);color:var(--accent)}.tag.mieux{background:rgba(231,182,83,.14);color:var(--warn)}.tag.corrige{background:rgba(238,243,242,.10);color:var(--text)}
+.where{font-size:12.5px;color:var(--muted);margin-top:3px}
+@media (max-width:1100px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.duo{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:900px){
+  nav{width:64px;padding:14px 8px}
+  nav .lb,nav .grp,nav .ver{display:none}
+  nav .sep{display:block}
+  .nv{justify-content:center;padding:0}
+  .nv .dot{position:absolute;top:8px;right:10px}
+  main{padding:20px 18px 30px}
+  .g3,.two{grid-template-columns:minmax(0,1fr)}
+}
+
+.pill.warn{color:var(--warn);background:rgba(231,182,83,.13)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line2);padding-bottom:10px}
+.tab{min-height:36px;padding:0 14px;border-radius:8px;border:1px solid transparent;background:transparent;color:#dce6e3;font-weight:700;cursor:pointer;display:inline-flex;gap:8px;align-items:center}
+.tab[aria-selected="true"]{background:linear-gradient(180deg,#1f5f64,#17484d);border-color:rgba(91,213,218,.72);color:#eaffff}
+.tab small{font-weight:400;color:var(--muted)}
+.grpc{border-top:1px solid var(--line2);padding:4px 0}
+.grpc summary{display:flex;justify-content:space-between;gap:10px;padding:10px 2px;color:var(--text);font-size:14.5px;margin:0}
+.cmd{display:flex;align-items:center;gap:12px;padding:6px 2px 6px 6px;border-radius:7px}
+.cmd:hover{background:rgba(25,37,40,.6)}
+.cmd .t{flex:1;min-width:0}
+.cmd input{width:17px;height:17px;accent-color:#45c3ca;flex:none}
+.step{display:flex;flex-direction:column;gap:10px}
+.step .num{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:700;background:rgba(89,211,216,.14);color:var(--accent);flex:none}
+.step .top{display:flex;gap:10px;align-items:center}
+.step .btns{margin-top:auto}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.toolbar .field{flex:1;min-width:200px;max-width:340px}
+.annot{border:1px dashed var(--warn);border-radius:9px;padding:12px 16px;color:var(--warn);font-size:13.5px;background:rgba(231,182,83,.05)}
+</style></head>
+<body>
+<div class="banner" role="img" aria-label="Endurance Manager"><i></i></div>
+<div class="stripes" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+<div class="shell"><nav aria-label="Menu du plugin"><button class="nv" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span class="lb">Accueil</span></button><div class="grp">Pour moi</div><button class="nv" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="5" rx="1"/><path d="M3 15h18M3 19h11"/></svg><span class="lb">Overlay relais</span><span class="dot on"></span></button><button class="nv" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg><span class="lb">Réglages voiture en course</span><span class="dot on"></span></button><button class="nv" type="button" aria-current="page"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/><path d="M3.5 10h6.5M14 10h6.5M12 14v7"/></svg><span class="lb">Black box sur boutons</span><span class="dot on"></span></button><button class="nv" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1"/><path d="M8 20h8M12 16v4"/></svg><span class="lb">Mur des stands</span><span class="dot"></span></button><div class="grp">Avec mon équipe</div><button class="nv" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18M6 16v-5M11 16V6M16 16v-8M20 16v-3"/></svg><span class="lb">Télémétrie Mémo</span><span class="dot"></span></button><button class="nv" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14c2.5.2 4.5 2.3 4.5 5"/></svg><span class="lb">Mur des stands équipages</span><span class="dot"></span></button><button class="nv" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6l-5.2 9.3A1.8 1.8 0 0 0 6.4 21h11.2a1.8 1.8 0 0 0 1.6-2.7L14 9V3M7.5 15h9"/></svg><span class="lb">Aide au développement</span><span class="dot"></span></button><div class="grp">Assistance</div><button class="nv" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span class="lb">Guide</span></button><button class="nv" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h12l-2.5 4L17 12H5"/></svg><span class="lb">Signaler un souci</span></button><button class="nv" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span class="lb">Mises à jour</span></button><div class="ver">Version 0.1.0</div></nav><main>
+<div class="page">
+  <div class="annot"><b>Maquette</b> · Tout l'écran de FMT companion, refait dans cette page : plus de fenêtre à part. Même fonctionnement qu'aujourd'hui (FMT companion 0.5 tourne dessous, rien n'est réécrit).</div>
+  <div class="head"><div><div class="eb">Pour moi · 03</div><h1>Black box sur boutons</h1>
+    <p class="lead">Le menu des stands, la voiture, les caméras et le poste sur ton volant ou ton Stream Deck.</p></div>
+    <div class="tipw"><span class="swl">Activé</span><button class="sw" role="switch" aria-checked="true"><span></span></button></div></div>
+
+  <div class="grid g3">
+    <div class="state ok"><div class="top"><b>LMU</b><span class="st ok">Connecté</span></div><div class="sub">Menu des stands lu · version 1.2.3</div></div>
+    <div class="state ok"><div class="top"><b>Control Mapper</b><span class="st ok">Relié</span></div><div class="sub">22 rôles FMT</div></div>
+    <div class="state ok"><div class="top"><b>Sortie manette</b><span class="st ok">Bridge SimHub</span></div><div class="sub">18 boutons libres · ou vJoy</div></div>
+  </div>
+
+  <div class="grid g3">
+    <section class="card step"><div class="top"><span class="num">1</span><h2>Coche tes commandes</h2></div>
+      <p class="mut small">Seulement celles que tu veux sur un bouton. Cocher n'envoie rien au jeu.</p>
+      <p><b>22</b> <span class="mut">cochées sur 180</span></p></section>
+    <section class="card step"><div class="top"><span class="num">2</span><h2>Prépare LMU</h2></div>
+      <p class="mut small">Pour Voiture, Caméra et Poste. Le stand marche tout de suite. Seule la colonne Secondaire de LMU est utilisée.</p>
+      <div class="btns"><button class="btn p" type="button">Préparer LMU · 4</button></div></section>
+    <section class="card step"><div class="top"><span class="num">3</span><h2>Relie tes boutons</h2></div>
+      <p class="mut small">Les rôles s'appellent « FMT - famille - commande ».</p>
+      <div class="btns"><button class="btn" type="button">Ouvrir Control Mapper</button><button class="btn" type="button">Profil Stream Deck</button></div></section>
+  </div>
+
+  <section class="card stack">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true">Stand <small>12</small></button>
+      <button class="tab" role="tab">Voiture <small>8</small></button>
+      <button class="tab" role="tab">Caméra <small>0</small></button>
+      <button class="tab" role="tab">Poste <small>2</small></button>
+    </div>
+    <div class="toolbar"><input class="field" placeholder="Rechercher une commande…"><span class="mut small">Dernière commande : Énergie +1 · vérifié</span></div>
+    <div><details class="grpc" open><summary><b>Énergie</b><span class="mut small">4 / 6 sur un bouton</span></summary><label class="cmd"><input type="checkbox" checked><span class="t">Énergie +1</span><span class="pill on">Direct</span><button type="button" class="btn s">Tester</button></label><label class="cmd"><input type="checkbox" checked><span class="t">Énergie -1</span><span class="pill on">Direct</span><button type="button" class="btn s">Tester</button></label><label class="cmd"><input type="checkbox" checked><span class="t">Énergie +10</span><span class="pill on">Direct</span><button type="button" class="btn s">Tester</button></label><label class="cmd"><input type="checkbox" checked><span class="t">Énergie -10</span><span class="pill on">Direct</span><button type="button" class="btn s">Tester</button></label><label class="cmd"><input type="checkbox"><span class="t">Énergie minimum</span><span class="pill">Pas sur un bouton</span><button type="button" class="btn s">Tester</button></label><label class="cmd"><input type="checkbox"><span class="t">Énergie maximum</span><span class="pill">Pas sur un bouton</span><button type="button" class="btn s">Tester</button></label></details><details class="grpc" open><summary><b>Pneus</b><span class="mut small">3 / 4 sur un bouton</span></summary><label class="cmd"><input type="checkbox" checked><span class="t">Pneus 4 roues gomme suivante en boucle</span><span class="pill on">Direct</span><button type="button" class="btn s">Tester</button></label><label class="cmd"><input type="checkbox" checked><span class="t">Pneus 4 roues même gomme neuve</span><span class="pill on">Direct</span><button type="button" class="btn s">Tester</button></label><label class="cmd"><input type="checkbox" checked><span class="t">Pneus 4 roues aucun changement</span><span class="pill on">Direct</span><button type="button" class="btn s">Tester</button></label><label class="cmd"><input type="checkbox"><span class="t">Pluie neufs</span><span class="pill">Pas sur un bouton</span><button type="button" class="btn s">Tester</button></label></details><details class="grpc"><summary><b>Réparations et freins</b><span class="mut small">1 / 2 sur un bouton</span></summary><label class="cmd"><input type="checkbox" checked><span class="t">Réparations choix suivant en boucle</span><span class="pill on">Direct</span><button type="button" class="btn s">Tester</button></label><label class="cmd"><input type="checkbox"><span class="t">Freins changer ou garder</span><span class="pill">Pas sur un bouton</span><button type="button" class="btn s">Tester</button></label></details><details class="grpc"><summary><b>Pilote et Stop & Go</b><span class="mut small">2 / 2 sur un bouton</span></summary><label class="cmd"><input type="checkbox" checked><span class="t">Pilote suivant en boucle</span><span class="pill on">Direct</span><button type="button" class="btn s">Tester</button></label><label class="cmd"><input type="checkbox" checked><span class="t">Stop & Go effectuer ou reporter</span><span class="pill on">Direct</span><button type="button" class="btn s">Tester</button></label></details><details class="grpc"><summary><b>Pressions</b><span class="mut small">4 roues ou roue par roue</span></summary></details><details class="grpc"><summary><b>Aéro et refroidissement</b><span class="mut small">aileron, calandre, écopes</span></summary></details></div>
+  </section>
+
+  <section class="card stack">
+    <div class="tabs"><button class="tab" aria-selected="true">Voiture <small>8</small></button><span class="mut small" style="align-self:center">(même liste, onglet Voiture : l'état « Prêt · B3 » = bouton relié dans LMU)</span></div>
+    <div><details class="grpc" open><summary><b>Électronique</b><span class="mut small">6 / 6 sur un bouton</span></summary><label class="cmd"><input type="checkbox" checked><span class="t">TC +</span><span class="pill on">Prêt · B3</span><button type="button" class="btn s">Tester</button></label><label class="cmd"><input type="checkbox" checked><span class="t">TC −</span><span class="pill on">Prêt · B4</span><button type="button" class="btn s">Tester</button></label><label class="cmd"><input type="checkbox" checked><span class="t">ABS +</span><span class="pill on">Prêt · B5</span><button type="button" class="btn s">Tester</button></label><label class="cmd"><input type="checkbox" checked><span class="t">ABS −</span><span class="pill on">Prêt · B6</span><button type="button" class="btn s">Tester</button></label><label class="cmd"><input type="checkbox" checked><span class="t">Carto moteur suivante</span><span class="pill warn">À préparer</span><button type="button" class="btn s">Tester</button></label><label class="cmd"><input type="checkbox" checked><span class="t">Carto moteur précédente</span><span class="pill warn">À préparer</span><button type="button" class="btn s">Tester</button></label></details><details class="grpc" open><summary><b>Freinage</b><span class="mut small">4 / 4 sur un bouton</span></summary><label class="cmd"><input type="checkbox" checked><span class="t">Répartition vers l'avant</span><span class="pill on">Prêt · B7</span><button type="button" class="btn s">Tester</button></label><label class="cmd"><input type="checkbox" checked><span class="t">Répartition vers l'arrière</span><span class="pill on">Prêt · B8</span><button type="button" class="btn s">Tester</button></label><label class="cmd"><input type="checkbox" checked><span class="t">Migration vers l'avant</span><span class="pill warn">À préparer</span><button type="button" class="btn s">Tester</button></label><label class="cmd"><input type="checkbox" checked><span class="t">Migration vers l'arrière</span><span class="pill warn">À préparer</span><button type="button" class="btn s">Tester</button></label></details></div>
+  </section>
+
+  <details class="card"><summary style="margin:0">Plus</summary>
+    <div class="btns" style="margin-top:12px"><button class="btn" type="button">Annuler ce que FMT a ajouté dans LMU</button><button class="btn" type="button">Sauvegarder mes contrôles LMU</button><button class="btn" type="button">Tester au garage</button></div>
+    <p class="mut small" style="margin-top:8px">« Tester au garage » sert quand LMU change de version : le menu des stands reste en lecture seule jusqu'à la vérification.</p>
+  </details>
+</div></main></div>
+</body></html>

@@ -7,7 +7,7 @@
     <UseWPF Condition="'$(OS)' == 'Windows_NT'">true</UseWPF>
     <AssemblyName>EnduranceManager.SimHub</AssemblyName>
     <!-- The plugin's version: raised for each new build given to the pilots (docs/publier.md). -->
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <!-- The commit in the build's identity (2.6.0+sha, shown « 2.6.0 (abc1234) » on the plugin's screen). -->
     <SourceRevisionId Condition="'$(GITHUB_SHA)' != ''">$(GITHUB_SHA)</SourceRevisionId>
     <RootNamespace>EnduranceManager.SimHub</RootNamespace>
@@ -45,6 +45,8 @@
     <EmbeddedResource Include="mur\**\*" LogicalName="mur/%(RecursiveDir)%(Filename)%(Extension)" />
     <!-- The plugin's screen as a web page (ScreenApi.cs, WebScreen.cs), served under /ecran/. -->
     <EmbeddedResource Include="ecran\**\*" LogicalName="ecran/%(RecursiveDir)%(Filename)%(Extension)" />
+    <!-- FMT companion 0.5 (its DLL, source lost), carried inside the plugin: the update gives it to every pilot (Companion.cs). -->
+    <EmbeddedResource Include="fmt\FMTCompanion.dll" LogicalName="fmt/FMTCompanion.dll" />
     
   </ItemGroup>
   <ItemGroup>
