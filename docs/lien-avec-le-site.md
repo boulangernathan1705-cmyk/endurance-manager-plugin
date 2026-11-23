@@ -36,14 +36,14 @@ site lui-même.
 ## Mise à jour automatique
 
 - Numérotation repartie de **0.1.0** le 22/11/2026 (avant : 2.x, jusqu'à 2.6.0). Les 0.x lisent leur propre dossier du
-  site, `/downloads/simhub/v0/`, sinon ils prendraient l'ancienne 2.2.0 servie dans `/downloads/simhub/` pour une
-  version plus récente.
+  site, `/downloads/simhub/v0/`.
+- Le site garde la dernière version dans `connectors/simhub-plugin/v0/` (DLL, `plugin.json` de la Release tel quel,
+  `installer.cmd`), remplacé par la PR que la CI ouvre à chaque Release ([publier.md](publier.md)). `scripts/build.mjs`
+  le sert dans `/downloads/simhub/v0/`, et dans `/downloads/simhub/` avec la version `2.99.0` : les anciens plugins 2.x
+  y voient une version plus récente et passent une fois à la 0.x ; une fois en 0.x, le plugin ne lit plus que `v0/`,
+  donc pas de boucle. L'ancienne 2.2.0 (`release/`) a été retirée du site le 23/11/2026.
 - Le plugin lit `https://<site>/downloads/simhub/v0/plugin.json` au plus une fois par heure (le site du code de
-  liaison, ou `https://endurance-manager.app` sans liaison). Version plus récente : bouton « Mettre à jour », qui
-  télécharge `installer.cmd` du même dossier et le lance (ferme SimHub, copie la DLL vérifiée par taille + SHA-256,
-  relance SimHub). Tant que le site n'a pas ce dossier : pas de mise à jour proposée, on installe depuis les Releases.
-- Passer les plugins 2.x déjà installés à la 0.x : dans `connectors/simhub-plugin/release/` du site, mettre la DLL
-  0.x avec `{"version":"2.99.0"}` dans `plugin.json` (l'installeur vérifie taille et SHA-256, pas la version de la DLL).
-  Les 2.x y voient une version plus récente et l'installent ; une fois en 0.x, le plugin ne lit plus que `v0/`, donc
-  pas de boucle. Jusque-là, `/downloads/simhub/` (2.2.0) reste tel quel. À terminer côté site au premier
-  envoi d'une 0.x aux pilotes : servir `connectors/simhub-plugin/v0/` dans `/downloads/simhub/v0/` (`scripts/build.mjs`).
+  liaison, ou `https://endurance-manager.app` sans liaison). Version plus récente : « Mettre à jour » télécharge la DLL
+  du même dossier, la vérifie (taille + SHA-256 de `plugin.json`) et la met à la place, puis SimHub redémarre
+  (`Update.cs`). La page Télémétrie Mémo donne l'installeur de `v0/` avec l'adresse du site écrite dedans.
+- Une vérification impossible (site injoignable, dossier absent) s'affiche « Non vérifié » dans Mises à jour.

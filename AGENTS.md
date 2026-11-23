@@ -12,7 +12,8 @@ suprême » : écran le plus simple, textes courts.
 - La compilation et les tests se font dans la CI. Le zip à essayer est dans Releases, « Test PR #N ».
 - Une PR vise toujours `main` (jamais la branche d'une autre PR, sauf demande de Nathan). Une fois fusionnée, sa
   branche est supprimée.
-- Fusion dans `main` = Release GitHub. **Les pilotes ne l'ont qu'après la PR sur le site** (étape 3 de
+- Fusion dans `main` = Release GitHub, et la CI ouvre toute seule la PR du site (secret `SITE_TOKEN`). **Les pilotes ne
+  l'ont qu'après cette PR fusionnée dans `dev` puis la mise en production du site** (étapes 3-4 de
   [`docs/publier.md`](docs/publier.md)) : le rappeler à Nathan après chaque Release.
 
 ## Avant de coder
