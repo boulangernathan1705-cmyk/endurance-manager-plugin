@@ -326,14 +326,16 @@ namespace EnduranceManager.SimHub
                 string at = "Pneus." + corners[i] + ".";
                 double x = i % 2 == 0 ? 20 : Width - 20 - 156, y = i < 2 ? 80 : 304;
                 bool right = i % 2 == 1, front = i < 2;
-                // The ring wears round as in the game: 36 dots clockwise from the top, lit (white, red when lost or flat)
-                // up to what is left, grey after; the inner panel hides their inner halves.
-                for (int k = 0; k < 36; k++)
+                // The ring wears round as in the game: 90 small dots clockwise from the top, lit (white, red when lost or
+                // flat) up to what is left, grey after; close enough to look like one smooth band (36 big ones looked
+                // notched, Nathan 23/11). The inner panel hides their inner halves.
+                const int Dots = 90;
+                for (int k = 0; k < Dots; k++)
                 {
-                    double angle = k * Math.PI * 2 / 36;
-                    double dx = x + 78 + 71 * Math.Sin(angle) - 7, dy = y + 78 - 71 * Math.Cos(angle) - 7;
-                    string lit = ((k + 1) * 100.0 / 36).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
-                    yield return Rect("Anneau" + (i + 1) + "_" + k, dx, dy, 14, 14, $"if({P(at + "Reste")} >= {lit}, {P(at + "Couleur")}, '{Worn}')", shown, 7);
+                    double angle = k * Math.PI * 2 / Dots;
+                    double dx = x + 78 + 73 * Math.Sin(angle) - 6, dy = y + 78 - 73 * Math.Cos(angle) - 6;
+                    string lit = ((k + 1) * 100.0 / Dots).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+                    yield return Rect("Anneau" + (i + 1) + "_" + k, dx, dy, 12, 12, $"if({P(at + "Reste")} >= {lit}, {P(at + "Couleur")}, '{Worn}')", shown, 6);
                 }
                 yield return Rect("AnneauFond" + (i + 1), x + 10, y + 10, 136, 136, Panel, shown, 68);
                 yield return Text("Usure" + (i + 1), x, y + 32, 156, 54, 38, P(at + "Usure"), White, 1, shown);

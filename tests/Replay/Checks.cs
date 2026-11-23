@@ -131,7 +131,7 @@ namespace EnduranceManager.SimHub.Replay
             Is(pages.Presses.Contains("page précédente"), "Appuis notés");
             var car = new Sample { Fuel = 60, Energy = 80, MotorState = 2, Battery = 0.5, TC = 3, TCMax = 9, RearBrakeBias = 0.477, LapsDone = 3, Wheels = new Wheel[4],
                 FrontCompound = "Medium", RearCompound = "Medium" };
-            car.Wheels[0] = new Wheel { Wear = 0.99, Pressure = 122.7, Temp = 22.4, TreadIn = 33, TreadMid = 34, TreadOut = 35, Brake = 85.5 };
+            car.Wheels[0] = new Wheel { Wear = 0.99, Pressure = 122.7, Temp = 30, InnerIn = 33, InnerMid = 34, InnerOut = 35, Brake = 85.5 };
             car.Wheels[1] = new Wheel { Wear = 0.5, Off = true };
             var cv = new CourseView { FuelAvg5 = 3, FuelLastLap = 2.5, VeAvg5 = 4, VeLastLap = 5, LapTimeAvg10 = 120, RegenLevel = 2 };
             pages.Update(null, car, cv);
@@ -152,13 +152,15 @@ namespace EnduranceManager.SimHub.Replay
             Is((string)PV("BlackBox.1.Nom") == "◂ ▸  Carburant" && (string)PV("BlackBox.1.Valeur") == "60.00L", "Carburant : − + passent au carburant");
             pages.Move(-1);
             Is((string)PV("BlackBox.2.Valeur") == "+1 Tours  ▴▾" && (string)PV("BlackBox.4.Nom") == "Objectif" && (string)PV("BlackBox.4.C1") == "21.0", "Carburant : ▲ un tour de plus à sauver");
-            Is((string)PV("BlackBox.5.Nom") == "Estimation  ⚠", "Carburant : estimation trop courte signalée");
+            Is((string)PV("BlackBox.5.Nom") == "Moyenne  ⚠", "Carburant : estimation trop courte signalée");
             pages.Move(1); pages.Move(1);
             Is((string)PV("BlackBox.2.Valeur") == "Aucun  ▴▾", "Carburant : ▼ jusqu'à « Aucun », pas en dessous");
+            for (int i = 0; i < 7; i++) pages.Move(-1);
+            Is((string)PV("BlackBox.2.Valeur") == "+5 Tours  ▴▾", "Carburant : +5 tours au plus, comme le jeu");
             System.Threading.Thread.Sleep(300);
             pages.Turn(-1);
             Is((string)PV("BlackBox.Pneus.AVG.Usure") == "99%" && (string)PV("BlackBox.Pneus.AVG.Gomme") == "M" && (string)PV("BlackBox.Pneus.AVG.Pression") == "122.7kPa"
-                && (string)PV("BlackBox.Pneus.AVG.Temp") == "34.0°C" && (string)PV("BlackBox.Pneus.Jeux") == "∞ Pneus", "Pneus : usure, gomme, pression, température, jeux");
+                && (string)PV("BlackBox.Pneus.AVG.Temp") == "31.6°C" && (string)PV("BlackBox.Pneus.Jeux") == "∞ Pneus", "Pneus : usure, gomme, pression, température, jeux");
             Is((double)PV("BlackBox.Pneus.AVG.Reste") == 99.0 && (string)PV("BlackBox.Pneus.AVG.GommeCouleur") == "#FFFFD400", "Pneus : anneau qui s'use, medium en jaune");
             Is((string)PV("BlackBox.Pneus.AVD.Etat") == "Perdue" && (string)PV("BlackBox.Pneus.AVD.Couleur") == "#FFE83A4C", "Pneus : roue perdue en rouge");
             System.Threading.Thread.Sleep(300);

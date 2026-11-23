@@ -343,8 +343,15 @@ namespace EnduranceManager.SimHub
 
         static bool PressRole(PluginManager manager, string role)
         {
+            // As FMT companion presses its buttons (TriggerRole of the Control Mapper); StartStopRole answered false for
+            // every role on Nathan's SimHub 9.13.7 (23/11: « rôle … introuvable »).
+            try { if (Trigger(manager, role)) return true; } catch { }
             try { return StartStop(manager, role); } catch { return false; }
         }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        static bool Trigger(PluginManager manager, string role) =>
+            manager?.GetPlugin<global::SimHub.Plugins.OutputPlugins.ControlRemapper.ControlMapperPlugin>()?.TriggerRole(role, 60) == true;
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         static bool StartStop(PluginManager manager, string role) => ControlMapper(manager)?.StartStopRole(role, 60) == true;

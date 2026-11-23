@@ -137,6 +137,62 @@ internal sealed class Preparer
 				return;
 			}
 			JObject di = LmuControlsModel.DirectInput(await lmu.Controls(ct).ConfigureAwait(continueOnCapturedContext: false));
+			// FMT's own button made twice: the command also on one of the pilot's buttons in LMU (Principal). Nathan (23/11)
+			// had 26 such out of the 128 buttons LMU sees on the bridge. FMT's is given back (its Secondaire in LMU unset, the
+			// output button freed) and FMT presses the pilot's role instead.
+			int freed = 0;
+			foreach (FmtFunction fn in functions.Where((FmtFunction x) => x.Kind == FunctionKind.LmuKey))
+			{
+				ct.ThrowIfCancellationRequested();
+				int mine = Ui(() => output.ButtonFor(fn.Role));
+				if (mine <= 0)
+				{
+					continue;
+				}
+				LmuBinding primary = LmuControlsModel.Binding(di, "Input", fn.LmuControl);
+				if (primary == null || !LmuControlsModel.IsOutputDevice(primary.Device, bridge))
+				{
+					continue;
+				}
+				int pilotButton = LmuControlsModel.ButtonNumber(di, primary);
+				string pilotRole = pilotButton > 0 && pilotButton != mine ? Ui(() => output.OutputRole(pilotButton)) : null;
+				if (string.IsNullOrEmpty(pilotRole) || pilotRole == fn.Role)
+				{
+					continue;
+				}
+				LmuBinding secondary = LmuControlsModel.Binding(di, "Alternative Input", fn.LmuControl);
+				if (secondary != null && LmuControlsModel.IsOutputDevice(secondary.Device, bridge) && LmuControlsModel.ButtonNumber(di, secondary) == mine)
+				{
+					if (freed == 0)
+					{
+						Ui(delegate
+						{
+							output.Backup();
+						});
+					}
+					await lmu.Unset(fn.LmuControl, ct).ConfigureAwait(continueOnCapturedContext: false);
+				}
+				Ui(delegate
+				{
+					ButtonMap map = output.Output(mine);
+					if (map != null && map.TargetRole == fn.Role)
+					{
+						map.TargetRole = null;
+					}
+				});
+				settings.Prepared.RemoveAll((PreparedKey k) => k.Role == fn.Role);
+				freed++;
+			}
+			if (freed > 0)
+			{
+				Ui(delegate
+				{
+					output.Save();
+				});
+				save();
+				log(freed + " bouton(s) FMT rendu(s) : la même commande était déjà sur un de tes boutons.");
+				di = LmuControlsModel.DirectInput(await lmu.Controls(ct).ConfigureAwait(continueOnCapturedContext: false));
+			}
 			// The commands LMU already has on one of the pilot's own buttons: FMT presses those (no new button).
 			int reusedCount = 0;
 			foreach (FmtFunction fn in functions.Where((FmtFunction x) => x.Kind == FunctionKind.LmuKey))
@@ -171,7 +227,7 @@ internal sealed class Preparer
 			log(free.Count + " bouton(s) libre(s) sur la sortie " + Ui(() => output.Describe()) + " ; " + todo + " fonction(s) cochée(s) à préparer.");
 			if (todo > free.Count)
 			{
-				log("Pas assez de boutons libres : décoche au moins " + (todo - free.Count) + " fonction(s), puis recommence. Rien n'a été modifié.");
+				log("Pas assez de boutons libres (LMU ne voit que " + limit + " boutons sur cette sortie) : décoche au moins " + (todo - free.Count) + " fonction(s) dont tu ne te sers pas (caméras, replay…), puis recommence. Rien d'autre n'a été modifié.");
 				return;
 			}
 			if (todo == 0)
