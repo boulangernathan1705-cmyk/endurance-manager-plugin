@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.MemoryMappedFiles;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Media;
@@ -34,6 +35,14 @@ namespace EnduranceManager.SimHub
         // Was the « Chiffres de course » switch: kept so old settings still read, no longer used (Plugin.CourseOn).
         public bool Course { get; set; } = true;
         public bool Profiles { get; set; } = false;
+        // Where the profiles' popup shows (ProfilePopup.cs), chosen with « Placer le popup ». Empty: top centre of the main screen.
+        public double? PopupLeft { get; set; }
+        public double? PopupTop { get; set; }
+        // The mur's window (WallServer.cs): where and how big it was left, in the browser's pixels. Empty: the browser chooses.
+        public int? MurX { get; set; }
+        public int? MurY { get; set; }
+        public int? MurW { get; set; }
+        public int? MurH { get; set; }
         // Mur des stands (Wall.cs): our car on the dash « Endurance Manager · Mur », from this PC alone. Off by default.
         public bool Wall { get; set; } = false;
         // FMT companion, whole, run by this plugin (Companion.cs). Not chosen yet: on when the installer put its DLL in
@@ -43,6 +52,8 @@ namespace EnduranceManager.SimHub
         public bool Report { get; set; } = false;
         // The guided path (Guide.cs) was gone through or skipped: the plugin's screen opens on its modules.
         public bool GuideDone { get; set; } = false;
+        // The version the pilot was told about (Update.cs): after an update, the window « Tu as la version… » shows once.
+        public string SeenVersion { get; set; }
         [Newtonsoft.Json.JsonIgnore] public bool CompanionOn => Companion ?? System.IO.File.Exists(EnduranceManager.SimHub.Companion.Kept);
     }
 
@@ -83,6 +94,14 @@ namespace EnduranceManager.SimHub
         public LiveShare Live => live;
         public Wall Wall => wall;
         Wall wall;
+        WallServer wallServer;
+        public WallServer WallServer => wallServer;
+        // « Ouvrir le mur » / « Plein écran » on the mur's tab.
+        public void OpenWall(bool fullScreen)
+        {
+            try { wallServer?.Open(home, Settings.MurX, Settings.MurY, Settings.MurW, Settings.MurH, fullScreen); }
+            catch (Exception e) { EnduranceManager.SimHub.Report.Error("Mur", e); }
+        }
         public Practice Practice { get; } = new Practice();
         // The race figures a dashboard reads (Course.cs), and the game's pit menu they come with.
         public Course Course { get; } = new Course();
@@ -122,6 +141,10 @@ namespace EnduranceManager.SimHub
             updater = new Updater(home);
             live = new LiveShare(() => Link);
             wall = new Wall();
+            // The mur's page and the plugin's screen: always on this PC (the screen), on the network too while the mur
+            // module is on (WallServer.cs, ScreenApi.cs).
+            MakeServer();
+            wallServer.Start(Settings.Wall);
             foreach (var (name, get) in WallProperties.All) this.AttachDelegate(name, () => get(wall.View));
             lovely = new Lovely(home);
             standings = new Standings(() => Reading && GameState == "track", Path.Combine(home, "api", "ws-LiveStandings.json"));
@@ -143,6 +166,13 @@ namespace EnduranceManager.SimHub
             this.AttachDelegate("Profils.AChanger", () => Settings.Profiles && Profiles.ToChange);
             this.AttachDelegate("Profils.Humidite", () => Profiles.Wetness);
             this.AttachDelegate("Profils.Message", () => Settings.Profiles ? Profiles.Message : "");
+            // The popup of a first press (what the profile changes, waiting for the second), also for the dashes.
+            this.AttachDelegate("Profils.Popup", () => PopupNow != null);
+            this.AttachDelegate("Profils.Popup.Titre", () => PopupNow?.Title ?? "");
+            this.AttachDelegate("Profils.Popup.Lignes", () => PopupNow is Profiles.PopupView v ? string.Join("\n", v.Drive.Concat(v.Pit).Select(x => x.Label + " " + x.Now + " → " + x.Next)) : "");
+            this.AttachDelegate("Profils.Popup.Aide", () => PopupNow?.Help ?? "");
+            this.AttachDelegate("Profils.Popup.Confirmer", () => PopupNow?.Confirm ?? false);
+            try { popup = ProfilePopup.Start(this); } catch (Exception e) { EnduranceManager.SimHub.Report.Log("popup", e.Message); }
             this.AttachDelegate("Status", () => Status);
             this.AttachDelegate("LapsRecorded", () => laps);
             this.AttachDelegate("Enabled", () => Settings.Enabled);
@@ -203,6 +233,58 @@ namespace EnduranceManager.SimHub
             ThreadPool.QueueUserWorkItem(_ => Dashes.Install(home));
             if (Settings.CompanionOn) Companion.Start(pluginManager);
             EnduranceManager.SimHub.Report.State("fmt companion", Companion.Status);
+            // Updates (Update.cs, UpdateWindow.cs): looked for at the start then every hour, shown in a small window.
+            Updater.Tidy();
+            updateTimer = new Timer(_ => UpdateTick(), null, 8000, 30000);
+        }
+
+        Timer updateTimer;
+        bool installedShown;
+        Version shownFor;
+        void UpdateTick()
+        {
+            try
+            {
+                string current = Updater.Current.ToString(3);
+                if (!installedShown)
+                {
+                    installedShown = true;
+                    if (Settings.SeenVersion != current)
+                    {
+                        // A first install says nothing; an update shows what it brought.
+                        bool updated = Settings.SeenVersion != null && updater.Installed() != null;
+                        Settings.SeenVersion = current;
+                        this.SaveCommonSettings("GeneralSettings", Settings);
+                        if (updated) { UpdateWindow.Show(this, "installee"); return; }
+                    }
+                }
+                updater.Check(Link);
+                // Once per version and per SimHub start (« Plus tard »: at the next start), never on track.
+                var available = updater.Available;
+                if (available != null && !available.Equals(shownFor) && GameState != "track")
+                {
+                    shownFor = available;
+                    UpdateWindow.Show(this, "maj");
+                }
+            }
+            catch (Exception e) { EnduranceManager.SimHub.Report.Error("Mise à jour", e); }
+        }
+
+        // « Voir » in the update window: the plugin's screen opens that page (index.html reads Go), SimHub comes to the front.
+        public int GoCount;
+        public string GoPage;
+        public void See(string page)
+        {
+            GoPage = page;
+            GoCount++;
+            UpdateWindow.Close();
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                var main = System.Windows.Application.Current.MainWindow;
+                if (main == null) return;
+                if (main.WindowState == System.Windows.WindowState.Minimized) main.WindowState = System.Windows.WindowState.Normal;
+                main.Activate();
+            }));
         }
 
         // The plugin's screen without SimHub (tests/Preview, the pictures of the screen made on GitHub): what Init makes,
@@ -217,11 +299,34 @@ namespace EnduranceManager.SimHub
             live = new LiveShare(() => Link);
             wall = new Wall();
             Profiles = new Profiles(home, () => null, () => PluginManager, () => Settings.Profiles);
+            MakeServer();
         }
+
+        ScreenApi screenApi;
+        public ScreenApi ScreenApi => screenApi;
+        void MakeServer()
+        {
+            screenApi = new ScreenApi(this);
+            wallServer = new WallServer(() => new { vue = wall.View, profil = Settings.Profiles ? Profiles?.Active : null }, (x, y, w, h) =>
+            {
+                if (Settings.MurX == x && Settings.MurY == y && Settings.MurW == w && Settings.MurH == h) return;
+                Settings.MurX = x; Settings.MurY = y; Settings.MurW = w; Settings.MurH = h;
+                this.SaveCommonSettings("GeneralSettings", Settings);
+            }, () => screenApi.State(), body => screenApi.Act(body));
+        }
+
+        // The profiles' popup on screen now, or null.
+        Profiles.PopupView PopupNow => Settings.Profiles && Profiles?.Popup is Profiles.PopupView v && DateTime.UtcNow < v.Until ? v : null;
+        ProfilePopup popup;
+        // « Placer le popup » on the profiles' tab.
+        public void PlacePopup() => popup?.Place();
 
         public void End(PluginManager pluginManager)
         {
             running = false;
+            updateTimer?.Dispose();
+            try { popup?.Stop(); } catch { }
+            try { wallServer?.Stop(); } catch { }
             live?.Stop();
             standings?.Stop();
             pluginManager.InputToActionTriggered -= DashButton;
@@ -237,7 +342,9 @@ namespace EnduranceManager.SimHub
         // thirty times while a teammate watches the wall).
         public void DataUpdate(PluginManager pluginManager, ref GameData data) => Companion.DataUpdate(pluginManager, ref data);
 
-        public System.Windows.Controls.Control GetWPFSettingsControl(PluginManager pluginManager) => new Shell(this);
+        // The screen SimHub shows (Guide.cs): the page src/ecran/ when WebView2 is there, else the WPF screen.
+        public Shell Shell;
+        public System.Windows.Controls.Control GetWPFSettingsControl(PluginManager pluginManager) => Shell = new Shell(this);
 
         // A module « Avec mon équipe » is on: the site is used (no switch of its own any more).
         public bool TeamOn => Settings.Enabled || Settings.Share || Settings.Report;
@@ -281,7 +388,9 @@ namespace EnduranceManager.SimHub
         public void SetWall(bool on)
         {
             Settings.Wall = on;
+            // Off: the page leaves the network but stays on this PC for the plugin's screen.
             if (!on) wall.Clear();
+            wallServer?.Start(on);
             this.SaveCommonSettings("GeneralSettings", Settings);
         }
 
@@ -381,6 +490,8 @@ namespace EnduranceManager.SimHub
                                 try { var snap = live.Local(buffer, sample, recorder, api, Computed); if (snap != null) wall.Local(snap, new object[] { Math.Round(sample.LapDist), Math.Round(sample.Speed, 1), Math.Round(sample.Throttle * 100), Math.Round(sample.BrakePedal * 100), Math.Round(sample.Steer * 100), sample.Gear }); }
                                 catch (Exception e) { EnduranceManager.SimHub.Report.Error("Mur", e); }
                             else if (!driving && Settings.Wall && tick % 10 == 0) wall.Pause();
+                            // The mur's inputs at each reading (10 a second), between the full updates.
+                            if (driving && Settings.Wall && tick % 10 != 0) wall.Inputs(sample.Speed, sample.Throttle * 100, sample.BrakePedal * 100, sample.Steer * 100, sample.Gear);
                             if (driving && CourseOn && tick % 10 == 0) try { Course.Update(buffer, sample, recorder.Current, api.Service, Menu, Game, api.Refuel, standings, lovely); } catch (Exception e) { EnduranceManager.SimHub.Report.Error("Course", e); }
                             if (driving && CourseOn && tick % 20 == 5 && !Menu.Busy) ThreadPool.QueueUserWorkItem(_ => Menu.Read());
                             // The game's state, its estimate of the stop and the car's condition, what is due each second.

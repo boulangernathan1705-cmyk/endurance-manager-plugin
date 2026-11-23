@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Mur des stands</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="pit-wall.css">
+<style>
+/* Layout of the SimHub dash only; every frame, box, chip, table, wheel and drawing comes from pit-wall.css. */
+/* The wall: one fixed 2560 x 1440 layout, scaled to the window like a dash (never rearranged). */
+html, body { margin: 0; overflow-x: hidden; }
+.dash { box-sizing: border-box; padding: 14px; display: grid; gap: 12px; }
+.dash > .pw-card { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.top { grid-area: top; flex-direction: row !important; flex-wrap: wrap; align-items: center; }
+.cls { grid-area: board; } .tyrecard { grid-area: tyres; } .setcol { grid-area: sets; }
+.flat { grid-area: flat; } .relcard { grid-area: rel; } .enecard { grid-area: energy; } .inpcard { grid-area: inputs; }
+/* Large (27", fullscreen): everything on one screen, no scroll */
+html, body.L { overflow: hidden; background: #000; }
+body.L .dash { grid-template-columns: 880fr 476fr 520fr 248fr 360fr;
+  grid-template-rows: minmax(0, 1fr) auto 190px 408px;
+  grid-template-areas: "board board tyres tyres sets" "top top top top top" "flat flat flat flat flat" "rel energy energy inputs inputs"; }
+body.L .top { flex-wrap: nowrap; }
+/* Standings tyres: small, front pair on top, rear pair below */
+.tyres4 { display: inline-grid; grid-template-columns: repeat(2, 15px); gap: 2px; vertical-align: middle; }
+.pw-body .tyres4 .pw-compound { width: 15px; height: 15px; border-width: 2px; font-size: 9px; line-height: 1; box-sizing: border-box; }
+
+.pw-body .pw-driver { padding: 8px 16px; gap: 10px 30px; }
+.pw-body .pw-facts { gap: 26px; }
+.pw-body .pw-facts span { white-space: nowrap; }
+.pw-body .pw-table table { font-size: 17px; }
+.pw-body .cls .pw-table table { font-size: 20px; }
+.pw-body .cls .pw-table td { padding: 5px 12px; height: 44px; box-sizing: border-box; }
+.pw-body .cls .pw-table td.pw-name { max-width: none; }
+.pw-body .cls .pw-team { margin-left: 10px; font-size: 15px; }
+.pw-body .pw-facts b { font-size: 22px; }
+.tyres { flex: 1 1 auto; }
+.sets .pw-set { padding: 10px 12px; }
+.sets .pw-set b { font-size: 24px; }
+.pw-body .pw-table td { padding: 8px 10px; }
+.relcard .pw-table td { padding: 6px 10px; }
+.pw-body .pw-card-head { padding-bottom: 8px; margin-bottom: 8px; }
+
+/* Tyres: wheel cards around the site's damage drawing */
+.tyres { display: grid; grid-template-columns: minmax(0, 1fr) 150px minmax(0, 1fr); grid-template-rows: 1fr 1fr auto; gap: 10px; align-items: stretch; }
+.tyres .pw-wheel { padding: 8px 10px; gap: 6px; }
+.tyres .pw-tyre { width: 96px; height: 96px; }
+.tyres .pw-tyre b { font-size: 22px; }
+.tyres .pw-wheel-body { flex: 1 1 auto; gap: 22px; }
+.tyres .wearbox { grid-column: 1 / -1; grid-row: 3; }
+.pw-body .tyres .wearbox .pw-table td { padding: 4px 10px; }
+.tyres .pw-wear i { height: 70px; }
+.tyres .pw-brake i { height: 60px; }
+.tyres .car { grid-column: 2; grid-row: 1 / span 2; display: grid; justify-items: center; align-content: center; gap: 10px; }
+.tyres .car .pw-car-dents { width: 132px; }
+
+/* Flat track: one line, our car fixed in the middle */
+.lane { position: relative; height: 118px; background: var(--pw-inset); border: 1px solid var(--pw-line); border-radius: 6px; overflow: hidden; }
+.lane .seg { position: absolute; top: 74px; height: 6px; }
+.lane .segname { position: absolute; top: 6px; transform: translateX(-50%); font-family: var(--pw-mono); font-size: 18px; font-weight: 700; }
+.lane::before { content: ""; position: absolute; left: 0; right: 0; top: 76px; height: 2px; background: var(--pw-grid); }
+.lane .mark { position: absolute; top: 0; bottom: 0; border-left: 2px solid #3a4462; }
+.lane .mark span { position: absolute; top: 4px; left: 6px; font-family: var(--pw-mono); font-size: 14px; font-weight: 700; color: var(--pw-text2); white-space: nowrap; }
+.lane .mark.finish { border-left: 3px dashed var(--pw-text); }
+.lane .mark.finish span { color: var(--pw-text); }
+.lane .dot { position: absolute; top: 59px; width: 36px; height: 36px; margin-left: -18px; border-radius: 50%; display: grid; place-items: center; font-family: var(--pw-mono); font-size: 16px; font-weight: 700; color: #fff; box-shadow: 0 0 0 2px var(--pw-inset); }
+.lane .dot.gt3 { color: #111; }
+.lane .dot.pit { background: var(--pw-inset) !important; border: 3px dashed var(--tone); color: var(--tone); box-sizing: border-box; opacity: 1; }
+.lane .dot.pit small { color: var(--pw-orange); }
+@keyframes flash { 0%, 100% { background: rgba(255,51,102,.12); border-color: var(--pw-red); } 50% { background: rgba(255,51,102,.5); border-color: #fff; } }
+.pw-body .flash { background: rgba(255,51,102,.3) !important; border-color: var(--pw-red) !important; }
+.pw-body .flash > b { color: var(--pw-red) !important; }
+.pw-body .alarm { border: 3px solid var(--pw-red) !important; background: rgba(255,51,102,.18) !important; box-shadow: 0 0 22px rgba(255,51,102,.45); border-radius: 6px; }
+.tyres .car.alarm { padding: 8px 4px; }
+.pw-body .pw-tank-card.alarm .pw-tank-head b { color: var(--pw-red); }
+.popup { position: absolute; left: 50%; top: 600px; transform: translateX(-50%); z-index: 10; padding: 22px 48px; border-radius: 10px; background: #2a0c16; border: 3px solid var(--pw-red); box-shadow: 0 0 0 10px rgba(255,51,102,.25), 0 0 60px rgba(255,51,102,.5); display: grid; justify-items: center; gap: 6px; }
+.popup b { font-size: 46px; letter-spacing: .08em; color: var(--pw-red); }
+.popup span { font-family: var(--pw-mono); font-size: 24px; color: var(--pw-text); }
+.lane .dot.down { opacity: .55; }
+.lane .dot.lead { box-shadow: 0 0 0 2px var(--pw-inset), 0 0 0 4px #fff; }
+.lane .dot.us { top: 51px; width: 52px; height: 52px; margin-left: -26px; font-size: 22px; color: #04121a; background: var(--pw-cyan); box-shadow: 0 0 0 3px #fff, 0 0 14px var(--pw-cyan); z-index: 2; }
+.lane .dot small { position: absolute; bottom: 100%; margin-bottom: 3px; font-family: var(--pw-mono); font-size: 13px; font-weight: 700; color: var(--pw-text2); white-space: nowrap; }
+
+/* Energy */
+.energy { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.energy .pw-row2 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.energy .pw-tank-card { padding: 10px; gap: 6px; }
+.energy .pw-box { grid-template-columns: 1fr auto; align-items: center; padding: 5px 10px; }
+.pw-body .pw-tank-card .pw-box > b { font-size: 17px; }
+
+/* Inputs */
+.inputs { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 12px; flex: 1 1 auto; min-height: 0; }
+.inputs svg { display: block; width: 100%; height: 100%; background: var(--pw-inset); border: 1px solid var(--pw-line); border-radius: 6px; box-sizing: border-box; }
+.inputs .side { display: grid; gap: 12px; align-content: space-between; }
+.inputs .pw-pedals { gap: 26px; }
+.inputs .pw-pedal i { height: 110px; }
+
+/* Settings column: applied | advised */
+.sets { display: grid; gap: 8px; }
+.sets .head { display: grid; grid-template-columns: minmax(0, 1fr) 100px 100px; padding: 0 12px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--pw-text2); }
+.sets .head span + span { text-align: right; }
+.sets .pw-set { grid-template-columns: minmax(0, 1fr) 100px 100px; justify-items: stretch; align-items: center; padding: 10px 12px; }
+.sets .pw-set b { text-align: right; }
+.sets .pw-set b.reco { color: var(--pw-muted); }
+.sets .pw-set.change { --tone: var(--pw-cyan); box-shadow: 0 0 12px rgba(0,229,255,.15); }
+.sets .pw-set.change b.reco { color: var(--pw-cyan); }
+.sets .pw-set.grey { --tone: var(--pw-text2); }
+
+/* Readability pass: bigger labels and figures, no grey hints */
+.pw-body .pw-card-head h2 { font-size: 17px; }
+.pw-body .pw-card-head h2 small { font-size: 14px; }
+.pw-body .pw-chip { font-size: 14px; padding: 4px 10px; }
+.pw-body .pw-table th { font-size: 13px; }
+.pw-body .pw-facts span { font-size: 13px; }
+.pw-body .pw-facts b { font-size: 28px; }
+.pw-body .pw-who b { font-size: 22px; }
+.pw-body .pw-carnum { font-size: 28px; }
+.pw-body .pw-box > span { font-size: 14px; }
+.pw-body .pw-box > small, .pw-body .pw-wear small, .pw-body .pw-brake small, .pw-body .pw-tyre small { display: none; }
+.pw-body .relcard .pw-table table { font-size: 21px; }
+.pw-body .relcard .pw-table td { padding: 6px 10px; }
+.pw-body .relcard .pw-table th { padding-bottom: 2px; }
+.pw-body .pw-cls { font-size: 13px; }
+.energy .pw-box { padding: 8px 12px; }
+.pw-body .energy .pw-box > b, .pw-body .pw-tank-card .pw-box > b { font-size: 24px; }
+.pw-body .pw-tank-card .pw-tank-head span { font-size: 17px; }
+.pw-body .pw-tank-card .pw-tank-head b { font-size: 34px; }
+.pw-body .relcard .pw-row3 .pw-box > b { font-size: 28px; }
+.pw-body .pw-level { height: 10px; }
+.pw-body .pw-wheel .pw-wheel-head > b { font-size: 18px; }
+.pw-body .pw-wheel .pw-wheel-head > span b { font-size: 22px; }
+.pw-body .tyres .pw-wear b, .pw-body .tyres .pw-brake b { font-size: 22px; }
+.pw-body .tyres .pw-tyre b { font-size: 26px; }
+.pw-body .tyres .pw-tread i { font-size: 13px; }
+.pw-body .tyres .wearbox .pw-table table { font-size: 20px; }
+.sets .head { font-size: 13px; }
+.pw-body .sets .pw-set span { font-size: 16px; }
+.pw-body .sets .pw-set b { font-size: 28px; }
+.pw-body .pw-speedo.small .pw-gear { font-size: 84px; }
+.pw-body .inputs .pw-speed { font-size: 54px !important; }
+.pw-body .pw-pedal b { font-size: 20px; }
+.pw-body .pw-legend { font-size: 15px; }
+.lane .mark span { font-size: 16px !important; }
+.pw-body .pw-curve-now { font-size: 17px; }
+.pw-body .pw-wheelbar > span { font-size: 16px; }
+.pw-body .pw-wheel .pw-wheel-head > span { font-size: 15px; }
+.pw-body .pw-set b + b { margin-left: 8px; }
+
+/* Live page additions */
+.pw-body .muted { color: var(--pw-text2); }
+.pw-body .pw-facts b em { font-style: normal; }
+.dash.off { opacity: .45; }
+.sets .pw-set { grid-template-columns: minmax(0, 1fr) 120px; }
+.sets .head { grid-template-columns: minmax(0, 1fr) 120px; }
+.lane .seg.grey { background: var(--pw-grid); }
+</style>
+</head>
+<body class="pw-body L">
+<div class="dash" id="dash">
+
+  <section class="pw-card pw-driver top">
+    <span class="pw-carnum" id="num">—</span>
+    <div class="pw-who" style="flex: 0 0 auto;"><b id="driver">—</b><span id="car"></span></div>
+    <div class="pw-facts" id="facts"></div>
+    <span class="pw-track" style="margin-left: auto;" id="track"></span>
+    <span class="pw-pill" id="live"><i></i>—</span>
+  </section>
+
+  <section class="pw-card cls">
+    <div class="pw-card-head"><h2>🏆 <span id="clsTitle">Classement</span> <small id="clsCount"></small></h2></div>
+    <div class="pw-table"><table>
+      <thead><tr><th>Pos</th><th class="pw-yellow">#</th><th>Pilote · voiture</th><th>Pneus</th><th class="pw-n">Écart leader</th><th class="pw-n">Écart devant</th><th class="pw-n">Dernier tour</th><th class="pw-n">Meilleur tour</th><th class="pw-n">Relais</th><th>Stands</th></tr></thead>
+      <tbody id="board"></tbody>
+    </table></div>
+  </section>
+
+  <section class="pw-card tyrecard">
+    <div class="pw-card-head"><h2>🛞 Pneus et dégâts</h2><span class="pw-chip compound" id="tyreChip"></span><span class="pw-chip good" id="dmgChip">AUCUN DÉGÂT</span></div>
+    <div class="tyres" id="tyres"></div>
+  </section>
+
+  <section class="pw-card flat">
+    <div class="pw-card-head"><h2>🗺️ Piste à plat</h2>
+      <span class="pw-legend"><span><i style="background: var(--pw-hyper)"></i>Hypercar</span><span><i style="background: var(--pw-lmp2)"></i>LMP2</span><span><i style="background: var(--pw-gt3)"></i>LMGT3</span><span><i class="us"></i>Nous</span></span></div>
+    <div class="lane" id="lane"></div>
+  </section>
+
+  <section class="pw-card relcard">
+    <div class="pw-card-head"><h2>📍 Relatif</h2></div>
+    <div class="pw-table"><table>
+      <thead><tr><th>Pos</th><th class="pw-yellow">#</th><th>Cat</th><th>Pilote</th><th class="pw-n">Sur nous</th><th class="pw-n">Tours</th><th></th></tr></thead>
+      <tbody id="rel"></tbody>
+    </table></div>
+  </section>
+
+  <section class="pw-card enecard">
+    <div class="pw-card-head"><h2>⚡ Énergie et consommation</h2><span class="pw-chip" id="stintChip"></span></div>
+    <div class="energy" id="energy"></div>
+    <div class="pw-row3" style="margin-top: 12px;" id="energy3"></div>
+  </section>
+
+  <section class="pw-card inpcard">
+    <div class="pw-card-head"><h2>🎮 Inputs</h2><span class="pw-curve-now" style="margin-left: 0;">Accél. <b class="pw-green" id="thrNow">0%</b> Frein <b class="pw-red" id="brkNow">0%</b></span></div>
+    <div class="inputs">
+      <svg viewBox="0 0 300 100" preserveAspectRatio="none" id="trace"></svg>
+      <div class="side">
+        <div class="pw-speedo small"><b class="pw-gear" id="gear">N</b><div><b class="pw-speed" style="font-size: 40px;" id="speed">0</b><span>km/h</span></div></div>
+        <div class="pw-pedals"><div class="pw-pedal gas"><i id="gasBar" style="--level:0%"></i><b id="gasTxt">0%</b><span>Gaz</span></div><div class="pw-pedal brake"><i id="brkBar" style="--level:0%"></i><b id="brkTxt">0%</b><span>Frein</span></div></div>
+        <div class="pw-wheelbar"><span>Volant <b id="steerTxt">0%</b></span><div class="pw-steer"><i id="steer" style="left:50%"></i></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="pw-card setcol">
+    <div class="pw-card-head"><h2>🎛️ Réglages</h2><span class="pw-chip line cyan" id="profile" hidden></span></div>
+    <div class="sets" id="sets"></div>
+  </section>
+</div>
+
+<script>
+// Le mur des stands servi par le plugin (WallServer.cs) : la page lit /vue quatre fois par seconde (le mur fait par
+// Wall.cs, une fois par seconde en piste, les entrées à chaque lecture) et ne fait que l'afficher.
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const css = argb => argb && argb.length === 9 ? '#' + argb.slice(3) : (argb || '#ffffff');
+const val = s => s == null || s === '' ? '—' : s;
+const CLS = { '#ff3366': 'HYPERCAR', '#2f8cff': 'LMP2', '#ffab00': 'LMGT3', '#b07aff': 'LMP3' };
+const num = s => { const n = parseFloat(String(s ?? '').replace(',', '.')); return isNaN(n) ? null : n; };
+
+function strip(v) {
+  const us = (v.Standing || []).find(r => r.Visible && r.Us);
+  const best = (v.Standing || []).find(r => r.Visible && r.Best);
+  $('num').textContent = us ? us.Num : '—';
+  $('driver').textContent = val(v.Driver);
+  $('car').textContent = [v.Car, v.Class].filter(Boolean).join(' · ');
+  const place = (v.Place || '').split(' / ');
+  const ls = v.LastSectors || [];
+  const fact = (label, html) => `<div><span>${label}</span><b>${html}</b></div>`;
+  $('facts').innerHTML = [
+    fact('Delta', `<em style="color:${css(v.DeltaColor)}">${esc(val(v.Delta))}</em>`),
+    fact('S1', esc(val(ls[0]))), fact('S2', esc(val(ls[1]))), fact('S3', esc(val(ls[2]))),
+    fact('Dernier', esc(val(v.LastLap))), fact('Meilleur', `<em class="pw-green">${esc(val(v.BestLap))}</em>`),
+    fact('Meilleur catégorie', `<em class="pw-purple">${esc(val(best && best.BestLap))}</em>`),
+    fact('Position', `<em class="pw-cyan">${esc(val(place[0]))}</em>${place[1] ? ` <small>/ ${esc(place[1])}</small>` : ''}`),
+    fact('Temps restant', esc(val(v.TimeLeft))),
+    fact('Tours restants', esc(val(v.LapsLeft))),
+    fact('Météo · piste / air', `${esc(val(v.Weather))} <small>${esc(v.TrackTemp || '')} / ${esc(v.AirTemp || '')}</small>`),
+  ].join('');
+  $('track').textContent = [v.Track, v.Session].filter(Boolean).join(' · ');
+  $('live').className = 'pw-pill' + (v.Live ? ' on' : '');
+  $('live').innerHTML = `<i></i>${v.Live ? 'En direct' : esc(v.Status || 'Pas en piste')}`;
+  $('dash').classList.toggle('off', !v.Live);
+}
+
+function board(v) {
+  const rows = (v.Standing || []).filter(r => r.Visible);
+  $('clsTitle').textContent = 'Classement ' + (v.Class || '');
+  const n = (v.Place || '').split(' / ')[1];
+  $('clsCount').textContent = n ? n + ' voitures' : '';
+  $('board').innerHTML = rows.map(r => `<tr class="${r.Us ? 'us' : ''}"><td class="pw-pos">${esc(r.Pos)}</td><td class="pw-num">${esc(r.Num)}</td>
+    <td class="pw-name"><b>${esc(r.Name)}</b><span class="pw-team">${esc(r.Car)}</span></td>
+    <td>${r.Tyres ? `<span class="tyres4">${[...r.Tyres].map(c => `<span class="pw-compound ${esc(c)}">${esc(c)}</span>`).join('')}</span>` : ''}</td>
+    <td class="pw-n">${r.Leader === 'Leader' ? '<span class="pw-green">LEADER</span>' : esc(val(r.Leader))}</td><td class="pw-n">${esc(val(r.Ahead))}</td>
+    <td class="pw-n">${esc(val(r.Last))}</td><td class="pw-n"><span class="${r.Best ? 'pw-purple' : 'pw-green'}">${esc(val(r.BestLap))}</span></td>
+    <td class="pw-n">${r.Stint && r.Stint !== '—' ? esc(r.Stint) + ' t' : '—'}</td>
+    <td class="pw-stand">${r.Pit ? `<span class="pw-chip" style="margin-left:0;color:${css(r.PitColor)};border-color:${css(r.PitColor)}">${esc(r.Pit)}</span>` : ''}</td></tr>`).join('');
+}
+
+const temp = v => v == null ? 'var(--pw-text2)' : v < 60 ? 'var(--pw-blue)' : v < 75 ? 'var(--pw-cyan)' : v <= 100 ? 'var(--pw-green)' : v <= 110 ? 'var(--pw-yellow)' : 'var(--pw-red)';
+const brakeC = v => v == null ? 'var(--pw-text2)' : v < 250 ? 'var(--pw-blue)' : v <= 650 ? 'var(--pw-green)' : 'var(--pw-orange)';
+const NAMES = ['Avant gauche', 'Avant droit', 'Arrière gauche', 'Arrière droit'];
+function tyres(v) {
+  const ts = v.Tyres || [];
+  const wheel = (t, i) => {
+    const right = i % 2, tread = [t.In, t.Mid, t.Out].map(num), ok = tread.filter(x => x != null);
+    const mean = ok.length ? Math.round(ok.reduce((a, b) => a + b) / ok.length) : null, row = right ? tread : [...tread].reverse();
+    const left = t.LeftValue, bar = t.VeryWorn ? 'var(--pw-red)' : t.Worn ? 'var(--pw-orange)' : 'var(--pw-green)';
+    return `<div class="pw-wheel" style="${t.Worn ? 'border-color: var(--pw-orange); ' : ''}grid-column: ${right ? 3 : 1}; grid-row: ${i < 2 ? 1 : 2};"><div class="pw-wheel-head${right ? ' right' : ''}"><b>${NAMES[i]}</b><span><b class="pw-cyan">${esc(val((t.Pressure || '').replace(' kPa', '')))}</b> kPa</span></div>
+      <div class="pw-wheel-body${right ? ' right' : ''}">
+        <div class="pw-wear" style="--wear:${left == null ? 0 : Math.max(0, Math.min(100, left))}%;--bar:${bar}"><b>${esc(val(t.Left))}</b><i></i></div>
+        <div class="pw-tyre" style="--temp:${temp(mean)}"><b>${mean == null ? '—' : mean + '°C'}</b><span class="pw-tread">${row.map(x => `<i style="--temp:${temp(x)}">${x == null ? '—' : x}</i>`).join('')}</span></div>
+        <div class="pw-brake" style="--temp:${brakeC(num(t.Brake))}"><i></i><b>${esc(val(t.Brake))}</b></div>
+      </div></div>`;
+  };
+  const dents = v.Dents || [];
+  const tone = d => d >= 2 ? 'var(--pw-red)' : d === 1 ? 'var(--pw-orange)' : 'var(--pw-text2)';
+  const outline = ['M52 16H88', 'M52 16Q32 18 30 42V64', 'M30 64Q34 117 30 170', 'M30 170V194Q30 212 48 214', 'M48 214H92', 'M92 214Q110 212 110 194V170', 'M110 170Q106 117 110 64', 'M110 64V42Q108 18 88 16'];
+  const hub = (x, y) => `<rect x="${x}" y="${y}" width="14" height="30" rx="4" class="pw-dent-wheel"/>`;
+  const car = `<div class="car${v.DamageAlert ? ' alarm' : ''}"><svg class="pw-car-dents" viewBox="0 0 140 240" role="img" aria-label="Dégâts par zone">
+    <g class="pw-dent-arms"><path d="M26 51L52 38L52 64ZM26 183L52 170L52 196ZM114 51L88 38L88 64ZM114 183L88 170L88 196Z"/></g>
+    ${hub(12, 36)}${hub(114, 36)}${hub(12, 168)}${hub(114, 168)}<rect x="50" y="78" width="40" height="70" rx="16" class="pw-dent-cockpit"/>
+    ${outline.map((d, i) => `<path d="${d}" stroke="${tone(dents[i] || 0)}" class="pw-dent-zone"/>`).join('')}
+    <path d="M56 214V222M84 214V222" class="pw-dent-pillar"/><rect x="34" y="222" width="72" height="9" rx="2" class="pw-dent-wing"/></svg>
+    <div class="pw-wing ${v.WingOff ? 'bad' : 'good'}"><span>Aileron arrière</span><b>${v.WingOff ? 'Arraché' : 'En place'}</b></div></div>`;
+  const wear = `<div class="wearbox pw-table"><table><thead><tr><th>Usure par tour</th>${NAMES.map(n => `<th class="pw-n">${n}</th>`).join('')}</tr></thead>
+    <tbody><tr><td>Moyenne 5 tours</td>${ts.map(t => `<td class="pw-n">${esc(val(t.Wear5))}</td>`).join('')}</tr></tbody></table></div>`;
+  $('tyres').innerHTML = ts.map(wheel).join('') + car + wear;
+  $('tyreChip').textContent = val(v.TyreBand).toUpperCase();
+  $('dmgChip').className = 'pw-chip ' + (v.DamageAlert ? 'bad' : 'good');
+  $('dmgChip').textContent = v.DamageAlert ? 'DÉGÂTS' : 'AUCUN DÉGÂT';
+}
+
+// Flat track: x from 0 to 1, our car at 0.5; the line and the sector ends where Wall.cs puts them.
+function lane(v) {
+  let out = '';
+  const piece = (a, b, color, name) => {
+    const parts = b >= a ? [[a, b]] : [[a, 1], [0, b]];
+    for (const [x, y] of parts) out += `<div class="seg" style="left:${x * 100}%;width:${(y - x) * 100}%;background:${color}"></div>`;
+    const mid = b >= a ? (a + b) / 2 : ((a + b + 1) / 2) % 1;
+    if (mid > 0.03 && mid < 0.97) out += `<span class="segname" style="left:${mid * 100}%;color:${color}">${name}</span>`;
+  };
+  const L = v.LineAt, s1 = v.Sector1At, s2 = v.Sector2At;
+  if (L != null && s1 != null && s2 != null) { piece(L, s1, '#c6ff00', 'S1'); piece(s1, s2, '#ffffff', 'S2'); piece(s2, L, '#1de9b6', 'S3'); }
+  for (const [at, label, c] of [[L, 'ARRIVÉE', 'finish'], [s1, '', ''], [s2, '', '']])
+    if (at != null) out += `<div class="mark ${c}" style="left:${at * 100}%"><span>${label}</span></div>`;
+  for (const d of (v.Track2 || []).filter(d => d.Visible && !d.Us)) {
+    const color = css(d.Color), gt3 = color.toLowerCase() === '#ffab00';
+    out += `<div class="dot${gt3 ? ' gt3' : ''}${d.Pit ? ' pit' : ''}" style="left:${d.X * 100}%;background:${color};--tone:${color}">${esc(d.Pos)}${d.Pit ? '<small>STAND</small>' : ''}</div>`;
+  }
+  const us = (v.Track2 || []).find(d => d.Visible && d.Us);
+  if (us) out += `<div class="dot us" style="left:${us.X * 100}%">${esc(us.Pos)}</div>`;
+  $('lane').innerHTML = out;
+}
+
+function relative(v) {
+  const r = v.Relative || [], me = (v.Standing || []).find(x => x.Visible && x.Us);
+  const line = x => `<tr class="${x.Down ? 'down' : ''}"><td class="pw-pos">${esc(x.Pos)}</td><td class="pw-num">${esc(x.Num)}</td>
+    <td><span class="pw-cls" style="--cls:${css(x.ClassColor)}">${CLS[css(x.ClassColor).toLowerCase()] || ''}</span></td>
+    <td class="pw-name"><b>${esc(x.Name)}</b></td><td class="pw-n pw-big">${esc(val(x.Gap))}</td><td class="pw-n">${x.Down ? '−T' : x.Up ? '+T' : ''}</td>
+    <td class="pw-stand">${x.Pit ? '<span class="pw-chip warn">STANDS</span>' : ''}</td></tr>`;
+  const mine = me ? `<tr class="us"><td class="pw-pos">${esc(me.Pos)}</td><td class="pw-num">${esc(me.Num)}</td><td><span class="pw-cls" style="--cls:${css(v.ClassColor)}">${CLS[css(v.ClassColor).toLowerCase()] || ''}</span></td><td class="pw-name"><b>${esc(me.Name)}</b></td><td class="pw-n"></td><td></td><td></td></tr>` : '';
+  $('rel').innerHTML = r.slice(0, 3).filter(x => x.Visible).map(line).join('') + mine + r.slice(3).filter(x => x.Visible).map(line).join('');
+}
+
+function energy(v) {
+  const ve = v.EnergyLabel !== 'CARBURANT';
+  const box = (l, x, id, cls) => `<div class="pw-box${cls ? ' ' + cls : ''}"${id ? ` id="${id}"` : ''}><span>${l}</span><b>${esc(val(x))}</b></div>`;
+  const fill = v.EnergyFill == null ? 0 : Math.max(0, Math.min(100, v.EnergyFill * 100));
+  const card1 = `<div class="pw-tank-card ve${v.EnergyAlert ? ' alarm' : ''}"><div class="pw-tank-head"><span>${ve ? '⚡ Énergie virtuelle' : '⛽ Carburant'}</span><b>${esc(val(v.Energy))}</b></div>
+    <i class="pw-level" style="--level:${fill}%"></i>
+    <div class="pw-row2">${box('Dernier tour', v.EnergyLast)}${box('Moy. 5 tours', v.EnergyAvg5)}${box('Depuis le relais', v.EnergyStint)}${box('Tours restants', v.EnergyLapsLeft ? v.EnergyLapsLeft + ' t' : null, null, v.EnergyAlert ? 'flash' : '')}</div></div>`;
+  const card2 = ve ? `<div class="pw-tank-card fuel"><div class="pw-tank-head"><span>⛽ Carburant</span><b>${esc(val(v.Fuel))}</b></div>
+    <i class="pw-level" style="--level:0%;visibility:hidden"></i>
+    <div class="pw-row2">${box('Dernier tour', v.FuelLast)}${box('Moy. 5 tours', v.FuelAvg5)}${box('Tours restants', v.FuelLapsLeft ? v.FuelLapsLeft + ' t' : null)}</div></div>` : '';
+  $('energy').innerHTML = card1 + card2;
+  $('energy3').innerHTML = box('Ratio carburant', v.Ratio) + box('Relais', v.StintLaps && v.StintLaps !== '—' ? v.StintLaps + ' tours' : null) + box('Arrêts', v.Stops);
+  $('stintChip').textContent = val(v.StintText).toUpperCase();
+}
+
+function sets(v, profile) {
+  const list = [['TC', v.TC, 'blue'], ['TC Cut', v.TCCut, 'blue'], ['TC Slip', v.TCSlip, 'blue'], ['ABS', v.ABS, 'red'],
+    ['Répartition', v.Bias && v.Bias !== '—' ? v.Bias + ' %' : null, 'red'], ['Carto moteur', v.Map, 'yellow'], ['Migration', v.Migration, 'yellow'],
+    ['Régénération', v.Regen, 'yellow'], ['Batterie', v.Battery, 'grey']].filter(x => x[1] && x[1] !== '—');
+  $('sets').innerHTML = list.length ? list.map(([n, x, tone]) => `<div class="pw-set ${tone}"><span>${n}</span><b>${esc(x)}</b></div>`).join('') : '<p class="muted">Pas encore lu.</p>';
+  $('profile').hidden = !profile;
+  $('profile').textContent = profile ? 'PROFIL ' + profile.toUpperCase() : '';
+}
+
+// Inputs: the last 10 s kept here from each reading.
+const hist = [];
+function inputs(v) {
+  const t = Math.round(v.Throttle || 0), b = Math.round(v.Brake || 0), s = Math.round(v.Steer || 0);
+  hist.push([t, b]); if (hist.length > 40) hist.shift();
+  const pts = k => hist.map((h, i) => `${(i / 39 * 300).toFixed(1)},${(96 - h[k] * 0.92).toFixed(1)}`).join(' ');
+  $('trace').innerHTML = `<line x1="0" y1="50" x2="300" y2="50" stroke="#1c2233"/><polyline points="${pts(0)}" fill="none" stroke="#00e676" stroke-width="2" vector-effect="non-scaling-stroke"/><polyline points="${pts(1)}" fill="none" stroke="#ff3366" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
+  $('thrNow').textContent = $('gasTxt').textContent = t + '%';
+  $('brkNow').textContent = $('brkTxt').textContent = b + '%';
+  $('gasBar').style.setProperty('--level', t + '%'); $('brkBar').style.setProperty('--level', b + '%');
+  $('gear').textContent = v.Gear || 'N'; $('speed').textContent = v.Speed || '0';
+  $('steerTxt').textContent = (s > 0 ? '+' : '') + s + '%'; $('steer').style.left = (50 + s / 2) + '%';
+}
+
+function render(data) {
+  const v = data.vue || {};
+  for (const f of [strip, board, tyres, lane, relative, energy, inputs]) try { f(v); } catch (e) { console.error(f.name, e); }
+  try { sets(v, data.profil); } catch (e) { console.error('sets', e); }
+}
+
+// Four readings a second while the page is seen; none while it is hidden.
+async function poll() {
+  if (!document.hidden) try { const r = await fetch('vue', { cache: 'no-store' }); if (r.ok) render(await r.json()); } catch (e) { }
+  setTimeout(poll, 250);
+}
+
+// Window fit: the wall never rearranges, like a Dash Studio dash. The same 2560 x 1440 layout is scaled
+// to fit the window, keeping its proportions; the rest of the window stays black.
+function fit() {
+  const z = Math.min(innerWidth / 2560, innerHeight / 1440), d = $('dash');
+  document.body.style.zoom = z;
+  d.style.width = '2560px'; d.style.height = '1440px';
+  d.style.marginLeft = Math.max(0, (innerWidth / z - 2560) / 2) + 'px'; d.style.marginTop = Math.max(0, (innerHeight / z - 1440) / 2) + 'px';
+}
+// The window's place and size, kept by the plugin for the next opening (only from this PC).
+let placeTimer;
+function place() {
+  clearTimeout(placeTimer);
+  placeTimer = setTimeout(() => fetch(`place?x=${screenX}&y=${screenY}&w=${outerWidth}&h=${outerHeight}`, { cache: 'no-store' }).catch(() => { }), 600);
+}
+addEventListener('resize', () => { fit(); place(); });
+setInterval(() => { if (screenX !== place.x || screenY !== place.y) { place.x = screenX; place.y = screenY; place(); } }, 2000);
+fit(); render({ vue: {} }); poll();
+</script>
+</body>
+</html>

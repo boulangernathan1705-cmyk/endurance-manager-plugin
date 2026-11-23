@@ -21,7 +21,7 @@ garde tout le côté serveur. Ce dépôt ne contient que le plugin.
 | `WS /api/combos/plugin/live` (+ `/pass`) | la voiture et le classement, 1 Hz | Mur des stands équipages (`LiveShare.cs`) |
 | `WS /api/combos/plugin/live/watch` (+ `/pass`) | suivre le salon en spectateur | mur dans SimHub par le site |
 | `POST /api/combos/plugin/report` | journal ou signalement | Aide au développement (`Report.cs`) |
-| `GET /downloads/simhub/plugin.json`, `installer.cmd`, `EnduranceManager.SimHub.dll` | mise à jour | `Update.cs`, installeur |
+| `GET /downloads/simhub/v0/plugin.json`, `installer.cmd`, `EnduranceManager.SimHub.dll` | mise à jour (versions 0.x) | `Update.cs`, installeur |
 
 `/pass` donne l'adresse du relais temps réel (Durable Object) pour quelques minutes, ou 404 : on se connecte alors au
 site lui-même.
@@ -35,9 +35,15 @@ site lui-même.
 
 ## Mise à jour automatique
 
-- Le plugin lit `https://<site>/downloads/simhub/plugin.json` au plus une fois par heure (le site du code de liaison, ou
-  `https://endurance-manager.app` sans liaison). Version plus récente : bouton « Mettre à jour », qui télécharge
-  `installer.cmd` du site et le lance (ferme SimHub, copie la DLL vérifiée par taille + SHA-256, relance SimHub).
-- Ce que le site sert vient du dossier `connectors/simhub-plugin/release/` du dépôt du site (DLL + `plugin.json`) et de
-  son `Installer le plugin.cmd` ; `scripts/build.mjs` les publie. Les plugins déjà installés en dépendent : ne pas
-  changer ces adresses. Publier une version : voir [publier.md](publier.md).
+- Numérotation repartie de **0.1.0** le 22/11/2026 (avant : 2.x, jusqu'à 2.6.0). Les 0.x lisent leur propre dossier du
+  site, `/downloads/simhub/v0/`, sinon ils prendraient l'ancienne 2.2.0 servie dans `/downloads/simhub/` pour une
+  version plus récente.
+- Le plugin lit `https://<site>/downloads/simhub/v0/plugin.json` au plus une fois par heure (le site du code de
+  liaison, ou `https://endurance-manager.app` sans liaison). Version plus récente : bouton « Mettre à jour », qui
+  télécharge `installer.cmd` du même dossier et le lance (ferme SimHub, copie la DLL vérifiée par taille + SHA-256,
+  relance SimHub). Tant que le site n'a pas ce dossier : pas de mise à jour proposée, on installe depuis les Releases.
+- Passer les plugins 2.x déjà installés à la 0.x : dans `connectors/simhub-plugin/release/` du site, mettre la DLL
+  0.x avec `{"version":"2.99.0"}` dans `plugin.json` (l'installeur vérifie taille et SHA-256, pas la version de la DLL).
+  Les 2.x y voient une version plus récente et l'installent ; une fois en 0.x, le plugin ne lit plus que `v0/`, donc
+  pas de boucle. Jusque-là, `/downloads/simhub/` (2.2.0) reste tel quel. À terminer côté site au premier
+  envoi d'une 0.x aux pilotes : servir `connectors/simhub-plugin/v0/` dans `/downloads/simhub/v0/` (`scripts/build.mjs`).

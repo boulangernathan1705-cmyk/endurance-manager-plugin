@@ -148,14 +148,15 @@ namespace EnduranceManager.SimHub
         Sample? Last => latest() ?? (seen is Sample s ? s : (Sample?)null);
 
         // ── The wheel buttons ────────────────────────────────────────────────────────────────────────────────────────
-        // Pressed: a timer starts; still held after 2 s, the profile memorises the car's state. Released before: applied.
+        // Pressed: a timer starts; still held after 2 s, the profile memorises the car's state. Released before: a first
+        // press shows in the popup what the profile would change; the same button again within 5 s applies it.
         public void Press(int slot)
         {
             if (!enabled() || slot < 0 || slot >= Slots) return;
             Report.Log("bouton", "Profil" + (slot + 1) + " appuyé");
             pressedAt[slot] = DateTime.UtcNow;
             holds[slot]?.Dispose();
-            holds[slot] = new Timer(_ => { pressedAt[slot] = DateTime.MinValue; Memorise(slot); }, null, HoldMs, Timeout.Infinite);
+            holds[slot] = new Timer(_ => { pressedAt[slot] = DateTime.MinValue; pending = -1; Memorise(slot); }, null, HoldMs, Timeout.Infinite);
         }
 
         public void Release(int slot)
@@ -165,9 +166,92 @@ namespace EnduranceManager.SimHub
             holds[slot] = null;
             if (pressedAt[slot] == DateTime.MinValue) { Report.Log("bouton", "Profil" + (slot + 1) + " relâché après 2 s : mémorisé"); return; }
             pressedAt[slot] = DateTime.MinValue;
-            Report.Log("bouton", "Profil" + (slot + 1) + " relâché : appliqué");
-            Apply(slot);
+            if (pending == slot && DateTime.UtcNow < pendingUntil)
+            {
+                pending = -1;
+                Report.Log("bouton", "Profil" + (slot + 1) + " : 2e appui, appliqué");
+                Apply(slot);
+                return;
+            }
+            Report.Log("bouton", "Profil" + (slot + 1) + " : 1er appui, aperçu");
+            // The pit menu answers over HTTP: read aside, never on SimHub's thread.
+            ThreadPool.QueueUserWorkItem(_ => Ask(slot));
         }
+
+        // ── The popup ────────────────────────────────────────────────────────────────────────────────────────────────
+        // What a first press shows: each setting the profile would change (now → profile), in the car and for the next stop.
+        // Shown by ProfilePopup.cs above the game and on the dashes (properties Profils.Popup.*).
+        public class PopupView
+        {
+            public string Title = "";
+            public List<(string Label, string Now, string Next)> Drive = new List<(string, string, string)>();
+            public List<(string Label, string Now, string Next)> Pit = new List<(string, string, string)>();
+            public string Help = "";
+            // A confirmation is waiting: the bar empties until Until.
+            public bool Confirm;
+            public DateTime Since, Until;
+        }
+        public volatile PopupView Popup;
+        public const int ConfirmMs = 5000;
+        volatile int pending = -1;
+        DateTime pendingUntil;
+
+        void Show(string title, string help, double seconds, PopupView view = null)
+        {
+            view = view ?? new PopupView();
+            view.Title = title; view.Help = help; view.Since = DateTime.UtcNow; view.Until = view.Since.AddSeconds(seconds);
+            Popup = view;
+        }
+
+        public void Ask(int slot)
+        {
+            try
+            {
+                var list = Current;
+                if (slot >= list.Count) { Message = "Pas de profil n° " + (slot + 1) + " pour cette voiture."; Show("Profil" + (slot + 1), Message, 3); return; }
+                var profile = list[slot];
+                if (profile.Drive.Count == 0 && profile.PitApplied.Count == 0)
+                {
+                    Message = $"« {profile.Name} » est vide : maintiens le bouton 2 s pour le mémoriser.";
+                    Show($"« {profile.Name} » est vide", "Maintiens le bouton 2 s pour mémoriser tes réglages.", 4);
+                    return;
+                }
+                var view = Preview(profile, Last, ReadMenuTexts());
+                if (view.Drive.Count == 0 && view.Pit.Count == 0) { pending = -1; Show($"« {profile.Name} » déjà en place", "Rien à changer.", 3, view); return; }
+                view.Confirm = true;
+                pendingUntil = DateTime.UtcNow.AddMilliseconds(ConfirmMs);
+                pending = slot;
+                Show($"« {profile.Name} »", "Rappuie sur le même bouton pour confirmer.", ConfirmMs / 1000.0, view);
+            }
+            catch { pending = -1; }
+        }
+
+        // The lines that differ between the car as read now and the profile. A setting the game does not show is listed
+        // with « ? » now; the pit menu unread (game not answering) lists every line the profile applies.
+        public static PopupView Preview(Profile profile, Sample? car, Dictionary<string, string> menu)
+        {
+            var view = new PopupView();
+            foreach (var setting in Setting.All)
+            {
+                if (!profile.Drive.TryGetValue(setting.Key, out double target)) continue;
+                double? now = car is Sample s ? setting.Read(s) : null;
+                if (now is double value && Math.Abs(value - target) <= setting.Tolerance) continue;
+                view.Drive.Add((setting.Label, now is double v ? Format(setting, v) : "?", Format(setting, target)));
+            }
+            foreach (var name in profile.PitApplied)
+            {
+                if (!profile.Pit.TryGetValue(name, out string text)) continue;
+                string now = null;
+                if (menu != null && menu.TryGetValue(name, out now) && now == text) continue;
+                view.Pit.Add((Pretty(name), now ?? "?", text));
+            }
+            return view;
+        }
+
+        static string Format(Setting setting, double value) =>
+            setting.Key == "Bias" ? value.ToString("0.0", System.Globalization.CultureInfo.GetCultureInfo("fr-FR")) + " %" : value.ToString("0");
+
+        public static string Pretty(string name) => name.Length == 0 ? name : name.Substring(0, 1) + name.Substring(1).ToLowerInvariant();
 
         // ── Memorise ─────────────────────────────────────────────────────────────────────────────────────────────────
         // The car's settings as they are now, and the pit menu as it is set, into the profile at this place.
@@ -195,6 +279,7 @@ namespace EnduranceManager.SimHub
             Save();
             Applied = profile.Name;
             Message = $"« {profile.Name} » mémorisé" + (pit == null ? " (menu des stands non lu)." : ".");
+            Show($"« {profile.Name} » mémorisé", pit == null ? "Menu des stands non lu : seuls les réglages en roulant sont pris." : "Réglages en roulant et menu des stands pris.", 3);
         }
 
         // ── Apply ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -205,20 +290,23 @@ namespace EnduranceManager.SimHub
             if (slot >= list.Count) { Message = "Pas de profil n° " + (slot + 1) + " pour cette voiture."; return; }
             var profile = list[slot];
             if (profile.Drive.Count == 0 && profile.PitApplied.Count == 0) { Message = $"« {profile.Name} » est vide : maintiens le bouton 2 s pour le mémoriser."; return; }
+            pending = -1;
             if (Interlocked.Exchange(ref busy, 1) == 1) return;
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 try
                 {
                     Message = $"« {profile.Name} » en cours…";
+                    Show($"« {profile.Name} » en cours…", "", 20);
                     var problems = new List<string>();
                     foreach (var setting in Setting.All)
                         if (profile.Drive.TryGetValue(setting.Key, out double target)) { string problem = Reach(setting, target); if (problem != null) problems.Add(problem); }
                     if (profile.PitApplied.Count > 0) { string problem = WriteMenu(profile); if (problem != null) problems.Add(problem); }
                     Applied = profile.Name;
                     Message = problems.Count == 0 ? $"« {profile.Name} » appliqué." : $"« {profile.Name} » appliqué sauf : " + string.Join(" · ", problems);
+                    Show(problems.Count == 0 ? $"« {profile.Name} » appliqué" : $"« {profile.Name} » appliqué en partie", problems.Count == 0 ? "" : "Pas changé : " + string.Join(" · ", problems), problems.Count == 0 ? 2 : 6);
                 }
-                catch { Message = $"« {profile.Name} » : erreur, rien de plus n'a été changé."; }
+                catch { Message = $"« {profile.Name} » : erreur, rien de plus n'a été changé."; Show($"« {profile.Name} » : erreur", "Rien de plus n'a été changé.", 4); }
                 finally { busy = 0; }
             });
         }

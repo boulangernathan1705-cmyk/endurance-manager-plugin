@@ -98,6 +98,12 @@ jobs:
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           New-Item -ItemType Directory -Force zip | Out-Null
           Copy-Item src/bin/Release/EnduranceManager.SimHub.dll, "src/bin/Release/Installer le plugin.cmd", "src/bin/Release/Convertir un dash NeoRed.ps1" zip/
+          # plugin.json for the site's update folder (/downloads/simhub/v0/, docs/publier.md): version, size, fingerprint
+          # and « Ce qui change » from src/changements.json, which must be written for this very version.
+          $notes = Get-Content src/changements.json -Raw -Encoding UTF8 | ConvertFrom-Json
+          if ($notes.version -ne $version) { "::error::src/changements.json est pour la $($notes.version), le plugin est en $version : écrire ses changements."; exit 1 }
+          $dll = Get-Item zip/EnduranceManager.SimHub.dll
+          [ordered]@{ version = $version; size = $dll.Length; sha256 = (Get-FileHash $dll -Algorithm SHA256).Hash; changes = @($notes.changes) } | ConvertTo-Json -Depth 5 | Set-Content zip/plugin.json -Encoding UTF8
           Compress-Archive -Path zip/* -DestinationPath "plugin-endurance-manager-$version.zip" -Force
           "### Plugin $version" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
           "Zip prêt à essayer : « plugin-endurance-manager-$version » dans Artifacts, plus bas sur cette page." | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
@@ -156,7 +162,7 @@ jobs:
         run: |
           gh release view "v$env:VERSION" *> $null
           if ($LASTEXITCODE -eq 0) { "v$env:VERSION existe déjà : rien à publier (monter <Version> pour une nouvelle)."; exit 0 }
-          gh release create "v$env:VERSION" "plugin-endurance-manager-$env:VERSION.zip" --target $env:GITHUB_SHA --title "Plugin $env:VERSION" --generate-notes
+          gh release create "v$env:VERSION" "plugin-endurance-manager-$env:VERSION.zip" zip/plugin.json --target $env:GITHUB_SHA --title "Plugin $env:VERSION" --generate-notes
           exit $LASTEXITCODE
 
       # The pictures on the pull request's branch (maquettes/apercus-plugin), to look at without SimHub. [skip ci]: the

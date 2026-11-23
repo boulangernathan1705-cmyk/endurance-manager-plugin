@@ -4,6 +4,7 @@
 | --- | --- |
 | `apercus-plugin/` | Photos de l'écran du plugin (guide et onglets), refaites par la CI Windows à chaque PR. C'est l'écran réel. |
 | `chatgpt/` | Maquette HTML de l'écran du plugin, du guide et des infobulles (faite avec ChatGPT le 21/11/2026, branche `maquette/plugin-guide-infobulles` du site). |
+| `mur-fenetre/` | Mur des stands en fenêtre ouverte par le plugin (22/11/2026) : `index.html` montre le bloc « Ouvrir le mur » et le même mur en 27″, moitié de 27″, 15″ et tablette ; `mur.html` = le mur, disposition fixe 2560 × 1440 réduite à la fenêtre comme un dash (jamais réarrangée). Lien Claude : https://claude.ai/artifact/9UeEu5eMCDcrmiK8BZM15t |
 | `mur-simhub/` | Maquette validée du mur des stands dans SimHub (HTML 2560 × 1440 avec `pit-wall.css` et les polices du site), images avec et sans alertes, aperçus du dash rendu. |
 
 Ouvrir un `.html` dans un navigateur suffit.

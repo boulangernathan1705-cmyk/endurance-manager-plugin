@@ -31,9 +31,10 @@ sont plus un module : ils tournent quand Overlay relais ou Mur des stands est ac
   lancement), `Theme.cs` (couleurs du site).
 - `Update.cs` (mise à jour), `Tape.cs` (enregistreur de séance), `Lovely.cs` (fiches circuit/voiture Lovely Sim Racing).
 
-## État au 22/11/2026 (version 2.6.0)
+## État au 22/11/2026 (version 0.1.0)
 
-- Zip 2.6.0 de test donné à quelques pilotes. Le site sert encore la 2.2.0 en mise à jour automatique.
+- Numérotation repartie de 0.1.0 (ancienne 2.6.0 = point de départ). Zip 2.6.0 de test donné à quelques pilotes ; le
+  site sert encore la 2.2.0 aux anciens plugins.
 - Pas encore vérifié dans le vrai SimHub : les profils (appels Control Mapper signalés par `ApiCheck`), Black box sur
   boutons intégré, le mur dans Dash Studio (liaisons de position, `blink`, polices).
 - Ancienne branche `mur-dash-maquette` (supprimée le 23/11/2026, dernier commit `48531fc`) : une refonte du dash du

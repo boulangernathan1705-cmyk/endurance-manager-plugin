@@ -25,7 +25,20 @@ namespace EnduranceManager.SimHub
             this.plugin = plugin;
             Theme.Apply(this);
             Content = host;
-            if (plugin.Settings.GuideDone) ShowModules(); else ShowGuide();
+            if (!ShowPage()) ShowWpf();
+        }
+
+        void ShowWpf() { if (plugin.Settings.GuideDone) ShowModules(); else ShowGuide(); }
+
+        // The screen as a web page (src/ecran/, WebScreen.cs); false when it cannot show, the WPF screen then.
+        bool ShowPage()
+        {
+            var server = plugin.WallServer;
+            if (server == null || !server.Running) return false;
+            var page = WebScreen.Make(server.ScreenUrl, () => Dispatcher.BeginInvoke(new Action(ShowWpf)));
+            if (page == null) return false;
+            host.Child = page;
+            return true;
         }
 
         public UIElement Page => host.Child;
@@ -201,7 +214,7 @@ namespace EnduranceManager.SimHub
             "Règle le nombre de tours par relais dans l'onglet Overlay relais : il fixe ta cible d'énergie par tour.");
 
         UIElement Profiles() => Info("Réglages voiture en course",
-            "Un bouton du volant par profil (Sec, Inter, Pluie…) : appui court, la voiture passe dans ce profil ; appui de 2 s, il mémorise tes réglages du moment.",
+            "Un bouton du volant par profil (Sec, Inter, Pluie…) : 1er appui, un popup montre ce qui change ; 2e appui dans les 5 s, la voiture passe dans ce profil ; appui de 2 s, il mémorise tes réglages du moment.",
             "Dans l'onglet Réglages voiture en course, donne à chaque commande de LMU le bouton qui appuie dessus.",
             "Charge une voiture dans LMU : ses profils apparaissent dans l'onglet.");
 
