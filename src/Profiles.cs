@@ -1,4 +1,5 @@
-// Profils de réglages : chaque pilote garde, voiture par voiture, ses réglages de black box (Sec, Inter, Pluie…). Un
+// Profils de réglages : chaque pilote garde, pour chaque combo voiture + circuit, ses réglages de black box (Sec, Inter,
+// Pluie…). Le combo est lu dans LMU, rien à choisir ; un combo jamais vu part du dernier circuit réglé avec la voiture. Un
 // bouton du volant par profil : appui court, le plugin remet la voiture dans ce profil ; appui de 2 s, il mémorise l'état
 // actuel dans ce profil.
 //
@@ -36,8 +37,17 @@ namespace EnduranceManager.SimHub
 
     public class ProfileFile
     {
-        // Car model → its profiles, in button order (button 1 = the first).
+        // Car model → its profiles, in button order (button 1 = the first). Since the combos: the car's last memorised
+        // profiles (on any track), where a track never driven with it starts from. Also used when LMU gives no track.
         public Dictionary<string, List<Profile>> Cars = new Dictionary<string, List<Profile>>();
+        // Car model → track → its profiles: one set per car + track combo.
+        public Dictionary<string, Dictionary<string, List<Profile>>> Tracks = new Dictionary<string, Dictionary<string, List<Profile>>>();
+        // Car model → the track its Cars profiles were last memorised on.
+        public Dictionary<string, string> LastTrack = new Dictionary<string, string>();
+        // Car model → track → the track its profiles were copied from, until memorised there ("" = the car's first profiles).
+        public Dictionary<string, Dictionary<string, string>> From = new Dictionary<string, Dictionary<string, string>>();
+        // The last combo seen in LMU, shown on the screen when the game is closed.
+        public string SeenCar, SeenTrack;
         // Command (Setting key + "+" or "-") → a role kept from older versions (chosen by hand). Roles are found by themselves now.
         public Dictionary<string, string> Roles = new Dictionary<string, string>();
     }
@@ -90,6 +100,8 @@ namespace EnduranceManager.SimHub
         public ProfileFile File = new ProfileFile();
         // The car being driven (or the last one), whose profiles the screen and the buttons use.
         public volatile string Car;
+        // The track of the session (empty if LMU gives none): with the car, the combo whose profiles are used.
+        public volatile string Track;
         // The profile last applied by the plugin, and what the last button did (shown on the screen and the dashs).
         public volatile string Applied;
         public volatile string Message = "";
@@ -103,6 +115,9 @@ namespace EnduranceManager.SimHub
             try { if (System.IO.File.Exists(path)) File = JsonConvert.DeserializeObject<ProfileFile>(System.IO.File.ReadAllText(path)) ?? new ProfileFile(); } catch { }
             if (File.Cars == null) File.Cars = new Dictionary<string, List<Profile>>();
             if (File.Roles == null) File.Roles = new Dictionary<string, string>();
+            if (File.Tracks == null) File.Tracks = new Dictionary<string, Dictionary<string, List<Profile>>>();
+            if (File.LastTrack == null) File.LastTrack = new Dictionary<string, string>();
+            if (File.From == null) File.From = new Dictionary<string, Dictionary<string, string>>();
         }
 
         public void Save()
@@ -133,7 +148,57 @@ namespace EnduranceManager.SimHub
             }
         }
 
-        public List<Profile> Current => For(Car);
+        // The combo's profiles, made on first sight from the car's last memorised ones (another track), so a new track
+        // never starts from zero. No track known: the car's own profiles.
+        public List<Profile> For(string car, string track)
+        {
+            if (string.IsNullOrEmpty(track)) return For(car);
+            if (string.IsNullOrEmpty(car)) return new List<Profile>();
+            lock (gate)
+            {
+                if (!File.Tracks.TryGetValue(car, out var tracks)) File.Tracks[car] = tracks = new Dictionary<string, List<Profile>>();
+                if (!tracks.TryGetValue(track, out var list))
+                {
+                    list = Copy(For(car));
+                    tracks[track] = list;
+                    if (!File.From.TryGetValue(car, out var from)) File.From[car] = from = new Dictionary<string, string>();
+                    from[track] = File.LastTrack.TryGetValue(car, out var last) ? last ?? "" : "";
+                    Save();
+                }
+                return list;
+            }
+        }
+
+        static List<Profile> Copy(List<Profile> list) =>
+            JsonConvert.DeserializeObject<List<Profile>>(JsonConvert.SerializeObject(list)) ?? new List<Profile>();
+
+        // The tracks that have profiles for this car, A to Z.
+        public List<string> TracksOf(string car)
+        {
+            lock (gate)
+                return car != null && File.Tracks.TryGetValue(car, out var tracks) ? tracks.Keys.OrderBy(t => t, StringComparer.CurrentCultureIgnoreCase).ToList() : new List<string>();
+        }
+
+        // The track a combo's profiles were copied from, while not yet memorised there (null once memorised, "" = the car's
+        // first profiles).
+        public string FromOf(string car, string track)
+        {
+            lock (gate)
+                return car != null && track != null && File.From.TryGetValue(car, out var from) && from.TryGetValue(track, out var t) ? t : null;
+        }
+
+        public List<Profile> Current => For(Car, Track);
+
+        // The combo the screen shows: the one in LMU, else the last one seen (the game closed).
+        public (string Car, string Track) Shown
+        {
+            get
+            {
+                if (Car != null) return (Car, Track);
+                lock (gate)
+                    return File.SeenCar != null ? (File.SeenCar, File.SeenTrack) : (File.Cars.Keys.LastOrDefault(), null);
+            }
+        }
 
         // Each reading of the game: the car driven, for the buttons and the screen.
         // Also in the garage and the menus with a car loaded: its profiles are made and can be memorised from there.
@@ -141,7 +206,9 @@ namespace EnduranceManager.SimHub
         {
             if (string.IsNullOrEmpty(s.Car)) return;
             seen = s;
-            if (s.Car != Car) { Car = s.Car; Applied = null; }
+            string track = (s.Track ?? "").Trim();
+            if (s.Car != Car || track != (Track ?? "")) { Car = s.Car; Track = track; Applied = null; }
+            if (File.SeenCar != s.Car || (File.SeenTrack ?? "") != track) { File.SeenCar = s.Car; File.SeenTrack = track; Save(); }
         }
         volatile object seen;
         // The car as last read, on track or not: what « Mémoriser » takes.
@@ -274,6 +341,14 @@ namespace EnduranceManager.SimHub
                     profile.Pit = pit;
                     // The first time, every line applies except the damage and the driver; later, the pilot's own choice stays.
                     if (first) profile.PitApplied = pit.Keys.Where(name => !PitOffByDefault.Contains(name)).ToList();
+                }
+                // The combo is now set on this track: the car's next new track starts from these profiles.
+                string car = Car, track = Track;
+                if (!string.IsNullOrEmpty(car) && !string.IsNullOrEmpty(track))
+                {
+                    File.Cars[car] = Copy(list);
+                    File.LastTrack[car] = track;
+                    if (File.From.TryGetValue(car, out var from)) from.Remove(track);
                 }
             }
             Save();

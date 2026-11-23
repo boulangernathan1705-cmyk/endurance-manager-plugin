@@ -97,6 +97,7 @@ h1{font-size:30px;line-height:1.15;margin-top:4px;color:var(--cream)}
 .met div{background:var(--panel2);border:1px solid rgba(255,255,255,.04);border-radius:7px;padding:6px 9px;min-width:0}
 .met small{display:block;font-size:12px;color:var(--muted)}.met b{font-size:15px;font-variant-numeric:tabular-nums}
 .prof.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+select[data-ptrack]{background:rgba(15,22,24,.96);color:var(--text);border:1px solid rgba(66,103,108,.72);border-radius:6px;padding:5px 8px;font:inherit;font-size:14px;max-width:100%}
 .prof input[data-rename]{width:100%;background:transparent;border:1px solid transparent;border-radius:6px;padding:2px 6px;margin-left:-6px;font-weight:700;font-size:18px;color:var(--text)}
 .prof input[data-rename]:hover,.prof input[data-rename]:focus{border-color:rgba(66,103,108,.72);background:rgba(15,22,24,.96)}
 details summary{cursor:pointer;font-size:13px;color:var(--muted);margin-top:10px}
@@ -355,11 +356,12 @@ const PAGES = {
         ${x.drive.length ? `<div class="met" style="margin-top:10px">${x.drive.map((d) => `<div><small>${esc(d.k)}</small><b>${esc(d.v)}</b></div>`).join('')}</div>`
           : '<p class="mut small" style="margin-top:10px">Vide : roule, règle la voiture, puis maintiens le bouton 2 s (ou « Mémoriser »).</p>'}
         ${x.pit.length ? `<details><summary>Prochain arrêt · ${x.pit.filter((l) => l.on).length} lignes sur ${x.pit.length}</summary>${x.pit.map((l) => `<label><input type="checkbox" data-pit="${x.i}" data-key="${esc(l.key)}" ${l.on ? 'checked' : ''}><span>${esc(l.k)} : ${esc(l.v)}</span></label>`).join('')}</details>` : ''}
-        <div class="btns" style="margin-top:12px"><button type="button" class="btn s" data-memorise="${x.i}">Mémoriser</button><button type="button" class="btn s" data-apply="${x.i}">Appliquer</button></div>
+        ${p.other ? '' : `<div class="btns" style="margin-top:12px"><button type="button" class="btn s" data-memorise="${x.i}">Mémoriser</button><button type="button" class="btn s" data-apply="${x.i}">Appliquer</button></div>`}
       </article>`;
     return `<div class="page">${head('profils', '', 'Un bouton du volant par profil.')}
       ${p.car ? `<div class="card" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 16px">
-          <span style="flex:1;min-width:220px"><b style="font-size:17px">${esc(p.car)}</b> <span class="mut">· ${p.driving ? 'profils de cette voiture' : 'dernière voiture vue'}${p.wet != null ? ' · piste humide à ' + p.wet + ' %' : ''}</span></span>
+          <span style="flex:1;min-width:220px"><b style="font-size:17px">${esc(p.car)}${p.track ? ' · ' + esc(p.track) : ''}</b> <span class="mut">· ${p.other ? 'autre circuit, pour voir' : p.driving ? 'combo en cours' : 'dernier combo vu'}${p.wet != null && !p.other ? ' · piste humide à ' + p.wet + ' %' : ''}</span></span>
+          ${(p.tracks || []).length > 1 ? `<label class="mut small" style="display:flex;align-items:center;gap:8px">Circuit <select id="ptrack" data-ptrack aria-label="Circuit">${p.tracks.map((t) => `<option value="${esc(t === p.here ? '' : t)}"${t === p.track ? ' selected' : ''}>${esc(t)}${t === p.here ? ' (en cours)' : ''}</option>`).join('')}</select></label>` : ''}
           <span class="tipw"><span class="mut small">1 appui : voir · 2e appui : appliquer · 2 s : mémoriser</span>${tip('rule', 'Comment marchent les boutons', rule, true)}</span></div>
         ${(p.notes || []).map((n) => `<p class="note">${esc(n)}</p>`).join('')}
         <div class="grid g3">${(p.slots || []).map(card).join('')}</div>`
@@ -557,7 +559,7 @@ function render() {
   if (!PAGES[UI.page]) UI.page = 'home';
   renderNav();
   // Never redrawn under the pilot's typing.
-  const typing = document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName) && document.activeElement.type !== 'checkbox';
+  const typing = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) && document.activeElement.type !== 'checkbox';
   if (!typing) $('main').innerHTML = PAGES[UI.page]();
   renderGuide();
 }
@@ -599,6 +601,7 @@ document.addEventListener('click', async (e) => {
 document.addEventListener('change', (e) => {
   const t = e.target;
   if (t.dataset && t.dataset.rename !== undefined) act({ do: 'rename', i: +t.dataset.rename, name: t.value }, true);
+  if (t.dataset && t.dataset.ptrack !== undefined) { act({ do: 'track', track: t.value }, true); t.blur(); }
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.dataset && e.target.dataset.rename !== undefined) e.target.blur();

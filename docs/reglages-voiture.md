@@ -51,6 +51,12 @@
 
 - Chaque pilote garde, voiture par voiture, ses réglages de black box : 3 profils par défaut **Sec / Inter / Pluie**.
   Profils perso, sur son PC (`%LOCALAPPDATA%\EnduranceManager\profils.json`).
+- **Par combo voiture + circuit** (décidé par Nathan le 23/11/2026, maquette `maquettes/combo-circuit/`) : le plugin lit
+  la voiture et le circuit dans LMU et prend tout seul les profils de ce combo, le pilote ne choisit rien. Un circuit
+  jamais roulé avec la voiture part de ses derniers profils mémorisés (`Cars`, autre circuit), jamais de zéro.
+  Mémoriser garde pour ce combo seulement, et devient le départ des prochains nouveaux circuits. Dans `profils.json` :
+  `Tracks` (voiture → circuit → profils), `LastTrack`, `From` (repris de quel circuit, tant que pas mémorisé). Une liste
+  « Circuit » sur l'écran sert seulement à regarder un autre circuit de la voiture (sans Mémoriser ni Appliquer).
 - Réglages d'un profil : TC, TC cut, TC slip, ABS, répartition de freinage, migration, map moteur, régén (un réglage
   absent de la voiture est ignoré). Nathan voulait aussi le menu des stands (18 lignes) : pas encore fait.
 - Un bouton par profil (actions SimHub `Profil1`…) : 1er appui = un popup montre ce qui va changer (en roulant et au
