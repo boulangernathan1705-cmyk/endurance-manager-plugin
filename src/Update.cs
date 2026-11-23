@@ -152,8 +152,12 @@ namespace EnduranceManager.SimHub
 
                     Phase = "redemarrage";
                     var simhub = Process.GetCurrentProcess();
+                    // SimHub can stay alive in the background after its windows close (Nathan, 0.1.4): after 30 s the
+                    // process is ended, then started again.
                     Hidden(Script(
-                        $"Wait-Process -Id {simhub.Id} -Timeout 90 -ErrorAction SilentlyContinue",
+                        $"$p = Get-Process -Id {simhub.Id} -ErrorAction SilentlyContinue",
+                        "if ($p) { if (-not $p.WaitForExit(30000)) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue; $p.WaitForExit(15000) | Out-Null } }",
+                        "Start-Sleep -Seconds 2",
                         $"Start-Process -FilePath {Quote(simhub.MainModule.FileName)} -WorkingDirectory {Quote(Path.GetDirectoryName(simhub.MainModule.FileName))}"), admin: false);
                     Thread.Sleep(600);
                     quit();

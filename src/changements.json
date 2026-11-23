@@ -1,7 +1,6 @@
 {
-  "version": "0.1.4",
+  "version": "0.1.5",
   "changes": [
-    { "type": "nouveau", "text": "Black box du jeu sur l'écran VoCore : dash « Endurance Manager · Black box » (page Arrêt aux stands)", "page": "bb" },
-    { "type": "nouveau", "text": "Black box sur boutons : tout FMT companion dans la page (commandes, Préparer LMU, Tester, Stream Deck)", "page": "bb" }
+    { "type": "corrige", "text": "Mise à jour : SimHub se relance tout seul, même s'il restait ouvert en arrière-plan" }
   ]
 }
