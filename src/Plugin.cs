@@ -136,6 +136,11 @@ namespace EnduranceManager.SimHub
         bool Reading => Settings.Enabled || Settings.Share || Settings.Overlays || Settings.Wall || Settings.Profiles || Settings.CompanionOn;
         // The race figures for the dashs (Course.cs): no switch of their own, they run for the overlay and the mur des stands.
         public bool CourseOn => Settings.Overlays || Settings.Wall;
+        // The screens open now (Watched.cs): what nobody shows is not worked out. The race figures, the wheel's black
+        // box, the mur des stands on this PC.
+        readonly Watched courseSeen = new Watched(), blackBoxSeen = new Watched(), wallSeen = new Watched();
+        // The race figures are wanted now (a dash reads them, or the black box's pages): set by the reading thread.
+        volatile bool courseWanted;
 
         public void Init(PluginManager pluginManager)
         {
@@ -153,9 +158,10 @@ namespace EnduranceManager.SimHub
             // module is on (WallServer.cs, ScreenApi.cs).
             MakeServer();
             wallServer.Start(Settings.Wall);
-            foreach (var (name, get) in WallProperties.All) this.AttachDelegate(name, () => get(wall.View));
+            foreach (var (name, get) in WallProperties.All) this.AttachDelegate(name, () => { wallSeen.Seen(); return get(wall.View); });
             lovely = new Lovely(home);
-            standings = new Standings(() => Reading && GameState == "track", Path.Combine(home, "api", "ws-LiveStandings.json"));
+            // The game's live standings are for the race figures only: listened to while they are wanted.
+            standings = new Standings(() => Reading && courseWanted && GameState == "track", Path.Combine(home, "api", "ws-LiveStandings.json"));
             standings.Start();
             Profiles = new Profiles(Path.GetDirectoryName(home), () => latest is Sample s ? s : (Sample?)null, () => PluginManager ?? pluginManager, () => Settings.Profiles);
             // One action per profile place, to map to a wheel button in SimHub (Contrôles et événements): a short press
@@ -248,8 +254,10 @@ namespace EnduranceManager.SimHub
                 this.AttachDelegate(at + "ViseNombre", () => block(Practice.View).TargetNumber);
             }
             // The race figures under NeoRed's names (EnduranceManagerPlugin.Energy.VE.Current_%…), for any dashboard.
-            foreach (var (name, get) in Course.Properties) this.AttachDelegate(name, () => get(Course.View));
-            foreach (var (name, get) in BlackBoxPages.Properties()) this.AttachDelegate(name, get);
+            foreach (var (name, get) in Course.Properties) this.AttachDelegate(name, () => { courseSeen.Seen(); return get(Course.View); });
+            foreach (var (name, get) in BlackBoxPages.Properties()) this.AttachDelegate(name, blackBoxSeen.Wrap(get));
+            // Which screens read the plugin now, to check in SimHub's property list that a closed one costs nothing.
+            this.AttachDelegate("Ecrans", () => string.Join(", ", new[] { courseSeen.Now ? "chiffres" : null, blackBoxSeen.Now ? "black box" : null, wallSeen.Now ? "mur" : null }.Where(x => x != null)));
             // What LMU Drive reads of the car and the session (Telemetry.cs, plugin 2.5), from the last reading.
             foreach (var (name, get) in Telemetry.Properties) this.AttachDelegate(name, () => latest is Sample s ? get(s) : null);
             this.AttachDelegate("Voiture.TourOptimal", () => Computed.Optimal);
@@ -349,7 +357,7 @@ namespace EnduranceManager.SimHub
         void MakeServer()
         {
             screenApi = new ScreenApi(this);
-            wallServer = new WallServer(() => new { vue = wall.View, profil = Settings.Profiles ? Profiles?.Active : null }, (x, y, w, h) =>
+            wallServer = new WallServer(() => { wallSeen.Seen(); return new { vue = wall.View, profil = Settings.Profiles ? Profiles?.Active : null }; }, (x, y, w, h) =>
             {
                 if (Settings.MurX == x && Settings.MurY == y && Settings.MurW == w && Settings.MurH == h) return;
                 Settings.MurX = x; Settings.MurY = y; Settings.MurW = w; Settings.MurH = h;
@@ -505,8 +513,18 @@ namespace EnduranceManager.SimHub
                     using (var view = memory.CreateViewAccessor(0, LmuMemory.Size, MemoryMappedFileAccess.Read))
                     {
                         double lastEt = -1;
+                        bool linked = false;
                         for (int misses = 0, frozen = 0, tick = 0; running && Reading && misses < 600; tick++)
                         {
+                            // What is wanted now: the modules on, and among them the screens open (Watched.cs). A module
+                            // off or a screen closed costs nothing. The team's code is looked at once a second.
+                            bool blackBox = Settings.CompanionOn && blackBoxSeen.Now;
+                            bool standsShown = blackBox && BlackBoxPages.Page == BlackBoxPages.Stands;
+                            bool course = (CourseOn && courseSeen.Now) || blackBox;
+                            courseWanted = course;
+                            bool murLocal = Settings.Wall && wallSeen.Now;
+                            if (tick % 10 == 0) linked = Settings.Share && Link != null;
+                            bool share = Settings.Share && linked;
                             Copy(view, buffer);
                             // The session recorder for the tests (Tape.cs), while its switch is on.
                             Tape.Frame(buffer);
@@ -519,36 +537,43 @@ namespace EnduranceManager.SimHub
                             recorder.Feed(sample, driving);
                             latest = driving ? (object)sample : null;
                             if (ok && Settings.Profiles) Profiles.Seen(sample);
-                            // Each car's pit lane and our optimal and predicted lap (Computed.cs), ten times a second.
-                            if (driving) try { Computed.Update(buffer, sample, recorder.Current); } catch (Exception e) { EnduranceManager.SimHub.Report.Error("Computed", e); }
-                            // The wheel's black box pages (BlackBoxPages.cs), ten times a second while its module is on.
-                            if (driving && Settings.CompanionOn) try { BlackBoxPages.Update(buffer, sample, Course.View); } catch (Exception e) { EnduranceManager.SimHub.Report.Error("BlackBox", e); }
+                            // Each car's pit lane and our optimal and predicted lap (Computed.cs), ten times a second, while
+                            // the race figures' modules are on or the car is shared with the team (they keep a history:
+                            // not stopped with a screen).
+                            if (driving && (CourseOn || share)) try { Computed.Update(buffer, sample, recorder.Current); } catch (Exception e) { EnduranceManager.SimHub.Report.Error("Computed", e); }
+                            // The wheel's black box pages (BlackBoxPages.cs), ten times a second while its dash is shown.
+                            if (driving && blackBox) try { BlackBoxPages.Update(buffer, sample, Course.View); } catch (Exception e) { EnduranceManager.SimHub.Report.Error("BlackBox", e); }
                             GameState = driving ? "track" : "menu";
-                            // Once a second, the car and the field for the team's mur des stands.
-                            if (driving && Settings.Share) live.Frame(sample);
-                            if (driving && Settings.Share && tick % 10 == 0) live.Offer(buffer, sample, recorder, api, Computed);
+                            // Once a second, the car and the field for the team's mur des stands (with a team code only).
+                            if (driving && share) live.Frame(sample);
+                            if (driving && share && tick % 10 == 0) live.Offer(buffer, sample, recorder, api, Computed);
                             // Between two, nine quick messages a second: our car's frames and the cars on the map.
-                            else if (driving && Settings.Share) live.Fast(buffer);
+                            else if (driving && share) live.Fast(buffer);
+                            else if (driving && Settings.Share && tick % 10 == 0) live.Unlinked();
                             // Once a second, the race figures for the dashboards; the pit menu every 2 s, read aside.
-                            // Once a second, the mur des stands on this PC (solo, Wall.cs): our own snapshot, nothing sent.
-                            if (driving && Settings.Wall && tick % 10 == 0)
+                            // Once a second, the mur des stands on this PC (solo, Wall.cs), while it is shown: our own
+                            // snapshot, nothing sent.
+                            if (driving && murLocal && tick % 10 == 0)
                                 try { var snap = live.Local(buffer, sample, recorder, api, Computed); if (snap != null) wall.Local(snap, new object[] { Math.Round(sample.LapDist), Math.Round(sample.Speed, 1), Math.Round(sample.Throttle * 100), Math.Round(sample.BrakePedal * 100), Math.Round(sample.Steer * 100), sample.Gear }); }
                                 catch (Exception e) { EnduranceManager.SimHub.Report.Error("Mur", e); }
                             else if (!driving && Settings.Wall && tick % 10 == 0) wall.Pause();
                             // The mur's inputs at each reading (10 a second), between the full updates.
-                            if (driving && Settings.Wall && tick % 10 != 0) wall.Inputs(sample.Speed, sample.Throttle * 100, sample.BrakePedal * 100, sample.Steer * 100, sample.Gear);
-                            if (driving && CourseOn && tick % 10 == 0) try { Course.Update(buffer, sample, recorder.Current, api.Service, Menu, Game, api.Refuel, standings, lovely); } catch (Exception e) { EnduranceManager.SimHub.Report.Error("Course", e); }
-                            // Every 2 s for the figures; every half second for the wheel's screen (Black box sur boutons on).
-                            if (driving && (Settings.CompanionOn ? tick % 5 == 0 : CourseOn && tick % 20 == 5) && !Menu.Busy)
+                            if (driving && murLocal && tick % 10 != 0) wall.Inputs(sample.Speed, sample.Throttle * 100, sample.BrakePedal * 100, sample.Steer * 100, sample.Gear);
+                            // The race figures while a dash reads them (with their module on) or the black box shows.
+                            if (driving && course && tick % 10 == 0) try { Course.Update(buffer, sample, recorder.Current, api.Service, Menu, Game, api.Refuel, standings, lovely); } catch (Exception e) { EnduranceManager.SimHub.Report.Error("Course", e); }
+                            // Every half second while the wheel's screen shows « Arrêt aux stands », every 2 s for the
+                            // figures. A change from the wheel is read back at once anyway (BlackBox, BlackBoxDash.cs).
+                            if (driving && (standsShown ? tick % 5 == 0 : course && tick % 20 == 5) && !Menu.Busy)
                                 ThreadPool.QueueUserWorkItem(_ => { Menu.Read(); BlackBox.Update(Menu.Items); });
-                            // The game's state, its estimate of the stop and the car's condition, what is due each second.
-                            if (driving && tick % 10 == 7 && !Game.Busy)
+                            // The game's state, its estimate of the stop and the car's condition, what is due each second
+                            // (for the race figures only).
+                            if (driving && course && tick % 10 == 7 && !Game.Busy)
                             {
                                 bool standing = sample.InPits && sample.Speed < 1;
                                 ThreadPool.QueueUserWorkItem(_ => Game.Read(standing));
                             }
                             // Lovely's track and car files for the ones being driven, looked at every 30 s (downloaded once).
-                            if (driving && tick % 300 == 150 && !lovely.Busy)
+                            if (driving && course && tick % 300 == 150 && !lovely.Busy)
                             {
                                 string trackId = Text("DataCorePlugin.GameData.TrackId"), carId = Text("DataCorePlugin.GameData.CarId"), track = sample.Track;
                                 ThreadPool.QueueUserWorkItem(_ => lovely.Load(trackId, track, carId));

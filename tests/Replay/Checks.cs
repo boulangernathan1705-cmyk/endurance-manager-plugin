@@ -164,6 +164,9 @@ namespace EnduranceManager.SimHub.Replay
             pages.Change(1);
             Is((string)PV("BlackBox.4.C3") == "1:40.000", "Chrono : Split, temps à la fin de chaque secteur");
             Is(BlackBoxPages.Short("Nathan Boulanger") == "N Boulanger" && BlackBoxPages.Badge("Hypercar").badge == "HY", "Relatif : nom court et catégorie");
+            // Watched.cs : rien n'est calculé pour un écran fermé ; il compte comme ouvert dès qu'il lit une propriété.
+            var screen = new Watched(); bool closed = !screen.Now; screen.Wrap(() => 1)();
+            Is(closed && screen.Now, "Écran : fermé au départ, ouvert dès qu'il lit");
             foreach (var failure in failures) Console.WriteLine("ÉCHEC Black box : " + failure);
             if (failures.Count == 0) Console.WriteLine("OK    Black box : ligne choisie, défilement et noms");
             return failures.Count == 0;

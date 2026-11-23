@@ -82,6 +82,8 @@ namespace EnduranceManager.SimHub
                 if ((now - lastTurn).TotalMilliseconds < 250) return;
                 lastTurn = now;
                 page = ((page + step) % Titles.Length + Titles.Length) % Titles.Length;
+                // Back on Relatif: its cars read again at the next reading, they may be old.
+                carsStale = true;
             }
             Rebuild();
         }
@@ -223,15 +225,24 @@ namespace EnduranceManager.SimHub
         // ── Reading ─────────────────────────────────────────────────────────────────────────────────────────────────
 
         // Each reading of the game's memory while driving (Plugin.cs), with the race figures of the last second.
+        // The cars are read again only for Relatif and only when the game wrote new standings (its scoring clock moved,
+        // about 5 times a second): the same lines from the same figures are not worked out twice.
+        double carsET = double.NaN;
+        volatile bool carsStale = true;
+
         public void Update(byte[] b, Sample s, CourseView v)
         {
-            var field = Cars(b, s);
+            double et = b != null && b.Length >= ScoringInfo + 76 ? F64(b, ScoringInfo + 68) : double.NaN;
+            bool onRelative = page == Relative;
+            bool fresh = onRelative && (carsStale || double.IsNaN(et) || et != carsET);
+            var field = fresh ? Cars(b, s) : null;
             lock (gate)
             {
-                sample = s; view = v; cars = field;
+                sample = s; view = v;
+                if (field != null) { cars = field; carsET = et; carsStale = false; }
                 laps.Update(b, s);
             }
-            Rebuild();
+            if (!onRelative || fresh) Rebuild();
         }
 
         bool HasEnergy => sample is Sample s && s.Energy > 0;

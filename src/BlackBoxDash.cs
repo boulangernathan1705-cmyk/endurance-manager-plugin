@@ -209,6 +209,9 @@ namespace EnduranceManager.SimHub
     public static class BlackBoxDash
     {
         public const int Width = 800, Height = 480;
+        // At most 20 images a second (none before: each image of SimHub, its 127 formulas again). The pages change 10
+        // times a second at most: twice as often keeps the relatif, the tyres and the presses as quick as before.
+        public const double RefreshMs = 50;
         const int Header = 66, Pad = 14;
         // The game's black box: blue-grey panel, lighter title bar, grey labels, white values; the chosen line white with
         // red text and its arrows.
@@ -365,7 +368,7 @@ namespace EnduranceManager.SimHub
             var layer = new JObject
             {
                 ["$type"] = "SimHub.Plugins.OutputPlugins.GraphicalDash.Models.Layer, SimHub.Plugins", ["Group"] = true, ["Repetitions"] = 0, ["Visible"] = true,
-                ["Name"] = "Black box", ["RenderingSkip"] = 0, ["MinimumRefreshIntervalMS"] = 0.0, ["Top"] = 0, ["Left"] = 0, ["Height"] = Height, ["Width"] = Width,
+                ["Name"] = "Black box", ["RenderingSkip"] = 0, ["MinimumRefreshIntervalMS"] = RefreshMs, ["Top"] = 0, ["Left"] = 0, ["Height"] = Height, ["Width"] = Width,
                 ["BackgroundColor"] = "#00FFFFFF", ["Childrens"] = Items()
             };
             var metadata = new JObject

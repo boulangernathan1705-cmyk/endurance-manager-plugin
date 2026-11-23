@@ -142,6 +142,14 @@ les fichiers de résultats XML.
 
 - Rien dans la boucle de SimHub (`DataUpdate` est vide) : la lecture tourne sur son propre fil, en priorité basse,
   dix fois par seconde, et dort le reste du temps. Chaque lecture est une seule copie de la mémoire du jeu (325 Ko).
+- Ce qu'aucun écran ne montre n'est pas calculé (`Watched.cs`, 23/11/2026) : un écran compte comme ouvert 3 s après
+  sa dernière lecture d'une propriété du plugin. Chiffres de course (`Course.cs`, classement en direct, `GameApi.cs`,
+  Lovely) : seulement si un dash les lit (avec Overlay relais ou Mur des stands actif) ou si la black box est affichée.
+  Black box : pages calculées seulement dash affiché ; Relatif recalculé seulement quand le jeu publie de nouveaux écarts
+  (horloge du scoring, environ 5 fois par seconde) ; menu des stands lu 2 fois par seconde seulement sur la page
+  « Arrêt aux stands », toutes les 2 s sinon. Mur local : préparé seulement s'il est affiché. Partage équipe : rien
+  préparé ni lu au jeu sans code de liaison. Propriété `Ecrans` : les écrans vus ouverts.
+- Dashs livrés limités (avant : sans limite) : Black box 20 images par seconde, overlays et mur 10.
 - L'API locale du jeu est appelée voiture arrêtée aux stands, au garage et dans les menus (le nom du réglage, toutes
   les 5 s) et, en roulant, une fois par minute pour la seule lumière du jour (`RepairAndRefuel`, environ 15 Ko), une lecture
   à la fois.
