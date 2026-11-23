@@ -1,6 +1,7 @@
 {
-  "version": "0.1.3",
+  "version": "0.1.4",
   "changes": [
+    { "type": "nouveau", "text": "Black box du jeu sur l'écran VoCore : dash « Endurance Manager · Black box » (page Arrêt aux stands)", "page": "bb" },
     { "type": "nouveau", "text": "Black box sur boutons : tout FMT companion dans la page (commandes, Préparer LMU, Tester, Stream Deck)", "page": "bb" }
   ]
 }
