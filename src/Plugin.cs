@@ -108,6 +108,7 @@ namespace EnduranceManager.SimHub
         public PitMenu Menu { get; } = new PitMenu();
         // The game's pit menu for the wheel's screen (BlackBoxDash.cs), while Black box sur boutons is on.
         public BlackBox BlackBox { get; private set; } = new BlackBox();
+        BlackBoxRoles blackBoxRoles;
         public GameApi Game { get; } = new GameApi();
         // The pilot's setting profiles, car by car, and the wheel buttons that apply or memorise them (Profiles.cs).
         public Profiles Profiles { get; private set; }
@@ -173,6 +174,17 @@ namespace EnduranceManager.SimHub
             this.AddAction("BlackBoxDescendre", (manager, button) => BlackBox.Move(1));
             this.AddAction("BlackBoxPlus", (manager, button) => BlackBox.Change(1));
             this.AddAction("BlackBoxMoins", (manager, button) => BlackBox.Change(-1));
+            // The same six as Control Mapper roles (BlackBoxRoles.cs), created while Black box sur boutons is on.
+            blackBoxRoles = new BlackBoxRoles(() => PluginManager ?? pluginManager, new Dictionary<string, Action>
+            {
+                ["EM - Black box - Monter"] = () => BlackBox.Move(-1),
+                ["EM - Black box - Descendre"] = () => BlackBox.Move(1),
+                ["EM - Black box - Page suivante"] = () => { },
+                ["EM - Black box - Page precedente"] = () => { },
+                ["EM - Black box - Plus"] = () => BlackBox.Change(1),
+                ["EM - Black box - Moins"] = () => BlackBox.Change(-1)
+            });
+            if (Settings.CompanionOn) blackBoxRoles.Start();
             this.AttachDelegate("Profils.Actif", () => Settings.Profiles ? Profiles.Active ?? "" : "");
             this.AttachDelegate("Profils.Applique", () => Settings.Profiles ? Profiles.Applied ?? "" : "");
             this.AttachDelegate("Profils.NonActif", () => Settings.Profiles && Profiles.NotActive);
@@ -345,6 +357,7 @@ namespace EnduranceManager.SimHub
             live?.Stop();
             standings?.Stop();
             pluginManager.InputToActionTriggered -= DashButton;
+            blackBoxRoles?.Stop();
             Companion.End(pluginManager);
             EnduranceManager.SimHub.Report.Close("SimHub fermé", Modules());
             this.SaveCommonSettings("GeneralSettings", Settings);

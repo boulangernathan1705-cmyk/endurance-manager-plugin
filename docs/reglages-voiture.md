@@ -45,6 +45,12 @@
   `loadPitMenu` puis relu, comme les profils). Rien au-delà des bouts de la liste des choix. Une ligne changée ailleurs
   (bouton FMT companion, black box du jeu) amène le curseur sur elle. **Retirer + et − des commandes MFD de LMU** sur
   les mêmes boutons, sinon un appui change la valeur deux fois.
+- Les mêmes six en **rôles du Control Mapper** (`BlackBoxRoles.cs`, demande de Nathan : « Contrôles et événements »
+  marche mal) : « EM - Black box - Monter / Descendre / Page suivante / Page precedente / Plus / Moins », créés au
+  lancement quand Black box sur boutons est activé, comme ceux de FMT companion (bouton virtuel `VirtualButtonMap` de
+  la sortie du Control Mapper, `SaveSettings`, lu dans sa DLL). Un appui arrive par `InputPressed`
+  (« ControlMapperPlugin.<rôle> »). Tout par réflexion ; jamais « FMT » au début (FMT companion retire les rôles FMT
+  qu'il ne connaît pas). À vérifier dans le vrai SimHub.
 - Toucher (écran tactile) : à faire, le format des boutons tactiles de Dash Studio n'a pas encore été vu dans un vrai dash.
 - Noms : si l'API répond en anglais (« VIRTUAL ENERGY »), ils sont écrits comme l'écran français du jeu
   (« Énergie Virtuelle: ») ; sinon tels que le jeu les donne. À vérifier dans le vrai jeu : la langue de l'API et le
