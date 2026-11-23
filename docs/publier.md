@@ -13,8 +13,8 @@
 3. Pour que les plugins installés (0.x) se mettent à jour : dans le dépôt du site, une PR vers `dev` qui met la DLL de
    la Release, son `plugin.json` (tel quel : le plugin vérifie taille et empreinte) et `Installer le plugin.cmd` dans `connectors/simhub-plugin/v0/`,
    servis dans `/downloads/simhub/v0/` (voir [lien-avec-le-site.md](lien-avec-le-site.md) ; la première fois, ajouter
-   ce dossier à `scripts/build.mjs`). Ne jamais toucher `connectors/simhub-plugin/release/` : c'est la 2.2.0 des
-   anciens plugins. Le site publie la mise à jour à son
+   ce dossier à `scripts/build.mjs`). Ne pas toucher `connectors/simhub-plugin/release/` : c'est la 2.2.0 des
+   anciens plugins (seule exception : le passage unique des 2.x à la 0.x, voir lien-avec-le-site.md). Le site publie la mise à jour à son
    déploiement (dev d'abord, puis production avec la release du site). Ne jamais monter `plugin.json` sans la DLL
    correspondante (boucle de mise à jour).
 

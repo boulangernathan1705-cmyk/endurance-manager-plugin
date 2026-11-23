@@ -3,6 +3,18 @@
 Projet de Nathan (équipe FMT). Répondre en **français**, court. Devise : « La simplicité, c'est la sophistication
 suprême » : écran le plus simple, textes courts.
 
+## Où travailler (toutes les sessions : PC, téléphone, cloud)
+
+- **La seule source du plugin est ce dépôt GitHub, branche `main`.** Partir toujours de `main` à jour.
+- **Jamais de travail ni de compilation dans les dossiers du PC de Nathan** : ce sont de vieilles copies
+  (`Documents\Projets\dev\app-endurance-manager\connectors\simhub-plugin`, `dev\em-profils`,
+  `REPRISE_SIMHUB_PC`). Même sur le PC, on passe par GitHub.
+- La compilation et les tests se font dans la CI. Le zip à essayer est dans Releases, « Test PR #N ».
+- Une PR vise toujours `main` (jamais la branche d'une autre PR, sauf demande de Nathan). Une fois fusionnée, sa
+  branche est supprimée.
+- Fusion dans `main` = Release GitHub. **Les pilotes ne l'ont qu'après la PR sur le site** (étape 3 de
+  [`docs/publier.md`](docs/publier.md)) : le rappeler à Nathan après chaque Release.
+
 ## Avant de coder
 
 - Lire [`docs/README.md`](docs/README.md) puis le fichier `docs/` du sujet.
