@@ -32,7 +32,7 @@ Disposition de Nathan :
 ## Deux versions du dash
 
 - `main` (2.6.0) : `WallDash.cs` dessine le dash en C# d'après la maquette, `WallProperties.cs` liste les propriétés.
-- Branche `mur-dash-maquette` : la refonte faite juste après le refus du premier dash (« c'est pas du tout la
+- Ancienne branche `mur-dash-maquette` (supprimée le 23/11/2026, dernier commit `48531fc`, PR #2 fermée) : la refonte faite juste après le refus du premier dash (« c'est pas du tout la
   maquette ») : `dash/mur.html` = la maquette avec des attributs `data-*`, `node dash/build.mjs` la lit dans Chromium et
   écrit les éléments Dash Studio (`dash/mur.json`, incorporé à la DLL), polices du site installées pour l'utilisateur.
   Elle n'a jamais été fusionnée avec la 2.6.0 (conflits dans `Wall.cs`, `WallDash.cs`, `Plugin.cs`).
