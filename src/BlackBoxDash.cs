@@ -154,12 +154,15 @@ namespace EnduranceManager.SimHub
             int count = (line?["settings"] as JArray)?.Count ?? 0;
             int now = (int?)line?["currentSetting"] ?? 0, next = now;
             // Round the list, past the choices the game never shows (« INVALID », empty).
+            // « Pneus » never offers the mixed set (« Mixte »): the game shows it only when the wheels differ, its keys skip it.
+            bool all = name == "TIRES";
+            bool Fits(int i) => Usable(Choice(line, i)) && !(all && Choice(line, i).IndexOf("mix", StringComparison.OrdinalIgnoreCase) >= 0);
             for (int k = 0; k < count; k++)
             {
                 next = ((next + step) % count + count) % count;
-                if (Usable(Choice(line, next))) break;
+                if (Fits(next)) break;
             }
-            if (count < 2 || next == now || !Usable(Choice(line, next))) return false;
+            if (count < 2 || next == now || !Fits(next)) return false;
             line["currentSetting"] = next;
             if (name == "TIRES")
             {
@@ -316,18 +319,29 @@ namespace EnduranceManager.SimHub
         // the middle.
         static IEnumerable<JObject> TyreItems(string shown)
         {
-            const string Yellow = "#FFFFD400";
+            const string Worn = "#FF3A3F48";
             string[] corners = { "AVG", "AVD", "ARG", "ARD" };
             for (int i = 0; i < 4; i++)
             {
                 string at = "Pneus." + corners[i] + ".";
                 double x = i % 2 == 0 ? 20 : Width - 20 - 156, y = i < 2 ? 80 : 304;
                 bool right = i % 2 == 1, front = i < 2;
-                yield return Rect("Anneau" + (i + 1), x, y, 156, 156, P(at + "Couleur"), shown, 78);
+                // The ring wears round as in the game: 36 dots clockwise from the top, lit (white, red when lost or flat)
+                // up to what is left, grey after; the inner panel hides their inner halves.
+                for (int k = 0; k < 36; k++)
+                {
+                    double angle = k * Math.PI * 2 / 36;
+                    double dx = x + 78 + 71 * Math.Sin(angle) - 7, dy = y + 78 - 71 * Math.Cos(angle) - 7;
+                    string lit = ((k + 1) * 100.0 / 36).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+                    yield return Rect("Anneau" + (i + 1) + "_" + k, dx, dy, 14, 14, $"if({P(at + "Reste")} >= {lit}, {P(at + "Couleur")}, '{Worn}')", shown, 7);
+                }
                 yield return Rect("AnneauFond" + (i + 1), x + 10, y + 10, 136, 136, Panel, shown, 68);
                 yield return Text("Usure" + (i + 1), x, y + 32, 156, 54, 38, P(at + "Usure"), White, 1, shown);
-                yield return Rect("GommeRond" + (i + 1), x + 64, y + 92, 28, 28, "#00000000", $"{shown} && {P(at + "Gomme")} != '' && {P(at + "Etat")} == ''", 14, Yellow);
-                yield return Text("Gomme" + (i + 1), x + 64, y + 92, 28, 28, 16, P(at + "Gomme"), Yellow, 1, $"{shown} && {P(at + "Etat")} == ''");
+                // The compound's letter in its circle, in the game's colour (soft white, medium yellow, hard red, wet blue).
+                string whole = $"{shown} && {P(at + "Gomme")} != '' && {P(at + "Etat")} == ''";
+                yield return Rect("GommeRond" + (i + 1), x + 64, y + 92, 28, 28, P(at + "GommeCouleur"), whole, 14);
+                yield return Rect("GommeFond" + (i + 1), x + 66, y + 94, 24, 24, Panel, whole, 12);
+                yield return Text("Gomme" + (i + 1), x + 64, y + 92, 28, 28, 16, P(at + "Gomme"), P(at + "GommeCouleur"), 1, $"{shown} && {P(at + "Etat")} == ''");
                 yield return Text("Etat" + (i + 1), x, y + 88, 156, 34, 20, P(at + "Etat"), Red, 1, $"{shown} && {P(at + "Etat")} != ''");
                 // The brake's sign beside its temperature, toward the middle, as in the game.
                 var disc = Text("Disque" + (i + 1), right ? 410 : 360, front ? 176 : 300, 30, 40, 22, "'⊚'", Label, 1, shown);

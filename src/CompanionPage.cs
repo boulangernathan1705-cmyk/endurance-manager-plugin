@@ -67,7 +67,9 @@ namespace EnduranceManager.SimHub
 
         IEnumerable<object> Functions() => ((IEnumerable)Get(Kind("Catalog"), "All")).Cast<object>();
 
-        object Function(string id) => Functions().FirstOrDefault(f => Text(Get(f, "Id")) == id) ?? throw new ArgumentException("Commande inconnue : " + id);
+        // Its keys of LMU are listed as « Key.TC.Next »: found with or without « Key. ».
+        object Function(string id) => Functions().FirstOrDefault(f => Text(Get(f, "Id")) == id) ?? Functions().FirstOrDefault(f => Text(Get(f, "Id")) == "Key." + id)
+            ?? throw new ArgumentException("Commande inconnue : " + id);
 
         // ── What the page shows ─────────────────────────────────────────────────────────────────────────────────────
         public object State()

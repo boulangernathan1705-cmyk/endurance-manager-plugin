@@ -111,6 +111,8 @@ namespace EnduranceManager.SimHub.Replay
             Is(BlackBox.Step(menu, "TIRES", -1) && At("TIRES") == 4, "Pneus : moins depuis « Aucun changement » donne pluie (« INVALID » sauté)");
             Is(At("FL TIRE") == 4 && At("FR TIRE") == 4 && At("RL TIRE") == 4 && At("RR TIRE") == 4, "Pneus : les 4 roues suivent");
             Is(BlackBox.Step(menu, "TIRES", 1) && At("TIRES") == 0 && At("RR TIRE") == 0, "Pneus : plus depuis pluie revient à « Aucun changement »");
+            var mixed = new JArray(Line("TIRES:", 0, "No Change", "Mixed", "Soft"));
+            Is(BlackBox.Step(mixed, "TIRES", 1) && (int)mixed[0]["currentSetting"] == 2, "Pneus : « Mixte » jamais proposé par − +, comme les touches du jeu");
             Is(BlackBox.Step(menu, "FL TIRE", 1) && At("FL TIRE") == 1 && At("FR TIRE") == 0, "Une roue seule : les autres ne bougent pas");
             Is(BlackBox.Step(menu, "VIRTUAL ENERGY", 1) && At("VIRTUAL ENERGY") == 0, "Énergie : plus après le dernier choix revient au premier");
             Is(!BlackBox.Step(menu, "DAMAGE", 1), "Un seul choix : rien ne bouge");
@@ -129,7 +131,7 @@ namespace EnduranceManager.SimHub.Replay
             Is(pages.Presses.Contains("page précédente"), "Appuis notés");
             var car = new Sample { Fuel = 60, Energy = 80, MotorState = 2, Battery = 0.5, TC = 3, TCMax = 9, RearBrakeBias = 0.477, LapsDone = 3, Wheels = new Wheel[4],
                 FrontCompound = "Medium", RearCompound = "Medium" };
-            car.Wheels[0] = new Wheel { Wear = 0.99, Pressure = 122.7, Temp = 22.4, InnerIn = 33, InnerMid = 34, InnerOut = 35, Brake = 85.5 };
+            car.Wheels[0] = new Wheel { Wear = 0.99, Pressure = 122.7, Temp = 22.4, TreadIn = 33, TreadMid = 34, TreadOut = 35, Brake = 85.5 };
             car.Wheels[1] = new Wheel { Wear = 0.5, Off = true };
             var cv = new CourseView { FuelAvg5 = 3, FuelLastLap = 2.5, VeAvg5 = 4, VeLastLap = 5, LapTimeAvg10 = 120, RegenLevel = 2 };
             pages.Update(null, car, cv);
@@ -153,6 +155,7 @@ namespace EnduranceManager.SimHub.Replay
             pages.Turn(-1);
             Is((string)PV("BlackBox.Pneus.AVG.Usure") == "99%" && (string)PV("BlackBox.Pneus.AVG.Gomme") == "M" && (string)PV("BlackBox.Pneus.AVG.Pression") == "122.7kPa"
                 && (string)PV("BlackBox.Pneus.AVG.Temp") == "34.0°C" && (string)PV("BlackBox.Pneus.Jeux") == "∞ Pneus", "Pneus : usure, gomme, pression, température, jeux");
+            Is((double)PV("BlackBox.Pneus.AVG.Reste") == 99.0 && (string)PV("BlackBox.Pneus.AVG.GommeCouleur") == "#FFFFD400", "Pneus : anneau qui s'use, medium en jaune");
             Is((string)PV("BlackBox.Pneus.AVD.Etat") == "Perdue" && (string)PV("BlackBox.Pneus.AVD.Couleur") == "#FFE83A4C", "Pneus : roue perdue en rouge");
             System.Threading.Thread.Sleep(300);
             pages.Turn(-1);
@@ -160,10 +163,12 @@ namespace EnduranceManager.SimHub.Replay
             pages.Change(1); pages.Move(1);
             car.LapsDone = 4; car.LastSector1 = 30; car.LastSector2 = 65; car.LastLap = 100;
             pages.Update(null, car, cv);
-            Is((string)PV("BlackBox.1.Nom") == "◂ ▸  Secteur" && (string)PV("BlackBox.4.Nom") == "Dernier" && (string)PV("BlackBox.4.C2") == "35.000", "Chrono : Secteur, Relatif, dernier tour par secteur");
+            Is((string)PV("BlackBox.1.Nom") == "◂ ▸  Secteur" && (string)PV("BlackBox.4.Nom") == "Dernier" && (string)PV("BlackBox.4.C2") == "1:05.000", "Chrono : Secteur, Relatif, temps à la fin de chaque secteur");
             pages.Change(1);
-            Is((string)PV("BlackBox.4.C3") == "1:40.000", "Chrono : Split, temps à la fin de chaque secteur");
+            Is((string)PV("BlackBox.4.C3") == "0:35.000", "Chrono : Split, temps de chaque secteur");
             Is(BlackBoxPages.Short("Nathan Boulanger") == "N Boulanger" && BlackBoxPages.Badge("Hypercar").badge == "HY", "Relatif : nom court et catégorie");
+            Is(BlackBoxPages.Badge("LMP2 ELMS").color != BlackBoxPages.Badge("LMP2").color && BlackBoxPages.Badge("LMGT3").badge == "GT3" && BlackBoxPages.Badge("GTE").badge == "GTE"
+                && BlackBoxPages.Badge("LMP3").badge == "P3", "Relatif : toutes les catégories de LMU");
             // Watched.cs : rien n'est calculé pour un écran fermé ; il compte comme ouvert dès qu'il lit une propriété.
             var screen = new Watched(); bool closed = !screen.Now; screen.Wrap(() => 1)();
             Is(closed && screen.Now, "Écran : fermé au départ, ouvert dès qu'il lit");

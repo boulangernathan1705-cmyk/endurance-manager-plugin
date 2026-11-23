@@ -66,18 +66,27 @@
 - Propriétés : `BlackBox.Page`, `.PageNo` (0 Relatif … 6 Arrêt aux stands), `.Message`, `.Appuis` (derniers appuis reçus), `.Attente`, `.Haut`, `.Bas`,
   `.Lignes`, `.Choisie` ; les 7 lignes `BlackBox.1.Nom` / `.Valeur` / `.C1` `.C2` `.C3` / `.Pos` / `.Classe` / `.Couleur` /
   `.Petit` / `.Choisie` / `.Reglable` / `.Moi` … `BlackBox.7.*` ; les roues `BlackBox.Pneus.AVG.Usure` / `.Gomme` /
-  `.Pression` / `.Temp` / `.Frein` / `.Etat` / `.Couleur` … `ARD.*`, `BlackBox.Pneus.Jeux`.
+  `.GommeCouleur` / `.Reste` (0 à 100, l'anneau) / `.Pression` / `.Temp` / `.Frein` / `.Etat` / `.Couleur` … `ARD.*`, `BlackBox.Pneus.Jeux`.
 - Étape 2 (faite, PR #14, accord de Nathan sur les pages le 23/11) : les 7 pages du jeu dans son ordre (Relatif, Séance,
   Chrono, Pneus, Carburant, Électronique, Arrêt aux stands), icônes dans la barre de titre, ◂ ▸ font le tour
   (`BlackBoxPages.cs`). Boutons par page, comme la black box du jeu (Nathan) :
   - Électronique : ▲ ▼ changent de ligne, − + envoient les commandes de FMT companion (`TC.Next`, `Bias.Forward`…,
-    comme son bouton « Tester ») : il faut avoir fait « Préparer LMU » dans FMT companion. Seuls les réglages que la
+    comme son bouton « Tester » ; ses ids sont `Key.TC.Next`…, trouvés avec ou sans `Key.`) : il faut avoir fait
+    « Préparer LMU » dans FMT companion. Pas de passage par l'API du jeu : aucune adresse connue pour ces réglages. Seuls les réglages que la
     voiture a sont listés.
-  - Chrono : − + passent de Delta à Secteur à Split ; ▲ ▼ de Timing (Meilleur, Optimal) à Relatif (Dernier).
+  - Chrono : − + passent de Delta à Secteur à Split ; ▲ ▼ de Timing à Relatif. Comme les captures de Nathan :
+    Secteur = temps à la fin de chaque secteur, Split = temps de chaque secteur, toujours « 0:33.396 ». Timing :
+    Meilleur, Optimal (S1 aussi pris du meilleur S1 du jeu), puis le plus rapide de la catégorie s'il bat mon meilleur
+    tour. Relatif : Dernier, puis la voiture juste devant et juste derrière au classement (leur dernier tour).
   - Carburant : − + passent de Virtual Energy à Carburant ; ▲ un tour de plus pour l'objectif de sauvegarde, ▼ un de
-    moins. Pousser = la plus forte des conso (dernier tour, moyenne de 5), Estimation = moyenne de 5 ; avec un
+    moins. Pousser = la conso par tour prévue par le jeu (écran des stands, lu au stand), sinon la plus forte des conso
+    (dernier tour, moyenne de 5) ; Estimation = moyenne de 5, sinon la prévision du jeu ; avec un
     objectif, la conso par tour qu'il faut et ⚠ si l'estimation n'y arrive pas.
-  - Relatif, Séance, Pneus : rien à régler.
+  - Relatif, Séance, Pneus : rien à régler. Relatif : les voitures au garage sont cachées, l'écart en temps se base
+    sur le meilleur tour de la séance. Catégories : Hypercar rouge, LMP2 bleu (ELMS bleu clair), LMP3 violet, LMGT3
+    vert, GTE orange. Pneus : l'anneau s'use (36 points), lettre de la gomme dans sa couleur (capture de Nathan : soft
+    blanc, medium jaune, hard rouge, pluie bleu clair), température = moyenne de la bande de roulement (à comparer),
+    jeux comptés à partir de la qualif. « Mixte » n'est jamais proposé par − + sur « Pneus ».
   Au toucher, les lignes réglables (en-têtes de Chrono et Carburant, ligne choisie) sont coupées en deux (− / +, actions
   `BlackBoxToucheMoins1…7` / `BlackBoxTouchePlus1…7`).
   À vérifier dans le jeu (jamais vus, faits à notre idée) : écart du Relatif (devant « -1.2 », derrière « +1.2 ») et

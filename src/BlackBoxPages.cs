@@ -54,6 +54,8 @@ namespace EnduranceManager.SimHub
         // What the pages are made of, the last reading (10 a second while driving).
         Sample? sample;
         CourseView view;
+        // The game's own forecast for a lap (LmuApi, read in the pits): the Carburant page before any lap is done.
+        GameForecast game;
         List<Car> cars = new List<Car>();
         readonly Laps laps = new Laps();
         volatile BlackBoxRow[] rows = Blank();
@@ -230,15 +232,16 @@ namespace EnduranceManager.SimHub
         double carsET = double.NaN;
         volatile bool carsStale = true;
 
-        public void Update(byte[] b, Sample s, CourseView v)
+        public void Update(byte[] b, Sample s, CourseView v, GameForecast forecast = null)
         {
             double et = b != null && b.Length >= ScoringInfo + 76 ? F64(b, ScoringInfo + 68) : double.NaN;
-            bool onRelative = page == Relative;
+            // Relatif and Chrono (the faster driver, the cars ahead and behind) need the cars.
+            bool onRelative = page == Relative || page == Timing;
             bool fresh = onRelative && (carsStale || double.IsNaN(et) || et != carsET);
             var field = fresh ? Cars(b, s) : null;
             lock (gate)
             {
-                sample = s; view = v;
+                sample = s; view = v; game = forecast ?? game;
                 if (field != null) { cars = field; carsET = et; carsStale = false; }
                 laps.Update(b, s);
             }
@@ -277,7 +280,13 @@ namespace EnduranceManager.SimHub
 
         // ── Relatif ─────────────────────────────────────────────────────────────────────────────────────────────────
 
-        public struct Car { public int Place; public string Name, Class; public double Dist; public bool Pits, Me; }
+        // A car of the field: its place overall, driver, class, distance into the lap, in the pit lane, in the garage, ours;
+        // its best lap and best first sector, its last lap with its sectors (seconds, from the line: S2 ends at S1 + S2).
+        public struct Car
+        {
+            public int Place; public string Name, Class; public double Dist; public bool Pits, Garage, Me;
+            public double BestS1, BestS2, BestLap, LastS1, LastS2, LastLap;
+        }
 
         static double F64(byte[] b, int at) => BitConverter.ToDouble(b, at);
         static int I32(byte[] b, int at) => BitConverter.ToInt32(b, at);
@@ -298,7 +307,9 @@ namespace EnduranceManager.SimHub
                 list.Add(new Car
                 {
                     Place = b[at + 199], Name = Text(b, at + 4, 32), Class = Text(b, at + 200, 32), Dist = F64(b, at + 104),
-                    Pits = b[at + 198] != 0 || b[at + 507] != 0, Me = I32(b, at) == s.Id
+                    Pits = b[at + 198] != 0, Garage = b[at + 507] != 0, Me = I32(b, at) == s.Id,
+                    BestS1 = F64(b, at + 128), BestS2 = F64(b, at + 136), BestLap = F64(b, at + 144),
+                    LastS1 = F64(b, at + 152), LastS2 = F64(b, at + 160), LastLap = F64(b, at + 168)
                 });
             }
             return list;
@@ -311,15 +322,17 @@ namespace EnduranceManager.SimHub
             return parts.Length < 2 ? (name ?? "").Trim() : parts[0].Substring(0, 1) + " " + parts[1];
         }
 
-        // The class badge and its colour (Hypercar red as in the capture; the others to check in game).
+        // The class badge and its colour, every class of LMU in the colours of the WEC (Hypercar red, LMP2 blue, LMGT3
+        // green as in Nathan's captures; ELMS LMP2 lighter blue, LMP3 purple, GTE orange).
         public static (string badge, string color) Badge(string cls)
         {
-            string c = (cls ?? "").ToLowerInvariant();
-            if (c.Contains("hyper")) return ("HY", "#FFE83A4C");
-            if (c.Contains("lmp2") || c.Contains("p2")) return ("P2", "#FF2F7BEB");
-            if (c.Contains("lmp3") || c.Contains("p3")) return ("P3", "#FF8E44D6");
-            if (c.Contains("gt3")) return ("GT3", "#FF22A84A");
-            if (c.Contains("gte")) return ("GTE", "#FF2DB45A");
+            string c = (cls ?? "").ToLowerInvariant().Replace(" ", "").Replace("_", "");
+            if (c.Contains("hyper") || c == "hy" || c.Contains("lmh") || c.Contains("lmdh")) return ("HY", "#FFE4002B");
+            if (c.Contains("lmp2") && c.Contains("elms")) return ("P2", "#FF2CA8E0");
+            if (c.Contains("lmp2") || c == "p2") return ("P2", "#FF0057B8");
+            if (c.Contains("lmp3") || c == "p3") return ("P3", "#FF8A3FD1");
+            if (c.Contains("gt3")) return ("GT3", "#FF1FA046");
+            if (c.Contains("gte")) return ("GTE", "#FFF28C00");
             return (c.Length > 3 ? c.Substring(0, 3).ToUpperInvariant() : c.ToUpperInvariant(), "#FF8A909C");
         }
 
@@ -333,10 +346,14 @@ namespace EnduranceManager.SimHub
             if (me.Name == null) return;
             double length = view?.TrackLength > 100 ? view.TrackLength.Value : 0;
             if (length <= 0) length = Math.Max(1000, cars.Max(c => c.Dist));
-            double lap = view?.LapTimeAvg10 > 0 ? view.LapTimeAvg10.Value : view?.BestLap > 0 ? view.BestLap.Value : s.LastLap > 0 ? s.LastLap : 120;
+            // The pace of a lap: the session's fastest lap (in Nathan's capture a car's time ahead plus behind made 90.8 s,
+            // below the laps driven; the average of our laps counted the pit laps and gave 1.8 times too much).
+            double fastest = cars.Where(c => c.BestLap > 0).Select(c => c.BestLap).DefaultIfEmpty(0).Min();
+            double lap = fastest > 0 ? fastest : view?.BestLap > 0 ? view.BestLap.Value : s.LastLap > 0 ? s.LastLap : 120;
             // How far ahead on the lap, 0 to 1.
             double Ahead(Car c) { double d = (c.Dist - me.Dist) / length; return d - Math.Floor(d); }
-            var others = cars.Where(c => !c.Me).ToList();
+            // The cars in their garage are not on the track: the game leaves them out.
+            var others = cars.Where(c => !c.Me && !c.Garage).ToList();
             var ahead = others.Select(c => (car: c, gap: Ahead(c) * lap)).OrderBy(o => o.gap).Take(3).ToList();
             var behind = others.Select(c => (car: c, gap: (1 - Ahead(c)) * lap)).OrderBy(o => o.gap).Take(3).ToList();
             int InClass(Car c) => 1 + cars.Count(o => o.Class == c.Class && o.Place > 0 && o.Place < c.Place);
@@ -438,6 +455,9 @@ namespace EnduranceManager.SimHub
                 var now = new double?[3];
                 if (me >= 0)
                 {
+                    // The game's best first sector of the session, from any lap (an unfinished one too): the optimal lap's.
+                    double best1 = F64(b, me + 128);
+                    if (best1 > 0 && (Optimal[0] == null || best1 < Optimal[0])) Optimal[0] = best1;
                     double c1 = F64(b, me + 176), c2 = F64(b, me + 184);
                     if (s.Sector != 1 && c1 > 0) now[0] = c1;
                     if (s.Sector == 0 && c2 > c1 && c1 > 0) now[1] = c2 - c1;
@@ -452,7 +472,8 @@ namespace EnduranceManager.SimHub
         public static string Time(double? t)
         {
             if (!(t is double v) || v <= 0 || double.IsNaN(v)) return "-";
-            return v < 60 ? v.ToString("0.000", Inv) : ((int)(v / 60)).ToString(Inv) + ":" + (v % 60).ToString("00.000", Inv);
+            // Always minutes as the game: « 0:33.396 », « 1:32.758 ».
+            return ((int)(v / 60)).ToString(Inv) + ":" + (v % 60).ToString("00.000", Inv);
         }
 
         static string Delta(double? a, double? b) =>
@@ -465,23 +486,50 @@ namespace EnduranceManager.SimHub
             return r;
         }
 
-        // Delta: the lap being driven, then the gap of each sector to the reference lines. Secteur: each sector's time.
-        // Split: the time at the end of each sector. Timing: best lap and optimal lap; Relatif: last lap (to check in
-        // game: the capture only shows empty times).
+        // As Nathan's captures of the game: Secteur gives the time at the end of each sector (« 0:33.396 0:58.511
+        // 1:32.758 »), Split each sector's own time, Delta the reference lines as Secteur and, on Actuel, the gap of the
+        // lap being driven to the first of them. Timing: our best lap, our optimal lap, then the fastest driver of our class
+        // when faster than us (his best lap). Relatif: our last lap, then the cars just ahead of and behind us in the
+        // standings (their last lap).
         void TimingRows(BlackBoxRow[] made)
         {
             int mode = chrono;
             made[0] = new BlackBoxRow { Nom = "◂ ▸  " + ChronoModes[mode], C1 = "S1", C2 = "S2", C3 = "S3", Petit = true, Reglable = true };
-            var refs = relative ? new[] { ("Dernier", laps.Last) } : new[] { ("Meilleur", laps.Best), ("Optimal", laps.Optimal) };
+            var refs = new List<(string name, double?[] lap)>();
+            var me = cars.FirstOrDefault(c => c.Me);
+            double?[] Sectors(double s1, double s2, double lap) =>
+                s1 > 0 && s2 > s1 && lap > s2 ? new double?[] { s1, s2 - s1, lap - s2 } : new double?[3];
+            if (relative)
+            {
+                refs.Add(("Dernier", laps.Last));
+                if (me.Name != null && me.Place > 0)
+                {
+                    foreach (int place in new[] { me.Place - 1, me.Place + 1 })
+                    {
+                        var other = cars.FirstOrDefault(c => !c.Me && c.Place == place);
+                        if (other.Name != null) refs.Add((Short(other.Name), Sectors(other.LastS1, other.LastS2, other.LastLap)));
+                    }
+                }
+            }
+            else
+            {
+                refs.Add(("Meilleur", laps.Best));
+                refs.Add(("Optimal", laps.Optimal));
+                double mine = me.Name != null && me.BestLap > 0 ? me.BestLap : double.MaxValue;
+                var faster = cars.Where(c => !c.Me && c.Class == me.Class && c.BestLap > 0 && c.BestLap < mine).OrderBy(c => c.BestLap).FirstOrDefault();
+                if (faster.Name != null) refs.Add((Short(faster.Name), Sectors(faster.BestS1, faster.BestS2, faster.BestLap)));
+            }
             BlackBoxRow Line(string name, Func<int, string> cell) => new BlackBoxRow { Nom = name, C1 = cell(0), C2 = cell(1), C3 = cell(2) };
             var cur = laps.Current;
-            made[1] = mode == 2 ? Line("Actuel", i => Time(Sum(cur)[i])) : Line("Actuel", i => Time(cur[i]));
+            var curEnds = Sum(cur);
+            var first = Sum(refs[0].lap);
+            made[1] = mode == 0 ? Line("Actuel", i => Delta(curEnds[i], first[i])) : mode == 1 ? Line("Actuel", i => Time(curEnds[i])) : Line("Actuel", i => Time(cur[i]));
             made[2] = new BlackBoxRow { Nom = "▴ ▾  " + (relative ? "Relatif" : "Timing"), Petit = true, Reglable = true };
-            for (int r = 0; r < refs.Length; r++)
+            for (int r = 0; r < refs.Count && 3 + r < made.Length; r++)
             {
                 var (name, lap) = refs[r];
-                made[3 + r] = mode == 0 ? Line(name, i => cur[i] != null ? Delta(cur[i], lap[i]) : Time(lap[i]))
-                    : mode == 2 ? Line(name, i => Time(Sum(lap)[i])) : Line(name, i => Time(lap[i]));
+                var ends = Sum(lap);
+                made[3 + r] = mode == 2 ? Line(name, i => Time(lap[i])) : Line(name, i => Time(ends[i]));
             }
         }
 
@@ -496,8 +544,13 @@ namespace EnduranceManager.SimHub
             if (ve && !HasEnergy) ve = false;
             double left = ve ? s.Energy : s.Fuel;
             double? last = ve ? v?.VeLastLap : v?.FuelLastLap, avg = ve ? v?.VeAvg5 : v?.FuelAvg5;
-            double? push = last > 0 && avg > 0 ? Math.Max(last.Value, avg.Value) : avg > 0 ? avg : last;
-            double lapTime = v?.LapTimeAvg10 > 0 ? v.LapTimeAvg10.Value : v?.LastLap > 0 ? v.LastLap.Value : 0;
+            // Pousser: the game's own usage for a lap (its pit screen, as its black box shows before any lap); without it,
+            // the higher of the last lap and the average of five. Estimation: the average of five, or the game's.
+            double? forecast = ve ? game?.Energy : game?.Fuel;
+            double? push = forecast > 0 ? forecast : last > 0 && avg > 0 ? Math.Max(last.Value, avg.Value) : avg > 0 ? avg : last;
+            if (!(avg > 0)) avg = forecast;
+            double? best = cars.FirstOrDefault(c => c.Me).BestLap is double bl && bl > 0 ? bl : (double?)null;
+            double lapTime = v?.LapTimeAvg10 > 0 ? v.LapTimeAvg10.Value : best ?? (v?.BestLap > 0 ? v.BestLap.Value : v?.LastLap > 0 ? v.LastLap.Value : 0);
             string Use(double? u) => u > 0 ? (ve ? u.Value.ToString("0.00", Inv) + "%" : u.Value.ToString("0.00", Inv) + "L") : "-";
             string LapsOf(double? n) => n > 0 ? n.Value.ToString("0.0", Inv) : "-";
             string Mins(double? n) => n > 0 && lapTime > 0 ? Math.Round(n.Value * lapTime / 60).ToString("0", Inv) + " mins" : "-";
@@ -531,7 +584,7 @@ namespace EnduranceManager.SimHub
         // the game).
         object Wheel(int i, string what)
         {
-            if (!(sample is Sample s) || s.Wheels == null) return what == "Etat" ? "" : what == "Couleur" ? "#FFFFFFFF" : (object)"";
+            if (!(sample is Sample s) || s.Wheels == null) return what == "Couleur" ? "#FFFFFFFF" : what == "GommeCouleur" ? "#FFFFD400" : what == "Reste" ? (object)0.0 : "";
             var w = s.Wheels[i];
             string state = w.Off ? "Perdue" : w.Flat ? "Crevé" : "";
             switch (what)
@@ -539,8 +592,16 @@ namespace EnduranceManager.SimHub
                 case "Usure": return w.Off ? "—" : Math.Round(w.Wear * 100).ToString("0", Inv) + "%";
                 case "Gomme": string c = i < 2 ? s.FrontCompound : s.RearCompound; return w.Off || string.IsNullOrEmpty(c) ? "" : c.Substring(0, 1).ToUpperInvariant();
                 case "Pression": return w.Off ? "-" : w.Pressure.ToString("0.0", Inv) + "kPa";
-                // The game shows about 2 °C above the carcass (Nathan's capture, 23/11): the inner layer's mean, to check.
-                case "Temp": return w.Off ? "-" : ((w.InnerIn + w.InnerMid + w.InnerOut) / 3).ToString("0.0", Inv) + "°C";
+                // Nathan's captures (23/11): the carcass read 2 °C under the game, the inner layer 3 °C over it; the tread's
+                // three temperatures in between: their mean, to check.
+                case "Temp": return w.Off ? "-" : ((w.TreadIn + w.TreadMid + w.TreadOut) / 3).ToString("0.0", Inv) + "°C";
+                // What is left, 0 to 100, for the ring that wears round (BlackBoxDash.cs).
+                case "Reste": return w.Off ? 0.0 : Math.Round(w.Wear * 100, 1);
+                // The compound's colour, as the game's circles (Nathan's capture): soft white, medium yellow, hard red, wet
+                // light blue.
+                case "GommeCouleur":
+                    string g = ((i < 2 ? s.FrontCompound : s.RearCompound) ?? "").ToLowerInvariant();
+                    return g.StartsWith("s") ? "#FFFFFFFF" : g.StartsWith("h") ? "#FFE4002B" : g.StartsWith("w") || g.StartsWith("r") ? "#FF3EC6E8" : g.StartsWith("i") ? "#FF1FA046" : "#FFFFD400";
                 case "Frein": return w.Brake.ToString("0.0", Inv) + "°C";
                 case "Etat": return state;
                 // The ring: white, red when the tyre is gone (worn out, flat or lost).
@@ -553,7 +614,11 @@ namespace EnduranceManager.SimHub
         string Sets()
         {
             object limit = view?.Session != null && view.Session.TryGetValue("TiresAvailable", out var x) ? x : null;
-            bool limited = limit is double l && l > 0 && l < 100;
+            // The sets count from qualifying on (Nathan): practice is unlimited. rF2's sessions: 1-4 practice, 5-8
+            // qualifying, 9 warm-up, 10-13 race.
+            int session = sample is Sample s ? s.Session : 0;
+            bool counted = session >= 5 && session != 9;
+            bool limited = counted && limit is double l && l > 0 && l < 100;
             return (limited && view?.NewTyres is int k && k >= 0 ? k.ToString(Inv) : "∞") + " Pneus";
         }
 
@@ -607,7 +672,7 @@ namespace EnduranceManager.SimHub
             for (int i = 0; i < 4; i++)
             {
                 int wheel = i;
-                foreach (string what in new[] { "Usure", "Gomme", "Pression", "Temp", "Frein", "Etat", "Couleur" })
+                foreach (string what in new[] { "Usure", "Gomme", "GommeCouleur", "Reste", "Pression", "Temp", "Frein", "Etat", "Couleur" })
                 {
                     string w = what;
                     yield return ("BlackBox.Pneus." + Corners[wheel] + "." + w, () => Wheel(wheel, w));

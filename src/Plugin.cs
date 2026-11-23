@@ -544,7 +544,7 @@ namespace EnduranceManager.SimHub
                             // not stopped with a screen).
                             if (driving && (CourseOn || share)) try { Computed.Update(buffer, sample, recorder.Current); } catch (Exception e) { EnduranceManager.SimHub.Report.Error("Computed", e); }
                             // The wheel's black box pages (BlackBoxPages.cs), ten times a second while its dash is shown.
-                            if (driving && blackBox) try { BlackBoxPages.Update(buffer, sample, Course.View); } catch (Exception e) { EnduranceManager.SimHub.Report.Error("BlackBox", e); }
+                            if (driving && blackBox) try { BlackBoxPages.Update(buffer, sample, Course.View, api.Game); } catch (Exception e) { EnduranceManager.SimHub.Report.Error("BlackBox", e); }
                             GameState = driving ? "track" : "menu";
                             // Once a second, the car and the field for the team's mur des stands (with a team code only).
                             if (driving && share) live.Frame(sample);
