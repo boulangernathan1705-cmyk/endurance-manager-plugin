@@ -37,13 +37,19 @@
   modèles de SimHub comme les overlays, `BlackBoxDash.cs`) : titre, 7 lignes visibles, ligne choisie en blanc et rouge
   avec ses flèches, flèches de défilement. Les lignes sont celles du menu lu par l'API (`PitMenu`, lu toutes les 0,5 s
   quand le module est activé) ; dommages, pénalités, pilote suivant arrivent tout seuls quand le jeu les ajoute.
-- **Le jeu ne donne ni la position de son curseur ni la page affichée.** La ligne en rouge est la dernière dont le
-  réglage a changé (avec les boutons directs de FMT companion, celle que le pilote vient de régler) ; la fenêtre de
-  7 lignes défile pour la garder visible.
+- **Le jeu ne donne ni la position de son curseur ni la page affichée.** Le dash a donc son propre curseur (0.1.5,
+  demande de Nathan : régler sans ouvrir la black box du jeu). Six actions SimHub, les six commandes MFD de LMU, à relier
+  à des boutons du volant dans « Contrôles et événements » : `BlackBoxMonter` / `BlackBoxDescendre` (ligne, rien
+  n'est envoyé au jeu), `BlackBoxPageSuivante` / `BlackBoxPagePrecedente` (sans effet tant qu'il n'y a qu'une page),
+  `BlackBoxPlus` / `BlackBoxMoins` (valeur : menu lu, ligne au choix suivant ou précédent, menu entier renvoyé à
+  `loadPitMenu` puis relu, comme les profils). Rien au-delà des bouts de la liste des choix. Une ligne changée ailleurs
+  (bouton FMT companion, black box du jeu) amène le curseur sur elle. **Retirer + et − des commandes MFD de LMU** sur
+  les mêmes boutons, sinon un appui change la valeur deux fois.
+- Toucher (écran tactile) : à faire, le format des boutons tactiles de Dash Studio n'a pas encore été vu dans un vrai dash.
 - Noms : si l'API répond en anglais (« VIRTUAL ENERGY »), ils sont écrits comme l'écran français du jeu
   (« Énergie Virtuelle: ») ; sinon tels que le jeu les donne. À vérifier dans le vrai jeu : la langue de l'API et le
   texte de l'énergie (le jeu affiche « 100% 35 laps », l'API peut ne donner que « 100% »).
-- Propriétés : `BlackBox.Lignes`, `.Choisie`, `.Haut`, `.Bas`, `BlackBox.1.Nom` / `.Valeur` / `.Choisie` … `BlackBox.7.*`.
+- Propriétés : `BlackBox.Lignes`, `.Choisie`, `.Page`, `.Message`, `.Haut`, `.Bas`, `BlackBox.1.Nom` / `.Valeur` / `.Choisie` … `BlackBox.7.*`.
 - Étape 2 (à faire, accord de Nathan) : les autres pages (Relatif, Séance, Chrono, Pneus, Carburant, Électronique) et
   un bouton SimHub « page suivante » pour le VoCore.
 

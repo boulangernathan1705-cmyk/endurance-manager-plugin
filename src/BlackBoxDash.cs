@@ -3,10 +3,17 @@
 // (titre, 7 lignes visibles, ligne choisie en blanc et rouge, flèches de défilement), avec les lignes du menu lues par
 // l'API locale (PitMenu, Course.cs), dans le même ordre. Les lignes que le jeu ajoute quand il les faut (dommages,
 // pénalités, pilote suivant) arrivent toutes seules.
-// Le jeu ne dit pas où est son curseur : la ligne choisie est la dernière dont le réglage a changé (bouton FMT companion
-// ou autre), gardée jusqu'au changement suivant ; la fenêtre de 7 lignes défile pour la garder visible, comme le jeu.
-// Propriétés EnduranceManagerPlugin.BlackBox.* et dash « Endurance Manager · Black box » (800 × 480). Rien n'y est
-// calculé, rien ne modifie le jeu.
+// On navigue dedans sans ouvrir la black box du jeu (0.1.5, demande de Nathan) : 6 actions SimHub pour le volant,
+// ▲ ▼ changent de ligne (le curseur est celui du dash, rien n'est envoyé au jeu), ◂ ▸ changent de page (une seule pour
+// l'instant), − + changent la valeur de la ligne : le menu est lu, la ligne passe au choix d'avant ou d'après, le menu
+// entier est renvoyé au jeu puis relu (comme les profils, Profiles.WriteMenu). Une ligne changée ailleurs (bouton FMT
+// companion, black box du jeu) amène le curseur sur elle.
+// Propriétés EnduranceManagerPlugin.BlackBox.* et dash « Endurance Manager · Black box » (800 × 480).
+using System;
+using System.Net.Http;
+using System.Text;
+using System.Threading;
+using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json.Linq;
@@ -35,18 +42,30 @@ namespace EnduranceManager.SimHub
         public static string Label(MenuItem item) => Names.TryGetValue(item.Name, out var fr) ? fr : string.IsNullOrEmpty(item.Label) ? item.Name : item.Label;
         public static string Text(MenuItem item) => Texts.TryGetValue((item.Text ?? "").Trim().ToUpperInvariant(), out var fr) ? fr : item.Text ?? "";
 
+        const string MenuUrl = "http://localhost:6397/rest/garage/PitMenu/receivePitMenu";
+        const string LoadUrl = "http://localhost:6397/rest/garage/PitMenu/loadPitMenu";
+        readonly HttpClient client = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+        // Reads the game's menu again after a change, and hands it to Update (Plugin.cs).
+        readonly Action refresh;
+        int writing;
+
         List<MenuItem> seen;
         volatile List<MenuItem> items = new List<MenuItem>();
         volatile string chosen;
         volatile int top;
+        volatile string message = "";
+        DateTime messageUntil;
+
+        public BlackBox(Action refresh = null) { this.refresh = refresh; }
 
         public List<MenuItem> Items => items;
         public string Chosen => chosen ?? "";
         public int Top => top;
+        // A short word in the title bar when a change did not go through (3 s).
+        public string Message => DateTime.UtcNow < messageUntil ? message : "";
 
-        // Called after each read of the game's menu. A line whose choice moved becomes the chosen one (several at once,
-        // a profile applied: the first, as the game lists them). A line added or removed (a penalty, another car) keeps
-        // the chosen line while it is still there.
+        // Called after each read of the game's menu. A line whose choice moved elsewhere becomes the chosen one (several
+        // at once, a profile applied: the first, as the game lists them). Without one yet, the first line is chosen.
         public void Update(List<MenuItem> read)
         {
             if (read == null || ReferenceEquals(read, seen)) return;
@@ -56,15 +75,62 @@ namespace EnduranceManager.SimHub
                 var moved = read.FirstOrDefault(i => before.TryGetValue(i.Name, out var index) && index != i.Index);
                 if (moved != null) chosen = moved.Name;
             }
-            if (chosen != null && !read.Any(i => i.Name == chosen)) chosen = null;
-            int at = chosen == null ? -1 : read.FindIndex(i => i.Name == chosen);
+            if (chosen == null || !read.Any(i => i.Name == chosen)) chosen = read.FirstOrDefault()?.Name;
+            seen = read;
+            items = read;
+            Follow();
+        }
+
+        // The 7-line window moves just enough to show the chosen line, as the game's does.
+        void Follow()
+        {
+            var list = items;
+            int at = chosen == null ? -1 : list.FindIndex(i => i.Name == chosen);
             int first = top;
             if (at >= 0 && at < first) first = at;
             if (at >= first + Rows) first = at - Rows + 1;
-            first = System.Math.Max(0, System.Math.Min(first, read.Count - Rows));
-            seen = read;
-            items = read;
-            top = first;
+            top = Math.Max(0, Math.Min(first, list.Count - Rows));
+        }
+
+        // ▲ ▼ : the line above or below (stops at the ends). Nothing is sent to the game.
+        public void Move(int step)
+        {
+            var list = items;
+            if (list.Count == 0) return;
+            int at = Math.Max(0, list.FindIndex(i => i.Name == chosen));
+            chosen = list[Math.Max(0, Math.Min(list.Count - 1, at + step))].Name;
+            Follow();
+        }
+
+        // − + : the chosen line one choice down or up, sent to the game, on a pool thread (one change at a time).
+        public void Change(int step)
+        {
+            string name = chosen;
+            if (name == null || Interlocked.Exchange(ref writing, 1) == 1) return;
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try { Say(Write(name, step)); }
+                catch { Say("Le jeu ne répond pas"); }
+                finally { writing = 0; }
+                try { refresh?.Invoke(); } catch { }
+            });
+        }
+
+        void Say(string text) { if (string.IsNullOrEmpty(text)) return; message = text; messageUntil = DateTime.UtcNow.AddSeconds(3); }
+
+        // The menu read, the line set to the next choice (none past the ends), the whole menu sent back. Null when done.
+        string Write(string name, int step)
+        {
+            var lines = JArray.Parse(Tape.Get(client, MenuUrl));
+            var line = lines.OfType<JObject>().FirstOrDefault(l => ((string)l["name"] ?? "").Replace(":", "").Trim().ToUpperInvariant() == name);
+            if (line == null) return "Ligne absente";
+            int count = (line["settings"] as JArray)?.Count ?? 0, now = (int?)line["currentSetting"] ?? 0;
+            int next = now + step;
+            if (next < 0 || next >= count) return null;
+            line["currentSetting"] = next;
+            var body = new StringContent(lines.ToString(Formatting.None), Encoding.UTF8, "application/json");
+            client.PostAsync(LoadUrl, body).GetAwaiter().GetResult().EnsureSuccessStatusCode();
+            return null;
         }
 
         MenuItem At(int row) { var list = items; int k = top + row; return k >= 0 && k < list.Count ? list[k] : null; }
@@ -75,6 +141,8 @@ namespace EnduranceManager.SimHub
         {
             yield return ("BlackBox.Lignes", () => items.Count);
             yield return ("BlackBox.Choisie", () => Chosen);
+            yield return ("BlackBox.Page", () => "Arrêt aux stands");
+            yield return ("BlackBox.Message", () => Message);
             yield return ("BlackBox.Haut", () => top > 0);
             yield return ("BlackBox.Bas", () => top + Rows < items.Count);
             for (int k = 0; k < Rows; k++)
@@ -121,7 +189,9 @@ namespace EnduranceManager.SimHub
             {
                 Rect("Fond", 0, 0, Width, Height, Panel),
                 Rect("Barre", 0, 0, Width, Header, Bar),
-                Text("Titre", Pad, 0, 500, Header, 30, "'Arrêt aux stands'", White, 0),
+                Text("Titre", Pad, 0, 500, Header, 30, P("Page"), White, 0),
+                // A change that did not go through: a short word on the right of the title bar, for 3 s.
+                Text("Message", 420, 0, Width - 420 - Pad, Header, 20, P("Message"), Red, 2),
                 // Until the game's menu is read (game closed, module off): one line instead of an empty page.
                 Text("Attente", Pad, Header, Width - 2 * Pad, row, 26, "'Menu des stands non lu'", Label, 0, P("Lignes") + " == 0")
             };
@@ -155,7 +225,7 @@ namespace EnduranceManager.SimHub
             var metadata = new JObject
             {
                 ["Category"] = "Endurance Manager", ["Title"] = "Endurance Manager · Black box", ["Author"] = "Endurance Manager",
-                ["Description"] = "La page « Arrêt aux stands » de la black box de LMU sur l'écran du volant (VoCore 800 × 480). La ligne en rouge est la dernière changée. Plugin Endurance Manager requis, module « Black box sur boutons » activé.",
+                ["Description"] = "La page « Arrêt aux stands » de la black box de LMU sur l'écran du volant (VoCore 800 × 480). On y navigue avec 6 boutons du volant (actions BlackBox*). Plugin Endurance Manager requis, module « Black box sur boutons » activé.",
                 ["ScreenCount"] = 1.0, ["InGameScreensIndexs"] = new JArray(0), ["IdleScreensIndexs"] = new JArray(0), ["MainPreviewIndex"] = 0, ["IsOverlay"] = false,
                 ["Width"] = (double)Width, ["Height"] = (double)Height, ["OverlaySizeWarning"] = false, ["MetadataVersion"] = 2.0, ["EnableOnDashboardMessaging"] = true,
                 ["PitScreensIndexs"] = new JArray()

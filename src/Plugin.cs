@@ -107,7 +107,7 @@ namespace EnduranceManager.SimHub
         public Course Course { get; } = new Course();
         public PitMenu Menu { get; } = new PitMenu();
         // The game's pit menu for the wheel's screen (BlackBoxDash.cs), while Black box sur boutons is on.
-        public BlackBox BlackBox { get; } = new BlackBox();
+        public BlackBox BlackBox { get; private set; } = new BlackBox();
         public GameApi Game { get; } = new GameApi();
         // The pilot's setting profiles, car by car, and the wheel buttons that apply or memorise them (Profiles.cs).
         public Profiles Profiles { get; private set; }
@@ -164,6 +164,15 @@ namespace EnduranceManager.SimHub
                 this.AddAction("Profil" + (slot + 1), (manager, button) => Profiles.Press(slot), (manager, button) => Profiles.Release(slot));
                 this.AttachDelegate("Profils." + (slot + 1) + ".Nom", () => Profiles.NameAt(slot));
             }
+            // The wheel's black box (BlackBoxDash.cs): six actions, the six MFD commands of LMU (page, line, value).
+            // A change is read back at once from the game.
+            BlackBox = new BlackBox(() => { Menu.Read(); BlackBox.Update(Menu.Items); });
+            this.AddAction("BlackBoxPageSuivante", (manager, button) => { });
+            this.AddAction("BlackBoxPagePrecedente", (manager, button) => { });
+            this.AddAction("BlackBoxMonter", (manager, button) => BlackBox.Move(-1));
+            this.AddAction("BlackBoxDescendre", (manager, button) => BlackBox.Move(1));
+            this.AddAction("BlackBoxPlus", (manager, button) => BlackBox.Change(1));
+            this.AddAction("BlackBoxMoins", (manager, button) => BlackBox.Change(-1));
             this.AttachDelegate("Profils.Actif", () => Settings.Profiles ? Profiles.Active ?? "" : "");
             this.AttachDelegate("Profils.Applique", () => Settings.Profiles ? Profiles.Applied ?? "" : "");
             this.AttachDelegate("Profils.NonActif", () => Settings.Profiles && Profiles.NotActive);

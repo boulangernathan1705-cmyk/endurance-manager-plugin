@@ -71,7 +71,7 @@ namespace EnduranceManager.SimHub.Replay
             var props = box.Properties().ToDictionary(p => p.name, p => p.get);
             object V(string name) => props[name]();
             box.Update(Menu());
-            Is(box.Chosen == "" && box.Top == 0, "Premier menu lu : aucune ligne choisie, fenêtre en haut");
+            Is(box.Chosen == "DAMAGE" && box.Top == 0, "Premier menu lu : curseur sur la 1re ligne, fenêtre en haut");
             Is((string)V("BlackBox.1.Nom") == "Dommages" && (string)V("BlackBox.2.Nom") == "Énergie Virtuelle:", "Noms du jeu en français");
             Is((string)V("BlackBox.5.Valeur") == "Aucun changement", "« No Change » écrit « Aucun changement »");
             Is((bool)V("BlackBox.Bas") && !(bool)V("BlackBox.Haut"), "Flèche du bas seulement");
@@ -85,6 +85,17 @@ namespace EnduranceManager.SimHub.Replay
             Is(box.Chosen == "FL PRESS" && box.Top == names.Length - BlackBox.Rows, "Pression AvG visible : la fenêtre ne bouge pas");
             box.Update(Menu(("VIRTUAL ENERGY", 4), ("REPLACE BRAKES", 1), ("FL PRESS", 2)));
             Is(box.Chosen == "VIRTUAL ENERGY" && box.Top == 1, "Énergie au-dessus : la fenêtre remonte juste assez");
+            // ▲ ▼ du volant : le curseur du dash bouge, s'arrête aux bouts, la fenêtre le suit.
+            box.Move(-1);
+            Is(box.Chosen == "DAMAGE" && box.Top == 0, "Monter : énergie puis dommages, fenêtre tout en haut");
+            box.Move(-1);
+            Is(box.Chosen == "DAMAGE", "Monter sur la 1re ligne : on y reste");
+            for (int k = 0; k < 10; k++) box.Move(1);
+            Is(box.Chosen == "FL PRESS" && box.Top == 4, "Descendre 10 fois : Pression AvG, la fenêtre descend juste assez");
+            Is((bool)V("BlackBox.7.Choisie"), "Pression AvG en 7e ligne visible");
+            for (int k = 0; k < 20; k++) box.Move(1);
+            Is(box.Chosen == "REPLACE BRAKES" && box.Top == names.Length - BlackBox.Rows, "Descendre au bout : dernière ligne");
+            Is((string)V("BlackBox.Page") == "Arrêt aux stands" && (string)V("BlackBox.Message") == "", "Titre de la page, pas de message");
             foreach (var failure in failures) Console.WriteLine("ÉCHEC Black box : " + failure);
             if (failures.Count == 0) Console.WriteLine("OK    Black box : ligne choisie, défilement et noms");
             return failures.Count == 0;
