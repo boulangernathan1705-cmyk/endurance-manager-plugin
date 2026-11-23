@@ -271,23 +271,23 @@ namespace EnduranceManager.SimHub
             }
             items.Add(Text("PlusHaut", Width / 2 - 20, Header, 40, 22, 16, "'▲'", Arrow, 1, P("Haut")));
             items.Add(Text("PlusBas", Width / 2 - 20, Height - 24, 40, 22, 16, "'▼'", Arrow, 1, P("Bas")));
-            // Touch (format of Dash Studio's buttons, read in Lovely Dashboard): each line chooses itself; on the chosen line
-            // the left of the value lowers it, the right raises it; the title bar changes page (left half back, right half
-            // on). Transparent: the page looks the same.
+            // Touch (format of Dash Studio's buttons, read in Lovely Dashboard; Dash Studio has no swipe, only touches): a
+            // line touched is chosen; on the chosen line the left of the value lowers it, the right raises it; the arrows
+            // ▲ ▼ move by one line; a touch on the far left or far right edge changes page. Transparent: the page looks the same.
+            const int Edge = 60;
             for (int k = 0; k < BlackBox.Rows; k++)
-            {
-                double y = Header + k * row;
-                items.Add(Button("ToucherLigne" + (k + 1), 0, y, Width, row, "BlackBoxLigne" + (k + 1)));
-            }
+                items.Add(Button("ToucherLigne" + (k + 1), Edge, Header + k * row, Width - 2 * Edge, row, "BlackBoxLigne" + (k + 1)));
             for (int k = 0; k < BlackBox.Rows; k++)
             {
                 double y = Header + k * row;
                 string chosen = P((k + 1) + ".Choisie");
-                items.Add(Button("ToucherMoins" + (k + 1), 400, y, 240, row, "BlackBoxMoins", chosen));
-                items.Add(Button("ToucherPlus" + (k + 1), 640, y, 160, row, "BlackBoxPlus", chosen));
+                items.Add(Button("ToucherMoins" + (k + 1), 400, y, 170, row, "BlackBoxMoins", chosen));
+                items.Add(Button("ToucherPlus" + (k + 1), 570, y, Width - Edge - 570, row, "BlackBoxPlus", chosen));
             }
-            items.Add(Button("ToucherPagePrecedente", 0, 0, Width / 2, Header, "BlackBoxPagePrecedente"));
-            items.Add(Button("ToucherPageSuivante", Width / 2, 0, Width / 2, Header, "BlackBoxPageSuivante"));
+            items.Add(Button("ToucherMonter", Width / 2 - 60, Header, 120, 30, "BlackBoxMonter", P("Haut")));
+            items.Add(Button("ToucherDescendre", Width / 2 - 60, Height - 30, 120, 30, "BlackBoxDescendre", P("Bas")));
+            items.Add(Button("ToucherPagePrecedente", 0, 0, Edge, Height, "BlackBoxPagePrecedente"));
+            items.Add(Button("ToucherPageSuivante", Width - Edge, 0, Edge, Height, "BlackBoxPageSuivante"));
             return items;
         }
 
