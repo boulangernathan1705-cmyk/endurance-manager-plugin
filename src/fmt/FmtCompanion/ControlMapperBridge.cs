@@ -247,6 +247,11 @@ internal sealed class ControlMapperBridge : IDisposable
 	{
 		if (f.Kind == FunctionKind.LmuKey)
 		{
+			// No FMT button but the pilot's own one already bound in LMU (Préparer LMU): press that.
+			if (output.ButtonFor(f.Role) == 0 && settings.Reused != null && settings.Reused.TryGetValue(f.Role, out var own))
+			{
+				return output.Trigger(own, 200);
+			}
 			return output.Trigger(f.Role, 200);
 		}
 		if (!handlers.TryGetValue(f.Role, out var value))

@@ -350,6 +350,14 @@ namespace EnduranceManager.SimHub
         static bool StartStop(PluginManager manager, string role) => ControlMapper(manager)?.StartStopRole(role, 60) == true;
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        static IEnumerable<string> OutputRoles(PluginManager manager)
+        {
+            var mapping = manager?.GetPlugin<SimHub.Plugins.OutputPlugins.ControlRemapper.ControlMapperPlugin>()?.controlMapperPluginSettings?.OutputMapping?.ControllerMapping;
+            if (mapping == null) return new string[0];
+            return mapping.Buttons.Select(b => b.TargetRole).Concat(mapping.VirtualButtons.Select(b => b.TargetRole)).ToList();
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         internal static List<string> ButtonRoles(PluginManager manager) => ControlMapper(manager)?.GetAvailableButtonRoles();
 
         // The Control Mapper role that presses a command in LMU, found by itself: FMT companion's first (« FMT - … », made by
@@ -371,8 +379,12 @@ namespace EnduranceManager.SimHub
         {
             if (DateTime.UtcNow - availableAt < TimeSpan.FromSeconds(5)) return available;
             availableAt = DateTime.UtcNow;
-            try { available = (ButtonRoles(manager()) ?? new List<string>()).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList(); }
-            catch { available = new List<string>(); }
+            var roles = new List<string>();
+            try { roles.AddRange(ButtonRoles(manager()) ?? new List<string>()); } catch { }
+            // Nathan's SimHub (23/11) gave no role this way although its Control Mapper had 126 named output buttons: the
+            // roles of the output buttons and virtual buttons too.
+            try { roles.AddRange(OutputRoles(manager())); } catch { }
+            available = roles.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
             return available;
         }
 

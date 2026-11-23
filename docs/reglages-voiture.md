@@ -94,6 +94,12 @@
   (niveau + 1) ; migration, carto moteur et recharge affichées en niveau (le jeu écrit « 1.5% F », « 120kW ») ; roue
   crevée ou perdue sur la page Pneus.
 
+- « Préparer LMU » (23/11, PC de Nathan) : LMU ne voit que 128 boutons sur la sortie Bridge SimHub (id LMU = bouton + 32) ;
+  Nathan en avait 126 pris, dont ~20 en double (ses rôles « TC + »… en Principal et ceux de FMT en Secondaire). Désormais
+  une commande déjà reliée dans LMU à un bouton du pilote (rôle à lui, n'importe quelle colonne) n'a plus besoin de
+  bouton : FMT appuie sur ce rôle (`Settings.Reused`). Les profils lisent aussi les rôles des boutons de sortie (le
+  Control Mapper ne donnait aucun rôle chez Nathan : « Boutons introuvables »).
+
 ## Réglages voiture en course (profils)
 
 - Chaque pilote garde, voiture par voiture, ses réglages de black box : 3 profils par défaut **Sec / Inter / Pluie**.

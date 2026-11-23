@@ -50,6 +50,27 @@ internal sealed class Preparer
 		return lmu.Put(path, ct);
 	}
 
+	// The pilot's own role already bound in LMU to this function's command, on the Control Mapper output (any column):
+	// FMT can press it and needs no new button. Null when there is none.
+	public static string ReuseRole(JObject di, FmtFunction f, Func<int, string> outputRole, bool bridge)
+	{
+		foreach (string column in new string[2] { "Input", "Alternative Input" })
+		{
+			LmuBinding binding = LmuControlsModel.Binding(di, column, f.LmuControl);
+			if (binding == null || !LmuControlsModel.IsOutputDevice(binding.Device, bridge))
+			{
+				continue;
+			}
+			int num = LmuControlsModel.ButtonNumber(di, binding);
+			string role = num > 0 ? outputRole(num) : null;
+			if (!string.IsNullOrEmpty(role) && role != f.Role)
+			{
+				return role;
+			}
+		}
+		return null;
+	}
+
 	public static string State(JObject di, FmtFunction f, Func<int, string> outputRole, bool bridge, out bool ready)
 	{
 		ready = false;
@@ -74,6 +95,12 @@ internal sealed class Preparer
 					text = "LMU : " + text3 + ShortDevice(lmuBinding.Device) + " " + text4 + " — sans rôle FMT";
 				}
 			}
+		}
+		string reuse = ReuseRole(di, f, outputRole, bridge);
+		if (reuse != null)
+		{
+			ready = true;
+			return "Prêt — ton bouton « " + reuse + " »";
 		}
 		return text ?? "À préparer";
 	}
@@ -110,6 +137,27 @@ internal sealed class Preparer
 				return;
 			}
 			JObject di = LmuControlsModel.DirectInput(await lmu.Controls(ct).ConfigureAwait(continueOnCapturedContext: false));
+			// The commands LMU already has on one of the pilot's own buttons: FMT presses those (no new button).
+			int reusedCount = 0;
+			foreach (FmtFunction fn in functions.Where((FmtFunction x) => x.Kind == FunctionKind.LmuKey))
+			{
+				string role = ReuseRole(di, fn, (int n) => Ui(() => output.OutputRole(n)), bridge);
+				bool fmtButton = Ui(() => output.ButtonFor(fn.Role)) > 0;
+				if (role != null && !fmtButton)
+				{
+					settings.Reused[fn.Role] = role;
+					reusedCount++;
+				}
+				else
+				{
+					settings.Reused.Remove(fn.Role);
+				}
+			}
+			save();
+			if (reusedCount > 0)
+			{
+				log(reusedCount + " fonction(s) passent par tes boutons déjà reliés dans LMU (aucun nouveau bouton).");
+			}
 			HashSet<int> used = LmuControlsModel.UsedButtons(di, bridge);
 			int limit = Ui(() => output.ButtonLimit);
 			Queue<int> free = new Queue<int>(from n in Enumerable.Range(1, limit)
@@ -139,6 +187,11 @@ internal sealed class Preparer
 				ct.ThrowIfCancellationRequested();
 				State(di, f, (int n) => Ui(() => output.OutputRole(n)), bridge, out var ready);
 				if (ready)
+				{
+					continue;
+				}
+				string reuse = ReuseRole(di, f, (int n) => Ui(() => output.OutputRole(n)), bridge);
+				if (reuse != null)
 				{
 					continue;
 				}
