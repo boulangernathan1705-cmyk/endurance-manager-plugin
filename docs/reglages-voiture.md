@@ -62,7 +62,7 @@
 - Noms : si l'API répond en anglais (« VIRTUAL ENERGY »), ils sont écrits comme l'écran français du jeu
   (« Énergie Virtuelle: ») ; sinon tels que le jeu les donne. À vérifier dans le vrai jeu : la langue de l'API et le
   texte de l'énergie (le jeu affiche « 100% 35 laps », l'API peut ne donner que « 100% »).
-- Propriétés : `BlackBox.Page`, `.PageNo` (0 Relatif … 6 Arrêt aux stands), `.Message`, `.Attente`, `.Haut`, `.Bas`,
+- Propriétés : `BlackBox.Page`, `.PageNo` (0 Relatif … 6 Arrêt aux stands), `.Message`, `.Appuis` (derniers appuis reçus), `.Attente`, `.Haut`, `.Bas`,
   `.Lignes`, `.Choisie` ; les 7 lignes `BlackBox.1.Nom` / `.Valeur` / `.C1` `.C2` `.C3` / `.Pos` / `.Classe` / `.Couleur` /
   `.Petit` / `.Choisie` / `.Reglable` / `.Moi` … `BlackBox.7.*` ; les roues `BlackBox.Pneus.AVG.Usure` / `.Gomme` /
   `.Pression` / `.Temp` / `.Frein` / `.Etat` / `.Couleur` … `ARD.*`, `BlackBox.Pneus.Jeux`.

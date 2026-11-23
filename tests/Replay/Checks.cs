@@ -122,8 +122,11 @@ namespace EnduranceManager.SimHub.Replay
             Is(pages.Page == BlackBoxPages.Stands, "Première page : Arrêt aux stands");
             pages.Turn(1);
             Is((string)PV("BlackBox.Page") == "Relatif" && (int)PV("BlackBox.PageNo") == 0, "Page suivante après Arrêt aux stands : Relatif (le tour)");
-            pages.Turn(-1); pages.Turn(-1);
+            pages.Turn(-1);
+            Is((string)PV("BlackBox.Page") == "Relatif", "Le même appui reçu deux fois de suite (moins de 250 ms) : compté une fois");
+            System.Threading.Thread.Sleep(300); pages.Turn(-1); System.Threading.Thread.Sleep(300); pages.Turn(-1);
             Is((string)PV("BlackBox.Page") == "Électronique", "Page précédente deux fois : Électronique");
+            Is(pages.Presses.Contains("page précédente"), "Appuis notés");
             var car = new Sample { Fuel = 60, Energy = 80, MotorState = 2, Battery = 0.5, TC = 3, TCMax = 9, RearBrakeBias = 0.477, LapsDone = 3, Wheels = new Wheel[4],
                 FrontCompound = "Medium", RearCompound = "Medium" };
             car.Wheels[0] = new Wheel { Wear = 0.99, Pressure = 122.7, Temp = 22.4, InnerIn = 33, InnerMid = 34, InnerOut = 35, Brake = 85.5 };
@@ -134,6 +137,7 @@ namespace EnduranceManager.SimHub.Replay
             Is((string)PV("BlackBox.2.Nom") == "Répartition des freins" && (string)PV("BlackBox.2.Valeur") == "52.3:47.7", "Électronique : répartition avant:arrière");
             Is((string)PV("BlackBox.3.Nom") == "Niveau de recharge" && (string)PV("BlackBox.4.Nom") == "", "Électronique : seulement les réglages de la voiture");
             pages.Move(1); pages.Change(1); pages.Change(-1);
+            System.Threading.Thread.Sleep(300);
             Is(sent.SequenceEqual(new[] { "Bias.Forward", "Bias.Rearward" }), "Électronique : − + passent par les commandes de FMT companion");
             pages.Turn(-1);
             Is((string)PV("BlackBox.1.Nom") == "◂ ▸  Virtual Energy" && (string)PV("BlackBox.1.Valeur") == "80%", "Carburant : Virtual Energy d'abord");
@@ -145,10 +149,12 @@ namespace EnduranceManager.SimHub.Replay
             Is((string)PV("BlackBox.5.Nom") == "Estimation  ⚠", "Carburant : estimation trop courte signalée");
             pages.Move(1); pages.Move(1);
             Is((string)PV("BlackBox.2.Valeur") == "Aucun  ▴▾", "Carburant : ▼ jusqu'à « Aucun », pas en dessous");
+            System.Threading.Thread.Sleep(300);
             pages.Turn(-1);
             Is((string)PV("BlackBox.Pneus.AVG.Usure") == "99%" && (string)PV("BlackBox.Pneus.AVG.Gomme") == "M" && (string)PV("BlackBox.Pneus.AVG.Pression") == "122.7kPa"
                 && (string)PV("BlackBox.Pneus.AVG.Temp") == "34.0°C" && (string)PV("BlackBox.Pneus.Jeux") == "∞ Pneus", "Pneus : usure, gomme, pression, température, jeux");
             Is((string)PV("BlackBox.Pneus.AVD.Etat") == "Perdue" && (string)PV("BlackBox.Pneus.AVD.Couleur") == "#FFE83A4C", "Pneus : roue perdue en rouge");
+            System.Threading.Thread.Sleep(300);
             pages.Turn(-1);
             Is((string)PV("BlackBox.1.Nom") == "◂ ▸  Delta" && (string)PV("BlackBox.3.Nom") == "▴ ▾  Timing" && (string)PV("BlackBox.4.Nom") == "Meilleur", "Chrono : Delta et Timing d'abord");
             pages.Change(1); pages.Move(1);

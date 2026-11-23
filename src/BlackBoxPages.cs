@@ -70,11 +70,38 @@ namespace EnduranceManager.SimHub
 
         // ── The buttons ─────────────────────────────────────────────────────────────────────────────────────────────
 
-        public void Turn(int step) { page = ((page + step) % Titles.Length + Titles.Length) % Titles.Length; Rebuild(); }
+        // ◂ ▸. Nathan (23/11): both buttons seemed to do the same thing. A second turn within 250 ms is taken as the same
+        // press arriving twice and ignored; the presses received are listed in BlackBox.Appuis to see what SimHub sends.
+        DateTime lastTurn;
+        public void Turn(int step)
+        {
+            Note(step > 0 ? "page suivante" : "page précédente");
+            lock (gate)
+            {
+                var now = DateTime.UtcNow;
+                if ((now - lastTurn).TotalMilliseconds < 250) return;
+                lastTurn = now;
+                page = ((page + step) % Titles.Length + Titles.Length) % Titles.Length;
+            }
+            Rebuild();
+        }
+
+        // The last presses received (time, button), newest first.
+        readonly List<string> presses = new List<string>();
+        public void Note(string what)
+        {
+            lock (presses)
+            {
+                presses.Insert(0, DateTime.Now.ToString("HH:mm:ss.fff", Inv) + " " + what);
+                if (presses.Count > 6) presses.RemoveAt(6);
+            }
+        }
+        public string Presses { get { lock (presses) return string.Join(" · ", presses); } }
 
         // ▲ (-1) ▼ (+1).
         public void Move(int step)
         {
+            Note(step < 0 ? "monter" : "descendre");
             switch (page)
             {
                 case Stands: stands.Move(step); return;
@@ -90,6 +117,7 @@ namespace EnduranceManager.SimHub
         // − (-1) + (+1).
         public void Change(int step)
         {
+            Note(step > 0 ? "plus" : "moins");
             switch (page)
             {
                 case Stands: stands.Change(step); return;
@@ -543,6 +571,7 @@ namespace EnduranceManager.SimHub
             yield return ("BlackBox.Page", () => Titles[page]);
             yield return ("BlackBox.PageNo", () => page);
             yield return ("BlackBox.Message", () => Message);
+            yield return ("BlackBox.Appuis", () => Presses);
             yield return ("BlackBox.Attente", () => Waiting);
             yield return ("BlackBox.Lignes", () => stands.Items.Count);
             yield return ("BlackBox.Choisie", () => stands.Chosen);
