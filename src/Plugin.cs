@@ -167,7 +167,7 @@ namespace EnduranceManager.SimHub
             }
             // The wheel's black box (BlackBoxDash.cs): six actions, the six MFD commands of LMU (page, line, value).
             // A change is read back at once from the game.
-            BlackBox = new BlackBox(() => { Menu.Read(); BlackBox.Update(Menu.Items); });
+            BlackBox = new BlackBox(() => Menu.Raw, () => { Menu.Read(); BlackBox.Update(Menu.Items); });
             this.AddAction("BlackBoxPageSuivante", (manager, button) => { });
             this.AddAction("BlackBoxPagePrecedente", (manager, button) => { });
             this.AddAction("BlackBoxMonter", (manager, button) => BlackBox.Move(-1));

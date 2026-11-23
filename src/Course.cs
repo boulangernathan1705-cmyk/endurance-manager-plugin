@@ -32,6 +32,8 @@ namespace EnduranceManager.SimHub
         int busy;
 
         public volatile List<MenuItem> Items = new List<MenuItem>();
+        // The menu as the game sent it, for a change made from the wheel's screen (BlackBox, BlackBoxDash.cs).
+        public volatile JArray Raw;
         public bool Busy => busy != 0;
 
         // Never throws: it runs on a pool thread, where an error would close SimHub.
@@ -41,20 +43,28 @@ namespace EnduranceManager.SimHub
             try
             {
                 var lines = JArray.Parse(Tape.Get(client, Url));
-                var items = new List<MenuItem>();
-                foreach (var line in lines.OfType<JObject>())
-                {
-                    string name = ((string)line["name"] ?? "").Replace(":", "").Trim().ToUpperInvariant();
-                    int index = (int?)line["currentSetting"] ?? 0;
-                    var settings = line["settings"] as JArray;
-                    var setting = settings != null && index >= 0 && index < settings.Count ? settings[index] as JObject : null;
-                    string text = ((string)setting?["text"] ?? "").Trim();
-                    if (name != "") items.Add(new MenuItem { Name = name, Label = ((string)line["name"] ?? "").Trim(), Index = index, Text = text, Type = (string)setting?["type"] });
-                }
-                Items = items;
+                Items = Parse(lines);
+                Raw = lines;
             }
             catch { }
             finally { busy = 0; }
+        }
+
+        public static string Key(JObject line) => ((string)line["name"] ?? "").Replace(":", "").Trim().ToUpperInvariant();
+
+        public static List<MenuItem> Parse(JArray lines)
+        {
+            var items = new List<MenuItem>();
+            foreach (var line in lines.OfType<JObject>())
+            {
+                string name = Key(line);
+                int index = (int?)line["currentSetting"] ?? 0;
+                var settings = line["settings"] as JArray;
+                var setting = settings != null && index >= 0 && index < settings.Count ? settings[index] as JObject : null;
+                string text = ((string)setting?["text"] ?? "").Trim();
+                if (name != "") items.Add(new MenuItem { Name = name, Label = ((string)line["name"] ?? "").Trim(), Index = index, Text = text, Type = (string)setting?["type"] });
+            }
+            return items;
         }
 
         // The first number in a menu text (« 55% », « 45.0L », « 1.02 »), null when there is none.

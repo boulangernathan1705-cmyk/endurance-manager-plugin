@@ -42,7 +42,9 @@
   à des boutons du volant dans « Contrôles et événements » : `BlackBoxMonter` / `BlackBoxDescendre` (ligne, rien
   n'est envoyé au jeu), `BlackBoxPageSuivante` / `BlackBoxPagePrecedente` (sans effet tant qu'il n'y a qu'une page),
   `BlackBoxPlus` / `BlackBoxMoins` (valeur : menu lu, ligne au choix suivant ou précédent, menu entier renvoyé à
-  `loadPitMenu` puis relu, comme les profils). Rien au-delà des bouts de la liste des choix. Une ligne changée ailleurs
+  `loadPitMenu` puis relu, comme les profils). Comme dans la black box du jeu (essai de Nathan) : les choix font le
+  tour dans les deux sens, « Pneus » règle les 4 roues, la valeur s'affiche dès l'appui (envoi à part, le dernier
+  menu voulu seulement). Une ligne changée ailleurs
   (bouton FMT companion, black box du jeu) amène le curseur sur elle. **Retirer + et − des commandes MFD de LMU** sur
   les mêmes boutons, sinon un appui change la valeur deux fois.
 - Les mêmes six en **rôles du Control Mapper** (`BlackBoxRoles.cs`, demande de Nathan : « Contrôles et événements »

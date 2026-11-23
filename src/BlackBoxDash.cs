@@ -6,7 +6,8 @@
 // On navigue dedans sans ouvrir la black box du jeu (0.1.5, demande de Nathan) : 6 actions SimHub pour le volant,
 // ▲ ▼ changent de ligne (le curseur est celui du dash, rien n'est envoyé au jeu), ◂ ▸ changent de page (une seule pour
 // l'instant), − + changent la valeur de la ligne : le menu est lu, la ligne passe au choix d'avant ou d'après, le menu
-// entier est renvoyé au jeu puis relu (comme les profils, Profiles.WriteMenu). Une ligne changée ailleurs (bouton FMT
+// entier est renvoyé au jeu puis relu (comme les profils, Profiles.WriteMenu). Les choix font le tour dans les deux
+// sens et « Pneus » règle les 4 roues, comme la black box du jeu ; la valeur s'affiche dès l'appui. Une ligne changée ailleurs (bouton FMT
 // companion, black box du jeu) amène le curseur sur elle.
 // Propriétés EnduranceManagerPlugin.BlackBox.* et dash « Endurance Manager · Black box » (800 × 480).
 using System;
@@ -42,12 +43,18 @@ namespace EnduranceManager.SimHub
         public static string Label(MenuItem item) => Names.TryGetValue(item.Name, out var fr) ? fr : string.IsNullOrEmpty(item.Label) ? item.Name : item.Label;
         public static string Text(MenuItem item) => Texts.TryGetValue((item.Text ?? "").Trim().ToUpperInvariant(), out var fr) ? fr : item.Text ?? "";
 
-        const string MenuUrl = "http://localhost:6397/rest/garage/PitMenu/receivePitMenu";
         const string LoadUrl = "http://localhost:6397/rest/garage/PitMenu/loadPitMenu";
+        static readonly string[] Wheels = { "FL TIRE", "FR TIRE", "RL TIRE", "RR TIRE" };
         readonly HttpClient client = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
-        // Reads the game's menu again after a change, and hands it to Update (Plugin.cs).
+        // The menu as last read from the game (PitMenu.Raw), and a fresh read handed to Update after a change (Plugin.cs).
+        readonly Func<JArray> source;
         readonly Action refresh;
-        int writing;
+        readonly object gate = new object();
+        // The menu as the pilot wants it, not yet sent; its version, and the version the game has.
+        JArray wanted, basis;
+        int version, sent, writing;
+        // Reads of the game are not shown for a moment after a press: they could still hold the value before it.
+        DateTime holdUntil;
 
         List<MenuItem> seen;
         volatile List<MenuItem> items = new List<MenuItem>();
@@ -56,7 +63,7 @@ namespace EnduranceManager.SimHub
         volatile string message = "";
         DateTime messageUntil;
 
-        public BlackBox(Action refresh = null) { this.refresh = refresh; }
+        public BlackBox(Func<JArray> source = null, Action refresh = null) { this.source = source; this.refresh = refresh; }
 
         public List<MenuItem> Items => items;
         public string Chosen => chosen ?? "";
@@ -69,6 +76,12 @@ namespace EnduranceManager.SimHub
         public void Update(List<MenuItem> read)
         {
             if (read == null || ReferenceEquals(read, seen)) return;
+            lock (gate)
+            {
+                if (wanted != null || writing != 0 || DateTime.UtcNow < holdUntil) return;
+                // The game's own menu again: the next change starts from it.
+                basis = null;
+            }
             if (seen != null)
             {
                 var before = seen.GroupBy(i => i.Name).ToDictionary(g => g.Key, g => g.First().Index);
@@ -102,36 +115,75 @@ namespace EnduranceManager.SimHub
             Follow();
         }
 
-        // − + : the chosen line one choice down or up, sent to the game, on a pool thread (one change at a time).
+        // − + : the chosen line one choice down or up, round the list both ways as in the game's black box (« Aucun
+        // changement » − gives the last choice). « Pneus » sets the four wheels with it, as the game does. Shown at once;
+        // sent to the game aside, the latest wanted menu only (quick presses are not lost, nor sent one by one).
         public void Change(int step)
         {
             string name = chosen;
-            if (name == null || Interlocked.Exchange(ref writing, 1) == 1) return;
-            ThreadPool.QueueUserWorkItem(_ =>
+            if (name == null) return;
+            lock (gate)
             {
-                try { Say(Write(name, step)); }
-                catch { Say("Le jeu ne répond pas"); }
-                finally { writing = 0; }
-                try { refresh?.Invoke(); } catch { }
-            });
+                var menu = (wanted ?? basis ?? source?.Invoke())?.DeepClone() as JArray;
+                if (menu == null || !Step(menu, name, step)) return;
+                wanted = menu;
+                version++;
+                holdUntil = DateTime.UtcNow.AddMilliseconds(800);
+                items = seen = PitMenu.Parse(menu);
+                Follow();
+                if (writing != 0) return;
+                writing = 1;
+            }
+            ThreadPool.QueueUserWorkItem(_ => Send());
+        }
+
+        // The line moved by one choice, round the list; « TIRES » also moves the four wheels to the same text.
+        public static bool Step(JArray menu, string name, int step)
+        {
+            var line = menu.OfType<JObject>().FirstOrDefault(l => PitMenu.Key(l) == name);
+            int count = (line?["settings"] as JArray)?.Count ?? 0;
+            if (count < 2) return false;
+            int next = (((int?)line["currentSetting"] ?? 0) + step) % count;
+            if (next < 0) next += count;
+            line["currentSetting"] = next;
+            if (name == "TIRES")
+            {
+                string text = Choice(line, next);
+                foreach (var wheel in menu.OfType<JObject>().Where(l => Wheels.Contains(PitMenu.Key(l))))
+                {
+                    var settings = (JArray)wheel["settings"];
+                    for (int i = 0; settings != null && i < settings.Count; i++)
+                        if (string.Equals(Choice(wheel, i), text, StringComparison.OrdinalIgnoreCase)) { wheel["currentSetting"] = i; break; }
+                }
+            }
+            return true;
+        }
+
+        static string Choice(JObject line, int index) => ((string)((line["settings"] as JArray)?[index]?["text"]) ?? "").Trim();
+
+        // Sends the latest wanted menu until the game has it, then reads the game again.
+        void Send()
+        {
+            try
+            {
+                while (true)
+                {
+                    JArray menu; int v;
+                    lock (gate) { if (wanted == null || sent == version) { wanted = null; writing = 0; break; } menu = wanted; v = version; }
+                    try
+                    {
+                        var body = new StringContent(menu.ToString(Formatting.None), Encoding.UTF8, "application/json");
+                        client.PostAsync(LoadUrl, body).GetAwaiter().GetResult().EnsureSuccessStatusCode();
+                    }
+                    catch { Say("Le jeu ne répond pas"); lock (gate) { wanted = null; writing = 0; holdUntil = DateTime.MinValue; } break; }
+                    lock (gate) { sent = v; basis = menu; }
+                }
+            }
+            finally { lock (gate) writing = 0; }
+            try { refresh?.Invoke(); } catch { }
         }
 
         void Say(string text) { if (string.IsNullOrEmpty(text)) return; message = text; messageUntil = DateTime.UtcNow.AddSeconds(3); }
-
-        // The menu read, the line set to the next choice (none past the ends), the whole menu sent back. Null when done.
-        string Write(string name, int step)
-        {
-            var lines = JArray.Parse(Tape.Get(client, MenuUrl));
-            var line = lines.OfType<JObject>().FirstOrDefault(l => ((string)l["name"] ?? "").Replace(":", "").Trim().ToUpperInvariant() == name);
-            if (line == null) return "Ligne absente";
-            int count = (line["settings"] as JArray)?.Count ?? 0, now = (int?)line["currentSetting"] ?? 0;
-            int next = now + step;
-            if (next < 0 || next >= count) return null;
-            line["currentSetting"] = next;
-            var body = new StringContent(lines.ToString(Formatting.None), Encoding.UTF8, "application/json");
-            client.PostAsync(LoadUrl, body).GetAwaiter().GetResult().EnsureSuccessStatusCode();
-            return null;
-        }
 
         MenuItem At(int row) { var list = items; int k = top + row; return k >= 0 && k < list.Count ? list[k] : null; }
 
