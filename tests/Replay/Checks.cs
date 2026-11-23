@@ -126,7 +126,7 @@ namespace EnduranceManager.SimHub.Replay
             Is((string)PV("BlackBox.Page") == "Électronique", "Page précédente deux fois : Électronique");
             var car = new Sample { Fuel = 60, Energy = 80, MotorState = 2, Battery = 0.5, TC = 3, TCMax = 9, RearBrakeBias = 0.477, LapsDone = 3, Wheels = new Wheel[4],
                 FrontCompound = "Medium", RearCompound = "Medium" };
-            car.Wheels[0] = new Wheel { Wear = 0.99, Pressure = 122.7, Temp = 22.4, Brake = 85.5 };
+            car.Wheels[0] = new Wheel { Wear = 0.99, Pressure = 122.7, Temp = 22.4, InnerIn = 33, InnerMid = 34, InnerOut = 35, Brake = 85.5 };
             car.Wheels[1] = new Wheel { Wear = 0.5, Off = true };
             var cv = new CourseView { FuelAvg5 = 3, FuelLastLap = 2.5, VeAvg5 = 4, VeLastLap = 5, LapTimeAvg10 = 120, RegenLevel = 2 };
             pages.Update(null, car, cv);
@@ -146,7 +146,8 @@ namespace EnduranceManager.SimHub.Replay
             pages.Move(1); pages.Move(1);
             Is((string)PV("BlackBox.2.Valeur") == "Aucun  ▴▾", "Carburant : ▼ jusqu'à « Aucun », pas en dessous");
             pages.Turn(-1);
-            Is((string)PV("BlackBox.Pneus.AVG.Usure") == "99%" && (string)PV("BlackBox.Pneus.AVG.Gomme") == "M" && (string)PV("BlackBox.Pneus.AVG.Pression") == "122.7kPa", "Pneus : usure, gomme, pression");
+            Is((string)PV("BlackBox.Pneus.AVG.Usure") == "99%" && (string)PV("BlackBox.Pneus.AVG.Gomme") == "M" && (string)PV("BlackBox.Pneus.AVG.Pression") == "122.7kPa"
+                && (string)PV("BlackBox.Pneus.AVG.Temp") == "34.0°C" && (string)PV("BlackBox.Pneus.Jeux") == "∞ Pneus", "Pneus : usure, gomme, pression, température, jeux");
             Is((string)PV("BlackBox.Pneus.AVD.Etat") == "Perdue" && (string)PV("BlackBox.Pneus.AVD.Couleur") == "#FFE83A4C", "Pneus : roue perdue en rouge");
             pages.Turn(-1);
             Is((string)PV("BlackBox.1.Nom") == "◂ ▸  Delta" && (string)PV("BlackBox.3.Nom") == "▴ ▾  Timing" && (string)PV("BlackBox.4.Nom") == "Meilleur", "Chrono : Delta et Timing d'abord");

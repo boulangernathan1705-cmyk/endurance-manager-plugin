@@ -318,14 +318,18 @@ namespace EnduranceManager.SimHub
             for (int i = 0; i < 4; i++)
             {
                 string at = "Pneus." + corners[i] + ".";
-                double x = i % 2 == 0 ? 22 : Width - 22 - 150, y = i < 2 ? 82 : 308;
+                double x = i % 2 == 0 ? 20 : Width - 20 - 156, y = i < 2 ? 80 : 304;
                 bool right = i % 2 == 1, front = i < 2;
-                yield return Rect("Anneau" + (i + 1), x, y, 150, 150, P(at + "Couleur"), shown, 75);
-                yield return Rect("AnneauFond" + (i + 1), x + 13, y + 13, 124, 124, Panel, shown, 62);
-                yield return Text("Usure" + (i + 1), x, y + 30, 150, 54, 38, P(at + "Usure"), White, 1, shown);
-                yield return Rect("GommeRond" + (i + 1), x + 61, y + 90, 28, 28, "#00000000", $"{shown} && {P(at + "Gomme")} != '' && {P(at + "Etat")} == ''", 14, Yellow);
-                yield return Text("Gomme" + (i + 1), x + 61, y + 90, 28, 28, 16, P(at + "Gomme"), Yellow, 1, $"{shown} && {P(at + "Etat")} == ''");
-                yield return Text("Etat" + (i + 1), x, y + 86, 150, 34, 20, P(at + "Etat"), Red, 1, $"{shown} && {P(at + "Etat")} != ''");
+                yield return Rect("Anneau" + (i + 1), x, y, 156, 156, P(at + "Couleur"), shown, 78);
+                yield return Rect("AnneauFond" + (i + 1), x + 10, y + 10, 136, 136, Panel, shown, 68);
+                yield return Text("Usure" + (i + 1), x, y + 32, 156, 54, 38, P(at + "Usure"), White, 1, shown);
+                yield return Rect("GommeRond" + (i + 1), x + 64, y + 92, 28, 28, "#00000000", $"{shown} && {P(at + "Gomme")} != '' && {P(at + "Etat")} == ''", 14, Yellow);
+                yield return Text("Gomme" + (i + 1), x + 64, y + 92, 28, 28, 16, P(at + "Gomme"), Yellow, 1, $"{shown} && {P(at + "Etat")} == ''");
+                yield return Text("Etat" + (i + 1), x, y + 88, 156, 34, 20, P(at + "Etat"), Red, 1, $"{shown} && {P(at + "Etat")} != ''");
+                // The brake's sign beside its temperature, toward the middle, as in the game.
+                var disc = Text("Disque" + (i + 1), right ? 410 : 360, front ? 176 : 300, 30, 40, 22, "'⊚'", Label, 1, shown);
+                disc["Font"] = "Segoe UI Symbol";
+                yield return disc;
                 double cx = right ? 410 : 190;
                 int align = right ? 2 : 0;
                 double[] lines = front ? new double[] { 80, 122, 176 } : new double[] { 300, 342, 396 };

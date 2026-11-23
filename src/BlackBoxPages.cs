@@ -279,13 +279,15 @@ namespace EnduranceManager.SimHub
             if (c.Contains("hyper")) return ("HY", "#FFE83A4C");
             if (c.Contains("lmp2") || c.Contains("p2")) return ("P2", "#FF2F7BEB");
             if (c.Contains("lmp3") || c.Contains("p3")) return ("P3", "#FF8E44D6");
-            if (c.Contains("gt3")) return ("GT3", "#FFF08A24");
+            if (c.Contains("gt3")) return ("GT3", "#FF22A84A");
             if (c.Contains("gte")) return ("GTE", "#FF2DB45A");
             return (c.Length > 3 ? c.Substring(0, 3).ToUpperInvariant() : c.ToUpperInvariant(), "#FF8A909C");
         }
 
-        // The cars around us on the track, our car on the 4th line: three ahead above, three behind below, with the time
-        // between (distance on the lap at the pace of a lap). Cars ahead « -1.2 », behind « +1.2 » (to check in game).
+        // The cars around us on the track, our car on the 4th line: the three next ahead above, the three next behind below,
+        // each car once on each side as the game does (with few cars the same one shows above and below: its time ahead
+        // plus its time behind make a lap). The time is the distance on the lap at the pace of a lap; ahead « -54.6 »,
+        // behind « +36.3 », the place in the class, « PIT » in the middle (Nathan's captures).
         void RelativeRows(BlackBoxRow[] made, Sample s)
         {
             var me = cars.FirstOrDefault(c => c.Me);
@@ -293,22 +295,24 @@ namespace EnduranceManager.SimHub
             double length = view?.TrackLength > 100 ? view.TrackLength.Value : 0;
             if (length <= 0) length = Math.Max(1000, cars.Max(c => c.Dist));
             double lap = view?.LapTimeAvg10 > 0 ? view.LapTimeAvg10.Value : view?.BestLap > 0 ? view.BestLap.Value : s.LastLap > 0 ? s.LastLap : 120;
-            double Gap(Car c) { double d = (c.Dist - me.Dist) / length; d -= Math.Floor(d + 0.5); return d * lap; }
-            var others = cars.Where(c => !c.Me).Select(c => (car: c, gap: Gap(c))).ToList();
-            var ahead = others.Where(o => o.gap >= 0).OrderBy(o => o.gap).Take(3).ToList();
-            var behind = others.Where(o => o.gap < 0).OrderByDescending(o => o.gap).Take(3).ToList();
-            void Put(int k, Car c, double? gap)
+            // How far ahead on the lap, 0 to 1.
+            double Ahead(Car c) { double d = (c.Dist - me.Dist) / length; return d - Math.Floor(d); }
+            var others = cars.Where(c => !c.Me).ToList();
+            var ahead = others.Select(c => (car: c, gap: Ahead(c) * lap)).OrderBy(o => o.gap).Take(3).ToList();
+            var behind = others.Select(c => (car: c, gap: (1 - Ahead(c)) * lap)).OrderBy(o => o.gap).Take(3).ToList();
+            int InClass(Car c) => 1 + cars.Count(o => o.Class == c.Class && o.Place > 0 && o.Place < c.Place);
+            void Put(int k, Car c, string gap)
             {
                 var (badge, color) = Badge(c.Class);
                 made[k] = new BlackBoxRow
                 {
-                    Pos = c.Place.ToString(Inv), Classe = badge, Couleur = color, Nom = Short(c.Name), Moi = c.Me,
-                    Valeur = c.Pits ? "PIT" : gap is double g ? (g > 0 ? "-" : "+") + Math.Abs(g).ToString("0.0", Inv) : ""
+                    Pos = InClass(c).ToString(Inv), Classe = badge, Couleur = color, Nom = Short(c.Name), Moi = c.Me,
+                    C2 = c.Pits ? "PIT" : "", Valeur = gap
                 };
             }
-            for (int i = 0; i < ahead.Count; i++) Put(2 - i, ahead[i].car, ahead[i].gap);
-            Put(3, me, null);
-            for (int i = 0; i < behind.Count; i++) Put(4 + i, behind[i].car, behind[i].gap);
+            for (int i = 0; i < ahead.Count; i++) Put(2 - i, ahead[i].car, "-" + ahead[i].gap.ToString("0.0", Inv));
+            Put(3, me, "");
+            for (int i = 0; i < behind.Count; i++) Put(4 + i, behind[i].car, "+" + behind[i].gap.ToString("0.0", Inv));
         }
 
         // ── Séance ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -496,7 +500,8 @@ namespace EnduranceManager.SimHub
                 case "Usure": return w.Off ? "—" : Math.Round(w.Wear * 100).ToString("0", Inv) + "%";
                 case "Gomme": string c = i < 2 ? s.FrontCompound : s.RearCompound; return w.Off || string.IsNullOrEmpty(c) ? "" : c.Substring(0, 1).ToUpperInvariant();
                 case "Pression": return w.Off ? "-" : w.Pressure.ToString("0.0", Inv) + "kPa";
-                case "Temp": return w.Off ? "-" : w.Temp.ToString("0.0", Inv) + "°C";
+                // The game shows about 2 °C above the carcass (Nathan's capture, 23/11): the inner layer's mean, to check.
+                case "Temp": return w.Off ? "-" : ((w.InnerIn + w.InnerMid + w.InnerOut) / 3).ToString("0.0", Inv) + "°C";
                 case "Frein": return w.Brake.ToString("0.0", Inv) + "°C";
                 case "Etat": return state;
                 // The ring: white, red when the tyre is gone (worn out, flat or lost).
@@ -505,10 +510,12 @@ namespace EnduranceManager.SimHub
             return "";
         }
 
+        // « ∞ Pneus » as in the game when the session does not limit the sets (practice); otherwise the new sets left.
         string Sets()
         {
-            int? n = view?.NewTyres;
-            return (n is int k && k >= 0 && k < 100 ? k.ToString(Inv) : "∞") + " Pneus";
+            object limit = view?.Session != null && view.Session.TryGetValue("TiresAvailable", out var x) ? x : null;
+            bool limited = limit is double l && l > 0 && l < 100;
+            return (limited && view?.NewTyres is int k && k >= 0 ? k.ToString(Inv) : "∞") + " Pneus";
         }
 
         // ── For SimHub ──────────────────────────────────────────────────────────────────────────────────────────────
