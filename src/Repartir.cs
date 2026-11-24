@@ -243,16 +243,7 @@ namespace EnduranceManager.SimHub
         }
 
         // ── LMU ─────────────────────────────────────────────────────────────────────────────────────────────────────
-        static string LmuPlayer()
-        {
-            try
-            {
-                foreach (var process in Process.GetProcessesByName("Le Mans Ultimate"))
-                    using (process) return Path.Combine(Path.GetDirectoryName(process.MainModule.FileName), "UserData", "player");
-            }
-            catch { }
-            return null;
-        }
+        static string LmuPlayer() => LmuFolder.Player();
 
         static async Task<JObject> Get(HttpClient client, string path)
         {
