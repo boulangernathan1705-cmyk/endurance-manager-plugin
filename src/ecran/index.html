@@ -221,8 +221,6 @@ const $ = (id) => document.getElementById(id);
 
 // Menu « Mes boutons » (page Black box sur boutons) : Repartir de zéro, Retirer les touches FMT. Relier ses boutons, son rotary et son Fn
 // reste au pilote, dans le Control Mapper.
-// 0.2 bêta : menu caché tant que Nathan ne l'a pas essayé en jeu (il réécrit les touches LMU du pilote). false le remet.
-const MES_BOUTONS_CACHE = true;
 function mesBoutons(b) {
   const two = (arm, go, no, label, confirm) => `<div style="display:flex;gap:10px;flex-wrap:wrap">${UI[arm]
     ? `<button type="button" class="btn p" ${go}${b.busy ? ' disabled' : ''}>${confirm}</button> <button type="button" class="btn" ${no}>Annuler</button>`
@@ -446,7 +444,7 @@ const PAGES = {
       <section class="card stack">${bbTabs(rows)}
         <div class="toolbar"><input class="field" id="bbq" placeholder="Rechercher une commande…" value="${esc(UI.bbq || '')}">${g.test ? `<span class="mut small">${esc(g.test)}</span>` : ''}</div>
         <div id="bblist">${bbList(rows)}</div></section>
-      ${MES_BOUTONS_CACHE ? '' : mesBoutons(b.buttons || {})}
+      ${mesBoutons(b.buttons || {})}
       <details class="card"${UI.bbMore ? ' open' : ''} data-bbmore><summary style="margin:0">Plus</summary>
         <div class="row" style="border-top:0"><div class="t"><b>Commandes du stand actives</b><div class="mut small">Coupé : les boutons du stand ne changent plus rien dans LMU.</div></div>
           <button type="button" class="sw" role="switch" aria-checked="${g.writes}" aria-label="Commandes du stand actives" data-bbwrites><span></span></button></div>
