@@ -141,10 +141,13 @@ namespace EnduranceManager.SimHub
         readonly Watched courseSeen = new Watched(), blackBoxSeen = new Watched(), wallSeen = new Watched();
         // The race figures are wanted now (a dash reads them, or the black box's pages): set by the reading thread.
         volatile bool courseWanted;
+        Actions actions;
 
         public void Init(PluginManager pluginManager)
         {
             Settings = this.ReadCommonSettings("GeneralSettings", () => new Settings());
+            // Each action belongs to a module: listed in SimHub only while its module is on (Actions.cs, SimHub 9.13.6+).
+            actions = new Actions(this);
             EnduranceManager.SimHub.Report.Version = Updater.Current.ToString(3);
             EnduranceManager.SimHub.Report.On = Settings.Report;
             EnduranceManager.SimHub.Report.State("modules", Newtonsoft.Json.JsonConvert.SerializeObject(Modules()));
@@ -170,7 +173,7 @@ namespace EnduranceManager.SimHub
             {
                 int slot = k;
                 // The extension already checked against SimHub (reference/simhub-api.txt): same action, same name.
-                this.AddAction("Profil" + (slot + 1), (manager, button) => Profiles.Press(slot), (manager, button) => Profiles.Release(slot));
+                actions.Add("Profil" + (slot + 1), () => Settings.Profiles, (manager, button) => Profiles.Press(slot), (manager, button) => Profiles.Release(slot));
                 this.AttachDelegate("Profils." + (slot + 1) + ".Nom", () => Profiles.NameAt(slot));
             }
             // The wheel's black box (BlackBoxDash.cs, BlackBoxPages.cs): six actions, the six MFD commands of LMU (page,
@@ -181,20 +184,23 @@ namespace EnduranceManager.SimHub
             // The profiles too, when a Control Mapper role moves nothing (Profiles.Reach).
             Profiles.SendFmt = id => CompanionPage?.Send(id) ?? "FMT companion absent";
             Profiles.FmtRunning = () => Companion.Running;
-            this.AddAction("BlackBoxPageSuivante", (manager, button) => BlackBoxPages.Turn(1));
-            this.AddAction("BlackBoxPagePrecedente", (manager, button) => BlackBoxPages.Turn(-1));
-            this.AddAction("BlackBoxMonter", (manager, button) => BlackBoxPages.Move(-1));
-            this.AddAction("BlackBoxDescendre", (manager, button) => BlackBoxPages.Move(1));
-            this.AddAction("BlackBoxPlus", (manager, button) => BlackBoxPages.Change(1));
-            this.AddAction("BlackBoxMoins", (manager, button) => BlackBoxPages.Change(-1));
+            // Black box sur boutons changes at SimHub's next launch (FMT companion starts with SimHub): so do its actions.
+            bool blackBoxAtStart = Settings.CompanionOn;
+            Func<bool> blackBoxOn = () => blackBoxAtStart;
+            actions.Add("BlackBoxPageSuivante", blackBoxOn, (manager, button) => BlackBoxPages.Turn(1));
+            actions.Add("BlackBoxPagePrecedente", blackBoxOn, (manager, button) => BlackBoxPages.Turn(-1));
+            actions.Add("BlackBoxMonter", blackBoxOn, (manager, button) => BlackBoxPages.Move(-1));
+            actions.Add("BlackBoxDescendre", blackBoxOn, (manager, button) => BlackBoxPages.Move(1));
+            actions.Add("BlackBoxPlus", blackBoxOn, (manager, button) => BlackBoxPages.Change(1));
+            actions.Add("BlackBoxMoins", blackBoxOn, (manager, button) => BlackBoxPages.Change(-1));
             // A touch on the dash (its transparent buttons, BlackBoxDash.cs): a line, or the left / right half of a line
             // that − + adjust.
             for (int k = 0; k < BlackBox.Rows; k++)
             {
                 int row = k;
-                this.AddAction("BlackBoxLigne" + (row + 1), (manager, button) => BlackBoxPages.Select(row));
-                this.AddAction("BlackBoxToucheMoins" + (row + 1), (manager, button) => BlackBoxPages.Touch(row, -1));
-                this.AddAction("BlackBoxTouchePlus" + (row + 1), (manager, button) => BlackBoxPages.Touch(row, 1));
+                actions.Add("BlackBoxLigne" + (row + 1), blackBoxOn, (manager, button) => BlackBoxPages.Select(row));
+                actions.Add("BlackBoxToucheMoins" + (row + 1), blackBoxOn, (manager, button) => BlackBoxPages.Touch(row, -1));
+                actions.Add("BlackBoxTouchePlus" + (row + 1), blackBoxOn, (manager, button) => BlackBoxPages.Touch(row, 1));
             }
             // The same six as Control Mapper roles (BlackBoxRoles.cs), created while Black box sur boutons is on.
             blackBoxRoles = new BlackBoxRoles(() => PluginManager ?? pluginManager, new Dictionary<string, Action>
@@ -248,8 +254,9 @@ namespace EnduranceManager.SimHub
             // The stint length changes while driving (a new strategy): two actions to map to wheel buttons in SimHub
             // (Contrôles et événements), shown in the overlays as « vs 8,33 % (12 t.) ».
             this.AttachDelegate("Essais.ToursParRelais", () => Settings.StintLaps);
-            this.AddAction("ToursParRelaisPlus", (manager, button) => SetStintLaps(Settings.StintLaps + 1));
-            this.AddAction("ToursParRelaisMoins", (manager, button) => SetStintLaps(Settings.StintLaps - 1));
+            actions.Add("ToursParRelaisPlus", () => Settings.Overlays, (manager, button) => SetStintLaps(Settings.StintLaps + 1));
+            actions.Add("ToursParRelaisMoins", () => Settings.Overlays, (manager, button) => SetStintLaps(Settings.StintLaps - 1));
+            actions.Sync();
             // The dashes' own buttons A and B, that pilots already have on their wheel, do the same while the overlays show
             // (practice or race, car on track): A one lap more, B one lap less.
             pluginManager.InputToActionTriggered += DashButton;
@@ -434,6 +441,7 @@ namespace EnduranceManager.SimHub
         {
             change(Settings);
             this.SaveCommonSettings("GeneralSettings", Settings);
+            actions?.Sync();
             EnduranceManager.SimHub.Report.On = Settings.Report;
             EnduranceManager.SimHub.Report.State("modules", Newtonsoft.Json.JsonConvert.SerializeObject(Modules()));
         }
