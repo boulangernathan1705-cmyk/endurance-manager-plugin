@@ -114,7 +114,7 @@ namespace EnduranceManager.SimHub
             if (plugin.Settings.Profiles)
             {
                 if (p.ToChange) lines.Add("La piste correspond au profil « " + p.ForWeather + " ».");
-                if (!p.AnyRole) lines.Add("Boutons introuvables : dans Black box sur boutons, « Préparer LMU ».");
+                if (!p.AnyRole) lines.Add("Moteur des touches (FMT) pas lancé : redémarre SimHub.");
                 if (!string.IsNullOrEmpty(p.Message)) lines.Add(p.Message);
             }
             if (!string.IsNullOrEmpty(track) && from != null && !other)
@@ -165,6 +165,7 @@ namespace EnduranceManager.SimHub
                     case "copyWall": { var url = plugin.WallServer?.NetworkUrl; if (url != null) OnScreen(() => Clipboard.SetText(url)); return Ok(); }
                     case "popup": plugin.PlacePopup(); return Ok();
                     case "rename": return Rename(i, (string)a["name"]);
+                    case "cleanup": return Nettoyage.Run(plugin);
                     case "track": { string t = (string)a["track"]; viewTrack = string.IsNullOrEmpty(t) ? null : t; return Ok(); }
                     case "memorise": System.Threading.ThreadPool.QueueUserWorkItem(_ => plugin.Profiles.Memorise(i)); return Ok();
                     case "apply": plugin.Profiles.Apply(i); return Ok();

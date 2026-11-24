@@ -180,6 +180,7 @@ namespace EnduranceManager.SimHub
             BlackBoxPages = new BlackBoxPages(BlackBox, id => CompanionPage.Send(id));
             // The profiles too, when a Control Mapper role moves nothing (Profiles.Reach).
             Profiles.SendFmt = id => CompanionPage?.Send(id) ?? "FMT companion absent";
+            Profiles.FmtRunning = () => Companion.Running;
             this.AddAction("BlackBoxPageSuivante", (manager, button) => BlackBoxPages.Turn(1));
             this.AddAction("BlackBoxPagePrecedente", (manager, button) => BlackBoxPages.Turn(-1));
             this.AddAction("BlackBoxMonter", (manager, button) => BlackBoxPages.Move(-1));
@@ -297,7 +298,8 @@ namespace EnduranceManager.SimHub
             // The overlays « Endurance Manager · Bandeau » and « · Colonne » in Dash Studio's templates.
             ThreadPool.QueueUserWorkItem(_ => Dashes.Install(home));
             // FMT companion knows from us whether LMU runs (our reading of its memory) and gets each pit menu we read.
-            if (Settings.CompanionOn) Companion.Start(pluginManager, () => GameState != "closed");
+            // Also for Réglages voiture en course alone: its clicks go through FMT companion (Profiles.Reach).
+            if (Settings.CompanionOn || Settings.Profiles) Companion.Start(pluginManager, () => GameState != "closed");
             Menu.Shared = Companion.Offer;
             EnduranceManager.SimHub.Report.State("fmt companion", Companion.Status);
             // Updates (Update.cs, UpdateWindow.cs): looked for at the start then every hour, shown in a small window.

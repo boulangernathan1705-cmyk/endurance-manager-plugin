@@ -61,7 +61,7 @@ namespace EnduranceManager.SimHub
         public Func<Sample, double?> Read;
         // How close counts as reached (brake bias moves in fractions of a percent).
         public double Tolerance = 0.5;
-        // Words that find the pilot's own Control Mapper roles for it (« TC + », « ABS - », « BB + »…).
+        // Words of the pilot's own Control Mapper roles (used before 24/11; the profiles now press through FMT companion).
         public string[] Words;
 
         public static readonly Setting[] All =
@@ -393,63 +393,45 @@ namespace EnduranceManager.SimHub
             });
         }
 
-        // Presses « + » or « − » until the game shows the value aimed at. A role that moves nothing (not mapped in the Control
-        // Mapper or not bound in LMU) stops it, said in the message.
+        // One way only (Nathan 24/11, choice A): FMT companion's own command, as the black box's Électronique page sends
+        // it. It knows which button LMU listens to, its own or the pilot's one that « Préparer LMU » reused, and holds it
+        // 200 ms; nothing to link in the Control Mapper for the profiles. The game is read, the clicks needed are sent one
+        // by one (6 → 4 = two « − »), each read back; a click that moves nothing twice stops, said with the values.
         string Reach(Setting setting, double target)
         {
-            // A pilot's « + » can lower the game's level (TC counted the other way on some cars): seen once, then swapped.
+            if (SendFmt == null) return setting.Label + " (moteur FMT absent)";
+            // A « + » can lower the game's level on some cars (TC counted the other way): seen once, then swapped.
             bool swapped = false;
-            // Nathan 23/11 (Peugeot 9X8): TC, migration and carto did not move with FMT companion's roles while the others
-            // did (with ChatGPT's version, the pilot's own roles « TC + »… worked). Each fitting role is tried in turn,
-            // then FMT companion's own command (as the black box's Électronique page sends it).
-            int pick = 0;
-            bool fmt = false;
-            var tried = new List<string>();
-            string how = "";
             for (int presses = 0, still = 0; presses < 60; presses++)
             {
                 if (!(latest() is Sample s)) return setting.Label + " (voiture plus en piste)";
                 if (!(setting.Read(s) is double now)) return null;
                 if (Math.Abs(now - target) < setting.Tolerance) return null;
-                string command = setting.Key + ((target > now) != swapped ? "+" : "-");
-                var roles = RolesFor(command);
-                bool pressed = false;
-                if (!fmt && pick < roles.Count)
-                {
-                    how = roles[pick];
-                    pressed = PressRole(manager(), how);
-                    if (!pressed) { if (!tried.Contains(how)) tried.Add(how); pick++; presses--; continue; }
-                }
-                else if (!fmt && SendFmt != null) { fmt = true; presses--; continue; }
-                else if (fmt)
-                {
-                    string id = FmtId(command), why = id == null ? "pas de commande" : SendFmt(id);
-                    how = "FMT " + id;
-                    if (why != null) { tried.Add(how + " (" + why + ")"); break; }
-                    pressed = true;
-                }
-                if (!pressed) break;
-                // The game takes a moment to show the new level: up to 1 s, then the next press.
+                string id = FmtId(setting.Key + ((target > now) != swapped ? "+" : "-"));
+                if (id == null) return setting.Label + " (pas de commande)";
+                string why = SendFmt(id);
+                if (why != null) return setting.Label + " (" + why + ")";
+                // The game takes a moment to show the new level: up to 1.2 s, then the next click.
                 double? after = now;
-                for (int wait = 0; wait < 12 && after == now; wait++) { Thread.Sleep(80); after = latest() is Sample t ? setting.Read(t) : null; }
+                for (int wait = 0; wait < 15 && after == now; wait++) { Thread.Sleep(80); after = latest() is Sample t ? setting.Read(t) : null; }
                 still = after == now ? still + 1 : 0;
                 if (after is double moved && Math.Abs(moved - target) > Math.Abs(now - target)) swapped = !swapped;
                 if (still >= 2)
                 {
-                    if (!tried.Contains(how)) tried.Add(how);
-                    Report.Log("profils", setting.Label + " : rien ne bouge avec « " + how + " »");
-                    still = 0;
-                    if (fmt) break;
-                    pick++;
+                    Report.Log("profils", setting.Label + " : « " + id + " » sans effet, " + Format(setting, now) + " au lieu de " + Format(setting, target));
+                    return setting.Label + " (reste à " + Format(setting, now) + " au lieu de " + Format(setting, target) + " : « Préparer LMU » dans Black box sur boutons)";
                 }
             }
-            if (tried.Count == 0) return setting.Label + " (aucun bouton : clique « Préparer LMU » dans Black box sur boutons)";
-            return setting.Label + " (rien ne bouge avec « " + string.Join(" », « ", tried) + " »)";
+            return setting.Label + " (pas atteint)";
         }
 
-        // FMT companion's command for a setting and a sign (its Catalog.cs ids), null when it has none.
+        // FMT companion's command by its id (« TC.Next »…): null when sent, else why not. Set by the plugin.
         public Func<string, string> SendFmt;
+        // FMT companion runs (started with the plugin while this module is on).
+        public Func<bool> FmtRunning;
+        public bool AnyRole => FmtRunning?.Invoke() == true;
 
+        // FMT companion's command for a setting and a sign (its Catalog.cs ids), null when it has none.
         static string FmtId(string command)
         {
             bool up = command.EndsWith("+");
@@ -466,110 +448,6 @@ namespace EnduranceManager.SimHub
                 case "ArbRear": return up ? "RearARB.Next" : "RearARB.Previous";
                 default: return null;
             }
-        }
-
-        // Alone in its method: should SimHub's Control Mapper differ from the facade (reference/), only the profiles' presses
-        // stop, caught by the caller, not the whole plugin (.NET fails the method that calls a missing member).
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        internal static IControlMapperInterface ControlMapper(PluginManager manager) => manager?.GetControlMapperInterface();
-
-        static bool PressRole(PluginManager manager, string role)
-        {
-            // As FMT companion presses its buttons (TriggerRole of the Control Mapper); StartStopRole answered false for
-            // every role on Nathan's SimHub 9.13.7 (23/11: « rôle … introuvable »).
-            try { if (Trigger(manager, role)) return true; } catch { }
-            try { return StartStop(manager, role); } catch { return false; }
-        }
-
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        static bool Trigger(PluginManager manager, string role) =>
-            manager?.GetPlugin<global::SimHub.Plugins.OutputPlugins.ControlRemapper.ControlMapperPlugin>()?.TriggerRole(role, 60) == true;
-
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        static bool StartStop(PluginManager manager, string role) => ControlMapper(manager)?.StartStopRole(role, 60) == true;
-
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        static IEnumerable<string> OutputRoles(PluginManager manager)
-        {
-            var mapping = manager?.GetPlugin<global::SimHub.Plugins.OutputPlugins.ControlRemapper.ControlMapperPlugin>()?.controlMapperPluginSettings?.OutputMapping?.ControllerMapping;
-            if (mapping == null) return new string[0];
-            return mapping.Buttons.Select(b => b.TargetRole).Concat(mapping.VirtualButtons.Select(b => b.TargetRole)).ToList();
-        }
-
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        internal static List<string> ButtonRoles(PluginManager manager) => ControlMapper(manager)?.GetAvailableButtonRoles();
-
-        // The Control Mapper role that presses a command in LMU, found by itself: FMT companion's first (« FMT - … », made by
-        // its « Préparer LMU »), else one the pilot named (« TC + »), else one chosen by hand in an older version.
-        public List<string> RolesFor(string command)
-        {
-            var setting = Setting.All.FirstOrDefault(x => command.StartsWith(x.Key) && command.Length == x.Key.Length + 1);
-            if (setting == null) return new List<string>();
-            var list = FindAll(setting, command.EndsWith("+") ? "+" : "-", Available());
-            if (File.Roles.TryGetValue(command, out string kept) && !string.IsNullOrEmpty(kept) && !list.Contains(kept)) list.Add(kept);
-            return list;
-        }
-
-        public string Role(string command)
-        {
-            var setting = Setting.All.FirstOrDefault(x => command.StartsWith(x.Key) && command.Length == x.Key.Length + 1);
-            if (setting == null) return null;
-            return Find(setting, command.EndsWith("+") ? "+" : "-", Available())
-                ?? (File.Roles.TryGetValue(command, out string kept) && !string.IsNullOrEmpty(kept) ? kept : null);
-        }
-
-        public bool AnyRole => Available().Count > 0;
-
-        List<string> available = new List<string>();
-        DateTime availableAt;
-        // The Control Mapper's button roles, read again every 5 s at most.
-        List<string> Available()
-        {
-            if (DateTime.UtcNow - availableAt < TimeSpan.FromSeconds(5)) return available;
-            availableAt = DateTime.UtcNow;
-            var roles = new List<string>();
-            try { roles.AddRange(ButtonRoles(manager()) ?? new List<string>()); } catch { }
-            // Nathan's SimHub (23/11) gave no role this way although its Control Mapper had 126 named output buttons: the
-            // roles of the output buttons and virtual buttons too.
-            try { roles.AddRange(OutputRoles(manager())); } catch { }
-            available = roles.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList();
-            return available;
-        }
-
-        // FMT companion's own names end with « suivant(e) », « précédent(e) », « vers l'avant », « vers l'arrière » (its
-        // Catalog.cs): « Carto moteur précédente », « Migration vers l'avant », « Antiroulis avant suivant ».
-        static readonly string[] Up = { "+", "plus", "next", "suivant", "suivante", "increase", "up", "vers l'avant", "forward" },
-            Down = { "-", "−", "moins", "previous", "prev", "précédent", "précédente", "decrease", "down", "vers l'arrière", "vers l'arriere", "rearward" };
-
-        // The role for a setting and a sign: its last part (« FMT - Voiture - TC Next » → « tc next »), the sign at the end,
-        // what is left is the setting's name. « TC + » is TC, not « TC cut + »: short names must be the whole name.
-        internal static string Find(Setting setting, string sign, List<string> roles) => FindAll(setting, sign, roles).FirstOrDefault();
-
-        // Every role that fits, FMT companion's first: when one moves nothing in the game, the next is tried.
-        internal static List<string> FindAll(Setting setting, string sign, List<string> roles)
-        {
-            var found = new List<string>();
-            var ordered = roles.OrderBy(x => x.TrimStart().StartsWith("FMT", StringComparison.OrdinalIgnoreCase) ? 0 : 1);
-            foreach (string word in setting.Words)
-                foreach (string role in ordered)
-                {
-                    string text = role.ToLowerInvariant().Trim();
-                    int cut = text.LastIndexOf(" - ", StringComparison.Ordinal);
-                    if (cut >= 0 && text.StartsWith("fmt")) text = text.Substring(cut + 3).Trim();
-                    string stem = null;
-                    foreach (string end in sign == "+" ? Up : Down)
-                        if (text.EndsWith(end) && (end.Length == 1 || text.Length == end.Length || !char.IsLetter(text[text.Length - end.Length - 1])))
-                        { stem = text.Substring(0, text.Length - end.Length).Trim(' ', '-', '_'); break; }
-                    if (stem == null) continue;
-                    if ((stem == word || (word.Length > 3 && stem.Contains(word))) && !found.Contains(role)) found.Add(role);
-                }
-            return found;
-        }
-
-        public static string Command(string command)
-        {
-            var setting = Setting.All.FirstOrDefault(x => command.StartsWith(x.Key) && command.Length == x.Key.Length + 1);
-            return (setting?.Label ?? command) + " " + (command.EndsWith("+") ? "+" : "−");
         }
 
         // The pit menu as the game sends it: name of each line → text of its choice. Null when the game does not answer.

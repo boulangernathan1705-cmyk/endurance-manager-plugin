@@ -118,8 +118,16 @@
 - Le popup (`src/ProfilePopup.cs`) : petite fenêtre toujours au premier plan, que le clic traverse et qui ne prend pas le
   focus du jeu (visible au-dessus de LMU en fenêtré sans bordure). « Placer le popup » sur l'onglet la fait glisser, la
   place est gardée. Mêmes textes pour les dashs : `Profils.Popup`, `.Titre`, `.Lignes`, `.Aide`, `.Confirmer`.
-- Appliquer = appuyer sur les rôles « + / − » trouvés tout seuls (`Profiles.Find` : rôles FMT companion d'abord, puis
-  Next/Previous ou +/−), relire la valeur après chaque appui, s'arrêter et signaler si elle ne bouge pas.
+- Appliquer (choix A de Nathan, 24/11/2026) : **une seule méthode**, la commande de FMT companion (`CompanionPage.Send`,
+  ids `TC.Next`… comme la page Électronique). FMT sait sur quel bouton LMU écoute (le sien, ou celui du pilote réutilisé
+  par « Préparer LMU ») et le tient 200 ms. Avant, le plugin appuyait sur les rôles du Control Mapper (60 ms) : un rôle FMT
+  sans bouton à lui (bouton du pilote réutilisé) ne faisait rien, d'où TC, carto et migration « rien ne bouge » sur la 9X8.
+  Lecture, clics un par un (6 → 4 = deux « − »), relecture ; deux clics sans effet = arrêt avec les valeurs. FMT companion
+  est lancé dès que ce module est actif, même sans « Black box sur boutons ».
+- Boutons du volant : `Profil1`… (Contrôles et événements) ou rôles « EM - Profil 1/2/3 » du Control Mapper (créés par
+  `BlackBoxRoles`, avec le relâchement pour l'appui de 2 s).
+- « Tout nettoyer » (`Nettoyage.cs`) : sauvegarde, « Annuler » de FMT (touches LMU ajoutées par FMT), délie tout ce qui vise
+  « FMT - » / « EM - » dans le Control Mapper, oublie les boutons réutilisés. LMU n'est pas remis par défaut (volant gardé).
 - **Rien d'automatique.** Seulement des rappels : profil pas actif (valeurs différentes) et humidité de la piste
   (plages par défaut : Sec < 5 %, Inter 5–12 %, Pluie > 12 %).
 - Écran simplifié le 19/11/2026 : la voiture + 3 cartes (valeurs, Mémoriser, Appliquer) + une ligne sur les boutons.

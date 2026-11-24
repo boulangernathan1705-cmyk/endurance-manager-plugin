@@ -377,7 +377,11 @@ const PAGES = {
           <div class="l"><span>Pneus</span><i>Medium →</i><b>Wet</b></div>
           <div style="font-size:13px;color:var(--accent);margin-top:10px">Rappuie sur le même bouton pour confirmer.</div>
           <div style="height:4px;background:#29454a;border-radius:2px;margin-top:8px"><div style="height:4px;width:62%;background:var(--accent);border-radius:2px"></div></div></div>
-      </section></div>`;
+      </section>
+      <section class="card stack"><h2>Repartir propre</h2>
+        <p class="mut">Retire du Control Mapper tous les boutons « FMT » et « EM », et de LMU les touches ajoutées par FMT. Ton volant et tes pédales restent. Une sauvegarde est faite avant.</p>
+        <p class="mut small">Ensuite : redémarre SimHub, clique « Préparer LMU » dans Black box sur boutons, puis relie « EM - Profil 1, 2, 3 ».</p>
+        <div><button type="button" class="btn" data-cleanup>${UI.cleanArm ? 'Confirmer : tout nettoyer' : 'Tout nettoyer'}</button>${UI.cleanArm ? ' <button type="button" class="btn" data-cleanno>Annuler</button>' : ''}</div></section></div>`;
   },
 
   bb() {
@@ -575,6 +579,8 @@ document.addEventListener('click', async (e) => {
   if (d.go) { UI.page = d.go; save('page', d.go); $('main').scrollTop = 0; render(); return; }
   if (d.module) { S.modules[d.module] = !S.modules[d.module]; render(); await act({ do: 'module', key: d.module, on: S.modules[d.module] }); return; }
   if (d.laps) { S.laps = Math.max(1, Math.min(60, S.laps + +d.laps)); render(); act({ do: 'laps', value: S.laps }, true); return; }
+  if (d.cleanup !== undefined) { if (!UI.cleanArm) { UI.cleanArm = true; render(); return; } UI.cleanArm = false; render(); act({ do: 'cleanup' }); return; }
+  if (d.cleanno !== undefined) { UI.cleanArm = false; render(); return; }
   if (d.memorise) { act({ do: 'memorise', i: +d.memorise }, true); toast('Mémorisation…'); return; }
   if (d.apply) { act({ do: 'apply', i: +d.apply }, true); return; }
   if (d.pit) { act({ do: 'pit', i: +d.pit, key: d.key, on: t.checked }, true); return; }
