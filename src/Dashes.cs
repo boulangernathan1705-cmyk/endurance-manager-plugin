@@ -149,7 +149,29 @@ namespace EnduranceManager.SimHub
             return (dash, metadata);
         }
 
-        public static IEnumerable<(string name, string dash, string metadata)> All()
+        // SimHub 9.13.6 or newer: images may be SVG (the black box's page icons). Read from SimHub's own file version.
+        public static bool SvgImages
+        {
+            get
+            {
+                try
+                {
+                    string exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SimHubWPF.exe");
+                    if (!File.Exists(exe)) return false;
+                    var v = System.Diagnostics.FileVersionInfo.GetVersionInfo(exe);
+                    return new Version(v.FileMajorPart, v.FileMinorPart, v.FileBuildPart) >= new Version(9, 13, 6);
+                }
+                catch { return false; }
+            }
+        }
+
+        // The image files of each dash that has some (its .djson.ressources), by dash name.
+        public static Dictionary<string, Dictionary<string, byte[]>> Resources(bool svg) =>
+            svg ? new Dictionary<string, Dictionary<string, byte[]>> { ["Endurance Manager · Black box"] = BlackBoxDash.Images().files } : new Dictionary<string, Dictionary<string, byte[]>>();
+
+        public static IEnumerable<(string name, string dash, string metadata)> All() => All(false);
+
+        public static IEnumerable<(string name, string dash, string metadata)> All(bool svg)
         {
             foreach (var (title, id, screen, column) in new[]
             {
@@ -164,7 +186,7 @@ namespace EnduranceManager.SimHub
             var (wall, wallMeta) = MakeWall();
             yield return ("Endurance Manager · Mur", wall.ToString(Formatting.None), wallMeta.ToString(Formatting.Indented));
             // The game's pit menu for the wheel's screen (VoCore 800 × 480, BlackBoxDash.cs).
-            var (box, boxMeta) = BlackBoxDash.Make();
+            var (box, boxMeta) = BlackBoxDash.Make(svg);
             yield return ("Endurance Manager · Black box", box.ToString(Formatting.None), boxMeta.ToString(Formatting.Indented));
         }
 
@@ -180,19 +202,31 @@ namespace EnduranceManager.SimHub
                 if (!Directory.Exists(templates)) return;
                 string ledger = Path.Combine(home, "dashes.json");
                 var written = File.Exists(ledger) ? JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText(ledger)) ?? new Dictionary<string, string>() : new Dictionary<string, string>();
-                foreach (var (name, dash, metadata) in All())
+                bool svg = SvgImages;
+                var resources = Resources(svg);
+                foreach (var (name, dash, metadata) in All(svg))
                 {
                     string folder = Path.Combine(templates, name), file = Path.Combine(folder, name + ".djson");
                     if (File.Exists(file) && (!written.TryGetValue(name, out var mine) || mine != Hash(File.ReadAllText(file)))) continue;
                     Directory.CreateDirectory(folder);
                     File.WriteAllText(file, dash);
                     File.WriteAllText(file + ".metadata", metadata);
+                    // Its images, in a zip next to it as Dash Studio keeps them (« <dash>.djson.ressources »).
+                    if (resources.TryGetValue(name, out var files)) WriteResources(file + ".ressources", files);
                     written[name] = Hash(dash);
                 }
                 File.WriteAllText(ledger, JsonConvert.SerializeObject(written));
             }
             // A SimHub folder that cannot be written: the overlays can still be imported by hand.
             catch { }
+        }
+
+        static void WriteResources(string path, Dictionary<string, byte[]> files)
+        {
+            using (var stream = File.Create(path))
+            using (var zip = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Create))
+                foreach (var f in files)
+                    using (var entry = zip.CreateEntry(f.Key).Open()) entry.Write(f.Value, 0, f.Value.Length);
         }
     }
 }

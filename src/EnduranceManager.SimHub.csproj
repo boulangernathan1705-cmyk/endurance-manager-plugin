@@ -36,6 +36,7 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System.Net.Http" />
+    <Reference Include="System.IO.Compression" />
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <!-- Les tests et la façade ont leurs propres projets : pas compilés dans la DLL du plugin. -->

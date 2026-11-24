@@ -246,7 +246,56 @@ namespace EnduranceManager.SimHub
         // The page icons of the title bar, in the game's order (BlackBoxPages.Titles): the page shown in white.
         static readonly string[] Icons = { "⇅", "ⓘ", "⏱", "◎", "⛽", "⚡", "⚙" };
 
-        public static JArray Items()
+        // The same icons drawn in SVG (SimHub 9.13.6+ shows an SVG wherever an image goes): sharp at any size, the same
+        // look as the Stream Deck profile. 24 × 24 strokes; two files per page, white (page shown) and grey.
+        static readonly string[] IconPaths =
+        {
+            "M8 4v16M4 8l4-4 4 4M16 20V4M12 16l4 4 4-4",
+            "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M12 11v6M12 7.5v.01",
+            "M12 6a7.5 7.5 0 1 0 0 15a7.5 7.5 0 1 0 0-15M12 13.5V10M10 2.5h4M12 2.5V6M18 6.5l1.5-1.5",
+            "M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12 3v3M12 18v3M3 12h3M18 12h3",
+            "M4 21V5h9v16M3 21h11M13 9h3l2 2v6a1.5 1.5 0 0 0 3 0V8l-3-3M6.5 8.5h4",
+            "M13 2L5 14h6l-1 8l8-12h-6z",
+            "M14.7 6.3a4 4 0 0 0 5 5L12 19a2.1 2.1 0 0 1-3-3l7.7-7.7zM15 3.5a4 4 0 0 1 5.5 5.5"
+        };
+        const string Grey = "#8A909C";
+
+        static string IconName(int page, bool shown) => "bb_page" + (page + 1) + (shown ? "_on" : "");
+
+        static byte[] Svg(string path, string color) => Encoding.UTF8.GetBytes(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"48\" height=\"48\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"" + color
+            + "\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"" + path + "\"/></svg>");
+
+        // The image files of the dash (its .djson.ressources, a zip as Dash Studio writes it) and their list in the dash.
+        public static (JArray list, Dictionary<string, byte[]> files) Images()
+        {
+            var list = new JArray();
+            var files = new Dictionary<string, byte[]>();
+            for (int k = 0; k < IconPaths.Length; k++)
+                foreach (bool shown in new[] { false, true })
+                {
+                    string name = IconName(k, shown);
+                    byte[] bytes = Svg(IconPaths[k], shown ? "#FFFFFF" : Grey);
+                    files[name + ".svg"] = bytes;
+                    string md5;
+                    using (var h = System.Security.Cryptography.MD5.Create()) md5 = string.Concat(h.ComputeHash(bytes).Select(b => b.ToString("x2")));
+                    list.Add(new JObject { ["Name"] = name, ["Extension"] = ".svg", ["Modified"] = false, ["Optimized"] = false, ["Width"] = 48, ["Height"] = 48, ["Length"] = bytes.Length, ["MD5"] = md5 });
+                }
+            return (list, files);
+        }
+
+        static JObject Picture(string name, double x, double y, double w, double h, string image, string imageFormula, string visible)
+        {
+            var bindings = new JObject { ["Image"] = Dashes.Bind("Image", imageFormula) };
+            if (visible != null) bindings["Visible"] = Dashes.Bind("Visible", visible);
+            return new JObject
+            {
+                ["$type"] = "SimHub.Plugins.OutputPlugins.GraphicalDash.Models.ImageItem, SimHub.Plugins", ["Image"] = image, ["AutoSize"] = false,
+                ["BackgroundColor"] = "#00FFFFFF", ["Left"] = x, ["Top"] = y, ["Width"] = w, ["Height"] = h, ["Visible"] = true, ["Name"] = name, ["Bindings"] = bindings
+            };
+        }
+
+        public static JArray Items(bool svg = false)
         {
             double row = (Height - Header) / (double)BlackBox.Rows;
             string page = P("PageNo"), tyres = page + " == " + BlackBoxPages.Tyres, message = P("Message") + " != ''";
@@ -262,6 +311,11 @@ namespace EnduranceManager.SimHub
             };
             for (int k = 0; k < Icons.Length; k++)
             {
+                if (svg)
+                {
+                    items.Add(Picture("Icone" + (k + 1), 418 + k * 52 + 8, (Header - 32) / 2.0, 32, 32, IconName(k, false), $"if({page} == {k}, '{IconName(k, true)}', '{IconName(k, false)}')", "!(" + message + ")"));
+                    continue;
+                }
                 var icon = Text("Icone" + (k + 1), 418 + k * 52, 0, 48, Header, 26, "'" + Icons[k] + "'", $"if({page} == {k}, '{White}', '#FF8A909C')", 1, "!(" + message + ")");
                 icon["Font"] = "Segoe UI Symbol";
                 items.Add(icon);
@@ -390,13 +444,14 @@ namespace EnduranceManager.SimHub
             return button;
         }
 
-        public static (JObject dash, JObject metadata) Make()
+        // svg: the page icons as SVG images (SimHub 9.13.6 or newer, Dashes.SvgImages), else as text in Segoe UI Symbol.
+        public static (JObject dash, JObject metadata) Make(bool svg = false)
         {
             var layer = new JObject
             {
                 ["$type"] = "SimHub.Plugins.OutputPlugins.GraphicalDash.Models.Layer, SimHub.Plugins", ["Group"] = true, ["Repetitions"] = 0, ["Visible"] = true,
                 ["Name"] = "Black box", ["RenderingSkip"] = 0, ["MinimumRefreshIntervalMS"] = RefreshMs, ["Top"] = 0, ["Left"] = 0, ["Height"] = Height, ["Width"] = Width,
-                ["BackgroundColor"] = "#00FFFFFF", ["Childrens"] = Items()
+                ["BackgroundColor"] = "#00FFFFFF", ["Childrens"] = Items(svg)
             };
             var metadata = new JObject
             {
@@ -416,7 +471,7 @@ namespace EnduranceManager.SimHub
                     ["IsBackgroundLayer"] = false, ["BackgroundColor"] = Panel, ["Items"] = new JArray(layer)
                 }),
                 ["SnapToGrid"] = false, ["HideLabels"] = true, ["ShowForeground"] = true, ["ForegroundOpacity"] = 100.0, ["ShowBackground"] = true, ["BackgroundOpacity"] = 100.0,
-                ["ShowBoundingRectangles"] = false, ["GridSize"] = 2, ["Images"] = new JArray(), ["Metadata"] = metadata, ["ShowOnScreenControls"] = false,
+                ["ShowBoundingRectangles"] = false, ["GridSize"] = 2, ["Images"] = svg ? Images().list : new JArray(), ["Metadata"] = metadata, ["ShowOnScreenControls"] = false,
                 ["IsOverlay"] = false, ["EnableClickThroughOverlay"] = false, ["EnableOnDashboardMessaging"] = true
             };
             return (dash, metadata);
