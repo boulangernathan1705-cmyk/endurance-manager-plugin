@@ -215,12 +215,13 @@ namespace EnduranceManager.SimHub
         // At most 20 images a second (none before: each image of SimHub, its 127 formulas again). The pages change 10
         // times a second at most: twice as often keeps the relatif, the tyres and the presses as quick as before.
         public const double RefreshMs = 50;
-        const int Header = 66, Pad = 14;
-        // The game's black box: blue-grey panel, lighter title bar, grey labels, white values; the chosen line white with
-        // red text and its arrows.
-        const string Panel = "#FF1D2330", Bar = "#FF262D3B", Separator = "#FF4A5160", Label = "#FFB9BEC8", White = "#FFFFFFFF", Red = "#FFE83A4C",
+        const int Header = 45, Pad = 15;
+        // The game's black box (colours read on Nathan's capture of 24/11): dark slate panel, darker title bar, grey labels,
+        // white values; the chosen line white with red text and its arrows. Roboto as the game (in SimHub's DashFonts),
+        // Segoe UI where it is missing.
+        const string Panel = "#FF21242E", Bar = "#FF171925", Separator = "#FF4E5260", Label = "#FFA9ACB4", White = "#FFFFFFFF", Red = "#FFE83A4C",
             Arrow = "#FFCFD3DA";
-        const string Font = "Segoe UI";
+        const string Font = "Roboto, Segoe UI";
 
         static string P(string name) => "[EnduranceManagerPlugin.BlackBox." + name + "]";
 
@@ -245,42 +246,69 @@ namespace EnduranceManager.SimHub
 
         // The page icons of the title bar, in the game's order (BlackBoxPages.Titles): the page shown in white.
         static readonly string[] Icons = { "⇅", "ⓘ", "⏱", "◎", "⛽", "⚡", "⚙" };
+        // Their centres, as in the game (measured on Nathan's capture of 24/11, scaled to 800 px).
+        static readonly double[] IconX = { 422, 482, 541, 600, 659, 712, 766 };
+        const double IconSize = 35;
 
-        // The same icons drawn in SVG (SimHub 9.13.6+ shows an SVG wherever an image goes): sharp at any size, the same
-        // look as the Stream Deck profile. 24 × 24 strokes; two files per page, white (page shown) and grey.
-        static readonly string[] IconPaths =
+        // The same icons drawn in SVG as the game draws them (SimHub 9.13.6+ shows an SVG wherever an image goes): filled
+        // grey glyphs, the page shown in white. 48 × 48; {0} = the glyph's colour, {1} = the title bar behind it.
+        static readonly string[] IconBodies =
         {
-            "M8 4v16M4 8l4-4 4 4M16 20V4M12 16l4 4 4-4",
-            "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M12 11v6M12 7.5v.01",
-            "M12 6a7.5 7.5 0 1 0 0 15a7.5 7.5 0 1 0 0-15M12 13.5V10M10 2.5h4M12 2.5V6M18 6.5l1.5-1.5",
-            "M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12 3v3M12 18v3M3 12h3M18 12h3",
-            "M4 21V5h9v16M3 21h11M13 9h3l2 2v6a1.5 1.5 0 0 0 3 0V8l-3-3M6.5 8.5h4",
-            "M13 2L5 14h6l-1 8l8-12h-6z",
-            "M14.7 6.3a4 4 0 0 0 5 5L12 19a2.1 2.1 0 0 1-3-3l7.7-7.7zM15 3.5a4 4 0 0 1 5.5 5.5"
+            // Relatif: two cars seen from above, a dashed line between them.
+            "<rect x='7' y='9' width='12' height='32' rx='5' fill='none' stroke='{0}' stroke-width='2.5'/><rect x='9.5' y='15' width='7' height='5' rx='1.5' fill='{0}'/><rect x='9.5' y='31' width='7' height='4' rx='1.5' fill='{0}'/>"
+            + "<path d='M24 4v40' stroke='{0}' stroke-width='2' stroke-dasharray='3 3'/><rect x='29' y='4' width='12' height='30' rx='5' fill='none' stroke='{0}' stroke-width='2.5'/><rect x='31.5' y='10' width='7' height='5' rx='1.5' fill='{0}'/><rect x='31.5' y='25' width='7' height='4' rx='1.5' fill='{0}'/>",
+            // Séance: a disc with an « i ».
+            "<circle cx='24' cy='24' r='20' fill='{0}'/><circle cx='24' cy='14.5' r='3.3' fill='{1}'/><rect x='20.8' y='20' width='6.4' height='17' rx='3.2' fill='{1}'/>",
+            // Chrono: a stopwatch, open at the bottom right where a small square sits.
+            "<path d='M38 27A15 15 0 1 0 29.3 40.6' fill='none' stroke='{0}' stroke-width='3.5' stroke-linecap='round'/><path d='M23 27v-9' stroke='{0}' stroke-width='3.5' stroke-linecap='round'/>"
+            + "<rect x='18' y='3' width='10' height='3.5' rx='1' fill='{0}'/><rect x='21.3' y='6' width='3.4' height='6' fill='{0}'/><rect x='32' y='34' width='10' height='10' fill='{0}'/>",
+            // Pneus: a wheel, tyre and eight spokes.
+            "<circle cx='24' cy='24' r='21' fill='{0}'/><circle cx='24' cy='24' r='15' fill='{1}'/><circle cx='24' cy='24' r='13' fill='none' stroke='{0}' stroke-width='1.5'/>"
+            + "<path d='M28 24h8.5M26.8 26.8l6 6M24 28v8.5M21.2 26.8l-6 6M20 24h-8.5M21.2 21.2l-6-6M24 20v-8.5M26.8 21.2l6-6' stroke='{0}' stroke-width='2.4' stroke-linecap='round'/>"
+            + "<circle cx='24' cy='24' r='4.5' fill='{0}'/><circle cx='24' cy='24' r='1.8' fill='{1}'/>",
+            // Carburant: a fuel pump and its hose.
+            "<path d='M9 41V8a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v33z' fill='{0}'/><rect x='12.5' y='9' width='13' height='10' rx='1.5' fill='{1}'/><rect x='6' y='40' width='26' height='4' rx='1' fill='{0}'/>"
+            + "<path d='M29 13l6 6v15a3 3 0 0 0 6 0V16l-5-6' fill='none' stroke='{0}' stroke-width='3' stroke-linejoin='round' stroke-linecap='round'/>",
+            // Électronique: a lightning bolt.
+            "<path d='M28 2L9 28h12l-4 18L39 18H26z' fill='{0}'/>",
+            // Arrêt aux stands: a gear and a wrench.
+            "<path d='M29.8 15.9L29.8 20.1L26.7 20.3L25.5 23.2L27.5 25.6L24.6 28.5L22.2 26.5L19.3 27.7L19.1 30.8L14.9 30.8L14.7 27.7L11.8 26.5L9.4 28.5L6.5 25.6L8.5 23.2L7.3 20.3L4.2 20.1L4.2 15.9L7.3 15.7L8.5 12.8L6.5 10.4L9.4 7.5L11.8 9.5L14.7 8.3L14.9 5.2L19.1 5.2L19.3 8.3L22.2 9.5L24.6 7.5L27.5 10.4L25.5 12.8L26.7 15.7z' fill='{0}'/><circle cx='17' cy='18' r='4.5' fill='{1}'/>"
+            + "<path d='M44.5 9.5a8 8 0 0 1-10.4 10.4L19.6 34.4a3.2 3.2 0 0 1-4.5-4.5l14.5-14.5A8 8 0 0 1 40 5l-5 5 1 4 4 1z' fill='{0}' stroke='{1}' stroke-width='1.5' transform='translate(2 6)'/>"
         };
-        const string Grey = "#8A909C";
+
+        // The brake's sign as the game draws it: a drilled disc and its hub, the calliper over the top (on the left for
+        // the left wheels, on the right for the right ones), grey on the panel.
+        const string BrakeBody = "<circle cx='28' cy='28' r='19' fill='{0}'/><circle cx='28' cy='28' r='12.2' fill='{1}'/><circle cx='28' cy='28' r='10.7' fill='{0}'/>"
+            + "<circle cx='34.2' cy='28' r='1.5' fill='{1}'/><circle cx='31.1' cy='33.37' r='1.5' fill='{1}'/><circle cx='24.9' cy='33.37' r='1.5' fill='{1}'/><circle cx='21.8' cy='28' r='1.5' fill='{1}'/><circle cx='24.9' cy='22.63' r='1.5' fill='{1}'/><circle cx='31.1' cy='22.63' r='1.5' fill='{1}'/><circle cx='28' cy='28' r='2.6' fill='{1}'/>"
+            + "<path d='M7.3 39A23.5 23.5 0 0 1 23.1 5L25.6 16.8A11.5 11.5 0 0 0 17.8 33.4z' fill='{1}'/><path d='M7.6 36.2A22 22 0 0 1 21.2 7.1L24 15.6A13 13 0 0 0 15.9 32.9z' fill='{0}' stroke='{0}' stroke-width='1.5' stroke-linejoin='round'/>"
+            + "<path d='M8.8 32.4A19.7 19.7 0 0 1 19.1 10.4L21.1 14.4A15.3 15.3 0 0 0 13.1 31.4z' fill='{1}' stroke='{1}' stroke-width='0.8' stroke-linejoin='round'/>";
+        const string Grey = "#8A8D96", BrakeGrey = "#9C9EA7";
+
+        static byte[] Svg(string body, string color, string behind, bool mirror = false) => Encoding.UTF8.GetBytes(
+            "<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'>" + (mirror ? "<g transform='translate(48 0) scale(-1 1)'>" : "")
+            + string.Format(body, color, behind) + (mirror ? "</g>" : "") + "</svg>");
+
+        static string Hex(string argb) => "#" + argb.Substring(3);
 
         static string IconName(int page, bool shown) => "bb_page" + (page + 1) + (shown ? "_on" : "");
-
-        static byte[] Svg(string path, string color) => Encoding.UTF8.GetBytes(
-            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"48\" height=\"48\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"" + color
-            + "\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"" + path + "\"/></svg>");
 
         // The image files of the dash (its .djson.ressources, a zip as Dash Studio writes it) and their list in the dash.
         public static (JArray list, Dictionary<string, byte[]> files) Images()
         {
             var list = new JArray();
             var files = new Dictionary<string, byte[]>();
-            for (int k = 0; k < IconPaths.Length; k++)
+            void Add(string name, byte[] bytes)
+            {
+                files[name + ".svg"] = bytes;
+                string md5;
+                using (var h = System.Security.Cryptography.MD5.Create()) md5 = string.Concat(h.ComputeHash(bytes).Select(b => b.ToString("x2")));
+                list.Add(new JObject { ["Name"] = name, ["Extension"] = ".svg", ["Modified"] = false, ["Optimized"] = false, ["Width"] = 48, ["Height"] = 48, ["Length"] = bytes.Length, ["MD5"] = md5 });
+            }
+            for (int k = 0; k < IconBodies.Length; k++)
                 foreach (bool shown in new[] { false, true })
-                {
-                    string name = IconName(k, shown);
-                    byte[] bytes = Svg(IconPaths[k], shown ? "#FFFFFF" : Grey);
-                    files[name + ".svg"] = bytes;
-                    string md5;
-                    using (var h = System.Security.Cryptography.MD5.Create()) md5 = string.Concat(h.ComputeHash(bytes).Select(b => b.ToString("x2")));
-                    list.Add(new JObject { ["Name"] = name, ["Extension"] = ".svg", ["Modified"] = false, ["Optimized"] = false, ["Width"] = 48, ["Height"] = 48, ["Length"] = bytes.Length, ["MD5"] = md5 });
-                }
+                    Add(IconName(k, shown), Svg(IconBodies[k], shown ? "#FFFFFF" : Grey, Hex(Bar)));
+            Add("bb_frein_g", Svg(BrakeBody, BrakeGrey, Hex(Panel)));
+            Add("bb_frein_d", Svg(BrakeBody, BrakeGrey, Hex(Panel), true));
             return (list, files);
         }
 
@@ -303,9 +331,9 @@ namespace EnduranceManager.SimHub
             {
                 Rect("Fond", 0, 0, Width, Height, Panel),
                 Rect("Barre", 0, 0, Width, Header, Bar),
-                Text("Titre", Pad, 0, 400, Header, 30, P("Page"), White, 0),
+                Text("Titre", Pad, 0, 380, Header, 23, P("Page"), White, 0),
                 // A change that did not go through: a short word in place of the icons, for 3 s.
-                Text("Message", 400, 0, Width - 400 - Pad, Header, 20, P("Message"), Red, 2, message),
+                Text("Message", 390, 0, Width - 390 - Pad, Header, 18, P("Message"), Red, 2, message),
                 // Nothing to show (menu not read, nobody driving): one line instead of an empty page.
                 Text("Attente", Pad, Header, Width - 2 * Pad, row, 26, P("Attente"), Label, 0, P("Attente") + " != ''")
             };
@@ -313,10 +341,10 @@ namespace EnduranceManager.SimHub
             {
                 if (svg)
                 {
-                    items.Add(Picture("Icone" + (k + 1), 418 + k * 52 + 8, (Header - 32) / 2.0, 32, 32, IconName(k, false), $"if({page} == {k}, '{IconName(k, true)}', '{IconName(k, false)}')", "!(" + message + ")"));
+                    items.Add(Picture("Icone" + (k + 1), IconX[k] - IconSize / 2, (Header - IconSize) / 2.0, IconSize, IconSize, IconName(k, false), $"if({page} == {k}, '{IconName(k, true)}', '{IconName(k, false)}')", "!(" + message + ")"));
                     continue;
                 }
-                var icon = Text("Icone" + (k + 1), 418 + k * 52, 0, 48, Header, 26, "'" + Icons[k] + "'", $"if({page} == {k}, '{White}', '#FF8A909C')", 1, "!(" + message + ")");
+                var icon = Text("Icone" + (k + 1), IconX[k] - 24, 0, 48, Header, 24, "'" + Icons[k] + "'", $"if({page} == {k}, '{White}', '#FF8A8D96')", 1, "!(" + message + ")");
                 icon["Font"] = "Segoe UI Symbol";
                 items.Add(icon);
             }
@@ -348,7 +376,7 @@ namespace EnduranceManager.SimHub
             }
             items.Add(Text("PlusHaut", Width / 2 - 20, Header, 40, 22, 16, "'▲'", Arrow, 1, P("Haut")));
             items.Add(Text("PlusBas", Width / 2 - 20, Height - 24, 40, 22, 16, "'▼'", Arrow, 1, P("Bas")));
-            foreach (var item in TyreItems(tyres)) items.Add(item);
+            foreach (var item in TyreItems(tyres, svg)) items.Add(item);
             // Touch (format of Dash Studio's buttons, read in Lovely Dashboard; Dash Studio has no swipe, only touches, and
             // buttons on top of each other all fire: none overlap). A line touched is chosen (the first or last one shown
             // also scrolls by one); a line that − + adjust (the chosen one, Chrono's and Carburant's headers): left half −,
@@ -371,56 +399,60 @@ namespace EnduranceManager.SimHub
         // The Pneus page as in the game: a ring per wheel in the corners (what is left, the compound's letter), and between
         // them pressure, temperature and brake temperature, the fronts above, the rears below (mirrored), the sets left in
         // the middle.
-        static IEnumerable<JObject> TyreItems(string shown)
+        static IEnumerable<JObject> TyreItems(string shown, bool svg)
         {
-            // Measured on Nathan's capture of the game's page (23/11), scaled to 800 × 480 under our title bar: ring
-            // centres x 112 / 688, y 149 / 389, radius 76, band 10 px; the three lines of each wheel at y 95 / 149 / 218
-            // (front) and 340 / 393 / 449 (rear), the brake sign at x 356 / 444, « ∞ Pneus » in the middle.
-            const string Worn = "#FF3A3F48";
-            const double R = 76;
+            // Measured on Nathan's capture of the game's page next to ours (24/11), scaled to 800 px wide: ring centres
+            // x 95 / 705, y 143 / 399, radius 80, band 10 px; text from x 197 to 603, the lines of each wheel at y 78 / 142 /
+            // 208 (front) and 337 / 398 / 459 (rear), separators at 109 / 174 / 238 / 302 / 367 / 430 from x 182 to 618,
+            // the brake sign (46 px) at x 346 / 454, « ∞ Pneus » at y 268.
+            const string Worn = "#FF4E525C";
+            const double R = 80, Band = 10, Brake = 46;
             var inv = System.Globalization.CultureInfo.InvariantCulture;
             string[] corners = { "AVG", "AVD", "ARG", "ARD" };
             for (int i = 0; i < 4; i++)
             {
                 string at = "Pneus." + corners[i] + ".";
                 bool right = i % 2 == 1, front = i < 2;
-                double cx = right ? Width - 112 : 112, cy = front ? 149 : 389;
+                double cx = right ? Width - 95 : 95, cy = front ? 143 : 399;
                 // The ring as the game: worn from the top clockwise (grey), the rest white (red when lost or flat). 100 small
                 // dots, one per percent, close enough for a smooth band; the inner panel hides their inner halves.
                 for (int k = 0; k < 100; k++)
                 {
                     double angle = k * Math.PI * 2 / 100;
-                    double dx = cx + (R - 5) * Math.Sin(angle) - 5, dy = cy - (R - 5) * Math.Cos(angle) - 5;
-                    yield return Rect("Anneau" + (i + 1) + "_" + k, dx, dy, 10, 10, $"if({P(at + "Reste")} >= {(100 - k).ToString(inv)} - 0.5, {P(at + "Couleur")}, '{Worn}')", shown, 5);
+                    double dx = cx + (R - Band / 2) * Math.Sin(angle) - Band / 2, dy = cy - (R - Band / 2) * Math.Cos(angle) - Band / 2;
+                    yield return Rect("Anneau" + (i + 1) + "_" + k, dx, dy, Band, Band, $"if({P(at + "Reste")} >= {(100 - k).ToString(inv)} - 0.5, {P(at + "Couleur")}, '{Worn}')", shown, (int)Math.Ceiling(Band / 2));
                 }
-                yield return Rect("AnneauFond" + (i + 1), cx - R + 10, cy - R + 10, 2 * R - 20, 2 * R - 20, Panel, shown, (int)R - 10);
-                yield return Text("Usure" + (i + 1), cx - R, cy - 32, 2 * R, 54, 40, P(at + "Usure"), White, 1, shown);
+                yield return Rect("AnneauFond" + (i + 1), cx - R + Band, cy - R + Band, 2 * (R - Band), 2 * (R - Band), Panel, shown, (int)(R - Band));
+                yield return Text("Usure" + (i + 1), cx - R, cy - 40, 2 * R, 58, 46, P(at + "Usure"), White, 1, shown);
                 // The compound's letter in its circle, in the game's colour (soft white, medium yellow, hard red, wet blue).
                 string whole = $"{shown} && {P(at + "Gomme")} != '' && {P(at + "Etat")} == ''";
-                yield return Rect("GommeRond" + (i + 1), cx - 15, cy + 24, 30, 30, P(at + "GommeCouleur"), whole, 15);
-                yield return Rect("GommeFond" + (i + 1), cx - 12.5, cy + 26.5, 25, 25, Panel, whole, 13);
-                yield return Text("Gomme" + (i + 1), cx - 15, cy + 24, 30, 30, 17, P(at + "Gomme"), P(at + "GommeCouleur"), 1, $"{shown} && {P(at + "Etat")} == ''");
-                yield return Text("Etat" + (i + 1), cx - R, cy + 22, 2 * R, 34, 20, P(at + "Etat"), Red, 1, $"{shown} && {P(at + "Etat")} != ''");
-                // The brake's sign as the game draws it: a disc with its hub and the calliper on top.
-                double bx = right ? 444 : 356, by = front ? 218 : 340;
-                foreach (var part in Brake("Disque" + (i + 1), bx, by, shown)) yield return part;
-                double tx = right ? Width - 188 - 220 : 188;
+                double gy = cy + 34;
+                yield return Rect("GommeRond" + (i + 1), cx - 16, gy - 16, 32, 32, P(at + "GommeCouleur"), whole, 16);
+                yield return Rect("GommeFond" + (i + 1), cx - 13.3, gy - 13.3, 26.6, 26.6, Panel, whole, 14);
+                yield return Text("Gomme" + (i + 1), cx - 16, gy - 16, 32, 32, 20, P(at + "Gomme"), P(at + "GommeCouleur"), 1, $"{shown} && {P(at + "Etat")} == ''");
+                yield return Text("Etat" + (i + 1), cx - R, gy - 17, 2 * R, 34, 20, P(at + "Etat"), Red, 1, $"{shown} && {P(at + "Etat")} != ''");
+                double bx = right ? 454 : 346, by = front ? 208 : 337;
+                if (svg)
+                    yield return Picture("Disque" + (i + 1), bx - Brake / 2, by - Brake / 2, Brake, Brake, right ? "bb_frein_d" : "bb_frein_g", right ? "'bb_frein_d'" : "'bb_frein_g'", shown);
+                else
+                    foreach (var part in BrakeSign("Disque" + (i + 1), bx, by, shown)) yield return part;
+                double tx = right ? 603 - 220 : 197;
                 int align = right ? 2 : 0;
-                double[] lines = front ? new double[] { 95, 149, 218 } : new double[] { 340, 393, 449 };
+                double[] lines = front ? new double[] { 78, 142, 208 } : new double[] { 337, 398, 459 };
                 string[] what = front ? new[] { "Pression", "Temp", "Frein" } : new[] { "Frein", "Temp", "Pression" };
                 for (int l = 0; l < 3; l++)
                 {
                     bool big = what[l] == "Temp";
-                    double h = big ? 50 : 36;
-                    yield return Text(what[l] + (i + 1), tx, lines[l] - h / 2, 220, h, big ? 32 : 22, P(at + what[l]), big ? White : Label, align, shown);
+                    double h = big ? 48 : 36;
+                    yield return Text(what[l] + (i + 1), tx, lines[l] - h / 2, 220, h, big ? 34 : 25, P(at + what[l]), big ? White : Label, align, shown);
                 }
             }
-            foreach (double y in new double[] { 120, 183, 306, 368 }) yield return Rect("PneusTrait" + y, 188, y, Width - 376, 1, Separator, shown);
-            yield return Text("Jeux", 188, 252, Width - 376, 46, 26, P("Pneus.Jeux"), White, 1, shown);
+            foreach (double y in new double[] { 109, 174, 238, 302, 367, 430 }) yield return Rect("PneusTrait" + y, 182, y, 436, 1.5, Separator, shown);
+            yield return Text("Jeux", 182, 268 - 22, 436, 44, 28, P("Pneus.Jeux"), White, 1, shown);
         }
 
         // A brake disc sign, about 30 px, centred on (x, y): the disc, its hub, the calliper over its top right.
-        static IEnumerable<JObject> Brake(string name, double x, double y, string shown)
+        static IEnumerable<JObject> BrakeSign(string name, double x, double y, string shown)
         {
             yield return Rect(name + "Disque", x - 14, y - 14, 28, 28, "#FF8A909C", shown, 14);
             yield return Rect(name + "Moyeu", x - 6, y - 6, 12, 12, Panel, shown, 6);
