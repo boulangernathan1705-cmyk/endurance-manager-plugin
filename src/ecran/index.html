@@ -379,9 +379,9 @@ const PAGES = {
           <div style="height:4px;background:#29454a;border-radius:2px;margin-top:8px"><div style="height:4px;width:62%;background:var(--accent);border-radius:2px"></div></div></div>
       </section>
       <section class="card stack"><h2>Repartir propre</h2>
-        <p class="mut">Retire du Control Mapper tous les boutons « FMT » et « EM », et de LMU les touches ajoutées par FMT. Ton volant et tes pédales restent. Une sauvegarde est faite avant.</p>
-        <p class="mut small">Ensuite : redémarre SimHub, clique « Préparer LMU » dans Black box sur boutons, puis relie « EM - Profil 1, 2, 3 ».</p>
-        <div><button type="button" class="btn" data-cleanup>${UI.cleanArm ? 'Confirmer : tout nettoyer' : 'Tout nettoyer'}</button>${UI.cleanArm ? ' <button type="button" class="btn" data-cleanno>Annuler</button>' : ''}</div></section></div>`;
+        <p class="mut">Retire seulement ce que FMT a ajouté : ses boutons dans le Control Mapper et ses touches dans LMU. Tes propres touches, ton volant et tes boutons « EM - Profil » restent. Une sauvegarde est faite avant.</p>
+        <p class="mut small">Ensuite : « Préparer LMU » dans Black box sur boutons. Il reprend tes touches déjà réglées dans LMU et n'ajoute que celles qui manquent.</p>
+        <div><button type="button" class="btn" data-cleanup>${UI.cleanArm ? 'Confirmer : retirer les touches FMT' : 'Retirer les touches FMT'}</button>${UI.cleanArm ? ' <button type="button" class="btn" data-cleanno>Annuler</button>' : ''}</div></section></div>`;
   },
 
   bb() {

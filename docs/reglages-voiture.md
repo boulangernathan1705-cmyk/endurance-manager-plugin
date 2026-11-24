@@ -126,8 +126,8 @@
   est lancé dès que ce module est actif, même sans « Black box sur boutons ».
 - Boutons du volant : `Profil1`… (Contrôles et événements) ou rôles « EM - Profil 1/2/3 » du Control Mapper (créés par
   `BlackBoxRoles`, avec le relâchement pour l'appui de 2 s).
-- « Tout nettoyer » (`Nettoyage.cs`) : sauvegarde, « Annuler » de FMT (touches LMU ajoutées par FMT), délie tout ce qui vise
-  « FMT - » / « EM - » dans le Control Mapper, oublie les boutons réutilisés. LMU n'est pas remis par défaut (volant gardé).
+- « Retirer les touches FMT » (`Nettoyage.cs`) : sauvegarde, « Annuler » de FMT (touches LMU ajoutées par FMT), délie ce
+  qui vise « FMT - » dans le Control Mapper, oublie les boutons réutilisés. Les « EM - … » et les touches du pilote restent.
 - **Rien d'automatique.** Seulement des rappels : profil pas actif (valeurs différentes) et humidité de la piste
   (plages par défaut : Sec < 5 %, Inter 5–12 %, Pluie > 12 %).
 - Écran simplifié le 19/11/2026 : la voiture + 3 cartes (valeurs, Mémoriser, Appliquer) + une ligne sur les boutons.

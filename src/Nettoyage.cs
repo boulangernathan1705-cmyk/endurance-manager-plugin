@@ -1,11 +1,11 @@
 // « Tout nettoyer » (Réglages voiture en course, demande de Nathan 24/11/2026) : repartir propre pour relier ses boutons.
 // Avec une sauvegarde du mapping avant (celle de FMT companion) :
 // - LMU : les touches que FMT companion a ajoutées sont retirées (son « Annuler », qui ne touche qu'à ce qu'il a mis) ;
-// - Control Mapper : tout ce qui vise un rôle « FMT - … » ou « EM - … » est délié (boutons du volant, croix, axes,
-//   sorties) et les boutons virtuels de ces rôles sont retirés ;
+// - Control Mapper : tout ce qui vise un rôle « FMT - … » est délié (boutons du volant, croix, axes, sorties) et les
+//   boutons virtuels de ces rôles sont retirés ; les liaisons « EM - … » (profils, black box) restent ;
 // - FMT companion oublie les boutons du pilote qu'il réutilisait.
-// LMU n'est pas remis entièrement par défaut : le volant et les pédales du pilote restent. Ensuite : redémarrer SimHub
-// (les rôles « EM - … » reviennent) puis « Préparer LMU ». Tout passe par réflexion, comme BlackBoxRoles.cs.
+// LMU n'est pas remis entièrement par défaut : le volant, les pédales et les touches du pilote restent. Ensuite :
+// « Préparer LMU ». Tout passe par réflexion, comme BlackBoxRoles.cs.
 using System;
 using System.Collections;
 using System.Linq;
@@ -17,8 +17,8 @@ namespace EnduranceManager.SimHub
     {
         const string PluginType = "SimHub.Plugins.OutputPlugins.ControlRemapper.ControlMapperPlugin";
 
-        static bool Ours(object item) => Member(item, "TargetRole") is string role &&
-            (role.StartsWith("FMT - ", StringComparison.OrdinalIgnoreCase) || role.StartsWith("EM - ", StringComparison.OrdinalIgnoreCase));
+        // Only FMT companion's (Nathan 24/11 : « retirer que les touches FMT ») : the « EM - … » links stay.
+        static bool Ours(object item) => Member(item, "TargetRole") is string role && role.StartsWith("FMT - ", StringComparison.OrdinalIgnoreCase);
 
         public static object Run(EnduranceManagerPlugin plugin)
         {
@@ -65,8 +65,8 @@ namespace EnduranceManager.SimHub
                 return new
                 {
                     ok = true,
-                    message = "Nettoyé : " + unlinked + " liaison(s) et " + removed + " bouton(s) FMT/EM retirés" + (fmt ? ", touches FMT retirées de LMU (sauvegarde faite)" : "") +
-                        ". Redémarre SimHub, puis « Préparer LMU » et relie tes boutons « EM - Profil »."
+                    message = "Nettoyé : " + unlinked + " liaison(s) et " + removed + " bouton(s) FMT retirés" + (fmt ? ", touches FMT retirées de LMU (sauvegarde faite)" : "") +
+                        ". Clique ensuite « Préparer LMU » dans Black box sur boutons."
                 };
             }
             catch (Exception e) { return new { ok = false, message = "Nettoyage interrompu : " + (e.InnerException ?? e).Message }; }
