@@ -77,7 +77,7 @@ namespace EnduranceManager.SimHub
         {
             if (!plugin.Companion.Running) { Say("Le moteur des touches (FMT) n'est pas lancé : redémarre SimHub, puis recommence."); return; }
             string player = LmuPlayer();
-            if (player == null) { Say("Lance LMU (menu principal), puis recommence."); return; }
+            if (player == null) { Report.Log("repartir", "dossier LMU introuvable : " + LmuFolder.Diagnose()); Say("Dossier de LMU introuvable (LMU ouvert ?). Rien n'a été changé."); return; }
             using (var lmu = new HttpClient { BaseAddress = new Uri("http://127.0.0.1:6397/"), Timeout = TimeSpan.FromSeconds(3) })
             {
                 var di = DirectInput(await Get(lmu, "rest/options/UIScreen/Controls"));
@@ -243,16 +243,7 @@ namespace EnduranceManager.SimHub
         }
 
         // ── LMU ─────────────────────────────────────────────────────────────────────────────────────────────────────
-        static string LmuPlayer()
-        {
-            try
-            {
-                foreach (var process in Process.GetProcessesByName("Le Mans Ultimate"))
-                    using (process) return Path.Combine(Path.GetDirectoryName(process.MainModule.FileName), "UserData", "player");
-            }
-            catch { }
-            return null;
-        }
+        static string LmuPlayer() => LmuFolder.Player();
 
         static async Task<JObject> Get(HttpClient client, string path)
         {
