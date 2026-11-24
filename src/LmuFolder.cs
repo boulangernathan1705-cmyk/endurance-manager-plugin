@@ -110,7 +110,7 @@ namespace EnduranceManager.SimHub
             try
             {
                 string steam = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam")?.GetValue("SteamPath") as string;
-                if (string.IsNullOrEmpty(steam)) return null;
+                if (string.IsNullOrEmpty(steam)) throw new DirectoryNotFoundException("SteamPath"); // then the drives below
                 string vdf = Path.Combine(steam, "steamapps", "libraryfolders.vdf");
                 var libraries = new System.Collections.Generic.List<string> { steam };
                 if (File.Exists(vdf))
