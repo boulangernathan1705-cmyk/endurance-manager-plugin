@@ -377,7 +377,7 @@ const PAGES = {
         <div class="mut small">Bouton « EM - Profil ${x.i + 1} »</div>
         ${x.drive.length ? `<div class="met" style="margin-top:10px">${x.drive.map((d) => `<div><small>${esc(d.k)}</small><b>${esc(d.v)}</b></div>`).join('')}</div>`
           : '<p class="mut small" style="margin-top:10px">Vide : roule, règle la voiture, puis maintiens le bouton 2 s (ou « Mémoriser »).</p>'}
-        ${x.pit.length ? `<details><summary>Prochain arrêt · ${x.pit.filter((l) => l.on).length} lignes sur ${x.pit.length}</summary>${x.pit.map((l) => `<label><input type="checkbox" data-pit="${x.i}" data-key="${esc(l.key)}" ${l.on ? 'checked' : ''}><span>${esc(l.k)} : ${esc(l.v)}</span></label>`).join('')}</details>` : ''}
+        ${x.pit.length ? `<details data-pitopen="${x.i}"${(UI.pitOpen || {})[x.i] ? ' open' : ''}><summary>Prochain arrêt · ${x.pit.filter((l) => l.on).length} lignes sur ${x.pit.length}</summary>${x.pit.map((l) => `<label><input type="checkbox" data-pit="${x.i}" data-key="${esc(l.key)}" ${l.on ? 'checked' : ''}><span>${esc(l.k)} : ${esc(l.v)}</span></label>`).join('')}</details>` : ''}
         ${p.other ? '' : `<div class="btns" style="margin-top:12px"><button type="button" class="btn s" data-memorise="${x.i}">Mémoriser</button><button type="button" class="btn s" data-apply="${x.i}">Appliquer</button></div>`}
       </article>`;
     return `<div class="page">${head('profils', '', 'Un bouton du volant par profil.')}
@@ -643,6 +643,8 @@ document.addEventListener('input', (e) => {
   if (e.target.id === 'bbq') { UI.bbq = e.target.value; const l = $('bblist'); if (l && S.bb.page && S.bb.page.rows) l.innerHTML = bbList(S.bb.page.rows); }
 });
 document.addEventListener('toggle', (e) => { if (e.target.dataset && e.target.dataset.bbmore !== undefined) UI.bbMore = e.target.open; }, true);
+// « Prochain arrêt » stays open across the screen's refreshes (each poll rebuilds the page).
+document.addEventListener('toggle', (e) => { const i = e.target.dataset && e.target.dataset.pitopen; if (i !== undefined) { UI.pitOpen = UI.pitOpen || {}; UI.pitOpen[i] = e.target.open; } }, true);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) last = ''; });
 poll();
 </script>
