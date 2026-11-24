@@ -217,11 +217,11 @@ namespace EnduranceManager.SimHub
         public const double RefreshMs = 50;
         const int Header = 45, Pad = 15;
         // The game's black box (colours read on Nathan's capture of 24/11): dark slate panel, darker title bar, grey labels,
-        // white values; the chosen line white with red text and its arrows. Roboto as the game (in SimHub's DashFonts),
-        // Segoe UI where it is missing.
+        // white values; the chosen line white with red text and its arrows. Roboto as the game (in SimHub's DashFonts): one name only,
+        // as Dash Studio's own dashes name their fonts.
         const string Panel = "#FF21242E", Bar = "#FF171925", Separator = "#FF4E5260", Label = "#FFA9ACB4", White = "#FFFFFFFF", Red = "#FFE83A4C",
             Arrow = "#FFCFD3DA";
-        const string Font = "Roboto, Segoe UI";
+        const string Font = "Roboto";
 
         static string P(string name) => "[EnduranceManagerPlugin.BlackBox." + name + "]";
 
