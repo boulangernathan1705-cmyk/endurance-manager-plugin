@@ -58,23 +58,19 @@ select{background:var(--panel2);color:var(--fg);border:1px solid var(--edge);bor
   <div>
     <div class="eyebrow">Maquette · Pour moi</div>
     <h1>Mes boutons</h1>
-    <div class="mut">Tout ce qu'il faut pour que les boutons de ton volant pilotent LMU et le plugin. Une option à la fois, étape par étape.</div>
+    <div class="mut">Tout ce qu'il faut pour que les boutons de ton volant pilotent LMU et le plugin. Une option à la fois, étape par étape. Relier les boutons du volant (rotary, Fn) reste à faire par le pilote dans le Control Mapper.</div>
   </div>
 
   <section class="card" aria-label="État">
     <div class="state">
       <span class="chip"><span class="dot"></span>42 commandes prêtes dans LMU</span>
-      <span class="chip"><span class="dot"></span>9 boutons du volant reliés</span>
-      <span class="chip"><span class="dot w"></span>Rotary pas encore relié</span>
-      <span class="chip"><span class="dot"></span>Sauvegarde du 24/11 à 07:30</span>
+                  <span class="chip"><span class="dot"></span>Sauvegarde du 24/11 à 07:30</span>
     </div>
   </section>
 
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" aria-selected="true" data-t="zero">1. Repartir de zéro<small>Tout recréer proprement</small></button>
-    <button class="tab" role="tab" aria-selected="false" data-t="link">2. Relier mes boutons<small>Une commande, un bouton</small></button>
-    <button class="tab" role="tab" aria-selected="false" data-t="rot">3. Rotary + Fn<small>Un rotary, plusieurs réglages</small></button>
-    <button class="tab" role="tab" aria-selected="false" data-t="fmt">Retirer les touches FMT<small>Garder les tiennes</small></button>
+    <button class="tab" role="tab" aria-selected="false" data-t="fmt">2. Retirer les touches FMT<small>Garder les tiennes</small></button>
   </div>
 
   <!-- 1. Repartir de zéro -->
@@ -89,53 +85,9 @@ select{background:var(--panel2);color:var(--fg);border:1px solid var(--edge);bor
       <li><div><b>Sauvegarde</b><div class="mut small">Tes touches LMU et ton Control Mapper sont copiés avant tout changement.</div></div></li>
       <li><div><b>Effacement</b><div class="mut small">LMU doit être ouvert, au menu principal.</div></div></li>
       <li><div><b>Le module recrée tout</b><div class="mut small">TC, ABS, carto, migration, limiteur, phares, black box, profils : mêmes noms chez tous les pilotes.</div></div></li>
-      <li><div><b>Tu relies tes boutons</b><div class="mut small">Étape 2, « Relier mes boutons ». Environ 5 minutes.</div></div></li>
+      <li><div><b>Tu relies tes boutons</b><div class="mut small">Comme d'habitude, dans le Control Mapper de SimHub (boutons du volant, rotary, Fn). Le module n'y touche pas.</div></div></li>
     </ol>
     <div class="btns"><button class="p" type="button">Sauvegarder et repartir de zéro</button><button type="button">Restaurer la sauvegarde du 24/11</button></div>
-  </section>
-
-  <!-- 2. Relier -->
-  <section class="card" data-p="link" hidden>
-    <h2>Relier mes boutons</h2>
-    <p class="mut small" style="margin:4px 0 0">Clique « Relier », puis appuie sur le bouton du volant dans les 10 s. C'est enregistré dans le Control Mapper.</p>
-    <div class="tw"><table>
-      <thead><tr><th>Commande</th><th>Bouton du volant</th><th></th></tr></thead>
-      <tbody>
-        <tr><td class="g" colspan="3">Profils</td></tr>
-        <tr><td>Profil 1 (Sec)</td><td class="linked">Volant · bouton 12</td><td><button type="button">Changer</button></td></tr>
-        <tr><td>Profil 2 (Inter)</td><td class="linked">Volant · bouton 13</td><td><button type="button">Changer</button></td></tr>
-        <tr><td>Profil 3 (Pluie)</td><td class="wait">Appuie sur un bouton… 7 s</td><td><button type="button">Annuler</button></td></tr>
-        <tr><td class="g" colspan="3">Électronique</td></tr>
-        <tr><td>TC +</td><td class="none">pas relié (ou par le rotary)</td><td><button type="button">Relier</button></td></tr>
-        <tr><td>TC −</td><td class="none">pas relié (ou par le rotary)</td><td><button type="button">Relier</button></td></tr>
-        <tr><td>Carto moteur +</td><td class="linked">Volant · bouton 4</td><td><button type="button">Changer</button></td></tr>
-        <tr><td class="g" colspan="3">Systèmes</td></tr>
-        <tr><td>Limiteur</td><td class="linked">Volant · bouton 1</td><td><button type="button">Changer</button></td></tr>
-        <tr><td>Phares</td><td class="none">pas relié</td><td><button type="button">Relier</button></td></tr>
-        <tr><td class="g" colspan="3">Black box</td></tr>
-        <tr><td>Page suivante</td><td class="linked">Volant · croix droite</td><td><button type="button">Changer</button></td></tr>
-      </tbody>
-    </table></div>
-    <p class="mut small" style="margin:10px 0 0">Liste complète dans le plugin, rangée par famille. Une commande déjà au rotary n'a pas besoin de bouton.</p>
-  </section>
-
-  <!-- 3. Rotary -->
-  <section class="card" data-p="rot" hidden>
-    <h2>Rotary + Fn</h2>
-    <p class="mut small" style="margin:4px 0 0">Un seul rotary règle plusieurs choses. Le bouton Fn choisit lequel. Pas de nouvelle commande : le module écrit la combinaison dans le Control Mapper de SimHub, qui gère le Fn lui-même, vers les commandes TC, ABS, carto… déjà créées.</p>
-    <ol class="steps">
-      <li><div><b>Montrer ton rotary et ton Fn</b><div class="mut small">Tourne le rotary d'un cran de chaque côté, puis appuie sur Fn. Le module les reconnaît.</div><div class="btns" style="margin-top:6px"><button type="button">Rotary à gauche : vu</button><button type="button">Rotary à droite : vu</button><button type="button">Fn : appuie…</button></div></div></li>
-      <li><div><b>Comment marche Fn</b><br>
-        <div class="seg" role="group" aria-label="Mode Fn"><button type="button" aria-pressed="true">Maintenu</button><button type="button" aria-pressed="false">Chaque appui passe au suivant</button></div>
-        <div class="mut small" style="margin-top:4px">Maintenu : sans Fn = réglage 1, Fn tenu = réglage 2.</div></div></li>
-      <li><div><b>Ce que règle le rotary</b>
-        <div class="rot">
-          <label class="small mut" for="r1">Sans Fn<select id="r1"><option>TC</option><option>ABS</option><option>Carto moteur</option><option>Répartition</option><option>Migration</option></select></label>
-          <label class="small mut" for="r2">Fn maintenu<select id="r2"><option>ABS</option><option>TC</option><option>Carto moteur</option><option>Répartition</option><option>Migration</option></select></label>
-        </div></div></li>
-    </ol>
-    <div class="btns"><button class="p" type="button">Écrire dans le Control Mapper</button></div>
-    <div class="dial"><span class="knob" aria-hidden="true"></span><div><div class="mut small">Essai en direct</div><div class="big">Le rotary règle : TC · 7</div><div class="mut small">Tourne ton rotary pour vérifier.</div></div></div>
   </section>
 
   <!-- 4. FMT -->
@@ -149,8 +101,7 @@ select{background:var(--panel2);color:var(--fg);border:1px solid var(--edge);bor
     <h2>À valider par Nathan</h2>
     <ol>
       <li>L'ordre des étapes et ce qui est gardé (direction, pédales, palettes) ?</li>
-      <li>Rotary : le module écrit tout dans le Control Mapper (aucune commande en plus). « Fn maintenu » et « chaque appui passe au suivant », les deux au choix ?</li>
-      <li>Ce menu « Mes boutons » remplace la page « Black box sur boutons » pour tout ce qui est touches ?</li>
+      <li>Ce menu « Mes boutons » remplace la page « Black box sur boutons » pour la création des touches ?</li>
     </ol>
   </section>
 </div>
