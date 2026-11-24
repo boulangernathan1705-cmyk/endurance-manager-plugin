@@ -66,16 +66,17 @@ namespace EnduranceManager.SimHub
 
         public static readonly Setting[] All =
         {
-            new Setting { Key = "TC", Label = "TC", Words = new[] { "tc" }, Read = s => s.TCMax > 0 ? s.TC : (double?)null },
-            new Setting { Key = "TCCut", Label = "Coupure TC", Words = new[] { "tc cut", "tc2", "coupure" }, Read = s => s.TCCutMax > 0 ? s.TCCut : (double?)null },
-            new Setting { Key = "TCSlip", Label = "TC slip", Words = new[] { "tc angle", "tc slip", "tcslip", "slip", "tc glisse", "glisse" }, Read = s => s.TCSlipMax > 0 ? s.TCSlip : (double?)null },
+            // Names and order of the in-car menu « Électronique » of LMU in French (screenshots by Nathan, 24/11/2026).
+            new Setting { Key = "TC", Label = "Contrôle de traction", Words = new[] { "tc" }, Read = s => s.TCMax > 0 ? s.TC : (double?)null },
+            new Setting { Key = "TCCut", Label = "TC Power cut", Words = new[] { "tc cut", "tc2", "coupure" }, Read = s => s.TCCutMax > 0 ? s.TCCut : (double?)null },
+            new Setting { Key = "TCSlip", Label = "TC Slip angle", Words = new[] { "tc angle", "tc slip", "tcslip", "slip", "tc glisse", "glisse" }, Read = s => s.TCSlipMax > 0 ? s.TCSlip : (double?)null },
             new Setting { Key = "ABS", Label = "ABS", Words = new[] { "abs" }, Read = s => s.ABSMax > 0 ? s.ABS : (double?)null },
-            new Setting { Key = "Bias", Label = "Répartition", Words = new[] { "bb", "bias", "répartition", "repartition" }, Tolerance = 0.05,
+            new Setting { Key = "ArbFront", Label = "ARB avant", Words = new[] { "arb av", "arb front", "front arb", "frontarb", "barre av", "antiroulis av" }, Read = s => s.AntiSwayFrontMax > 0 ? s.AntiSwayFront : (double?)null },
+            new Setting { Key = "ArbRear", Label = "ARB arrière", Words = new[] { "arb arr", "arb rear", "rear arb", "reararb", "barre arr", "antiroulis arr" }, Read = s => s.AntiSwayRearMax > 0 ? s.AntiSwayRear : (double?)null },
+            new Setting { Key = "Bias", Label = "Répartition des freins", Words = new[] { "bb", "bias", "répartition", "repartition" }, Tolerance = 0.05,
                 Read = s => s.RearBrakeBias > 0 && s.RearBrakeBias < 1 ? Math.Round((1 - s.RearBrakeBias) * 100, 1) : (double?)null },
-            new Setting { Key = "Migration", Label = "Migration", Words = new[] { "migration" }, Read = s => s.MigrationMax > 0 ? s.Migration : (double?)null },
-            new Setting { Key = "MotorMap", Label = "Carto moteur", Words = new[] { "carto", "motor map", "motormap", "map" }, Read = s => s.MotorMapMax > 0 ? s.MotorMap : (double?)null },
-            new Setting { Key = "ArbFront", Label = "Barre avant", Words = new[] { "arb av", "arb front", "front arb", "frontarb", "barre av", "antiroulis av" }, Read = s => s.AntiSwayFrontMax > 0 ? s.AntiSwayFront : (double?)null },
-            new Setting { Key = "ArbRear", Label = "Barre arrière", Words = new[] { "arb arr", "arb rear", "rear arb", "reararb", "barre arr", "antiroulis arr" }, Read = s => s.AntiSwayRearMax > 0 ? s.AntiSwayRear : (double?)null },
+            new Setting { Key = "Migration", Label = "Répartition des freins (migration)", Words = new[] { "migration" }, Read = s => s.MigrationMax > 0 ? s.Migration : (double?)null },
+            new Setting { Key = "MotorMap", Label = "Cartographie moteur", Words = new[] { "carto", "motor map", "motormap", "map" }, Read = s => s.MotorMapMax > 0 ? s.MotorMap : (double?)null },
         };
     }
 
@@ -320,7 +321,19 @@ namespace EnduranceManager.SimHub
         static string Format(Setting setting, double value) =>
             setting.Key == "Bias" ? value.ToString("0.0", System.Globalization.CultureInfo.GetCultureInfo("fr-FR")) + " %" : value.ToString("0");
 
-        public static string Pretty(string name) => name.Length == 0 ? name : name.Substring(0, 1) + name.Substring(1).ToLowerInvariant();
+        // The pit menu lines with the names of the in-game « Arrêt aux stands » in French (screenshots by Nathan, 24/11/2026).
+        // DAMAGE and DRIVER are not shown in that menu: names of ours.
+        static readonly Dictionary<string, string> PitNames = new Dictionary<string, string>
+        {
+            ["DAMAGE"] = "Dégâts", ["DRIVER"] = "Pilote", ["VIRTUAL ENERGY"] = "Énergie Virtuelle", ["FUEL RATIO"] = "Ratio carburant",
+            ["TIRES"] = "Pneus", ["FL TIRE"] = "Pneu AvG", ["FR TIRE"] = "Pneu AvD", ["RL TIRE"] = "Pneu ArrG", ["RR TIRE"] = "Pneu ArrD",
+            ["R WING"] = "Aileron", ["GRILLE"] = "Grille",
+            ["FL PRESS"] = "Pression AvG", ["FR PRESS"] = "Pression AvD", ["RL PRESS"] = "Pression ArrG", ["RR PRESS"] = "Pression ArrD",
+            ["F BRAKE DUCT"] = "Conduit frein avant", ["R BRAKE DUCT"] = "Conduit frein arr", ["REPLACE BRAKES"] = "Remplacer les freins",
+        };
+
+        public static string Pretty(string name) =>
+            PitNames.TryGetValue(name ?? "", out var fr) ? fr : string.IsNullOrEmpty(name) ? "" : name.Substring(0, 1) + name.Substring(1).ToLowerInvariant();
 
         // ── Memorise ─────────────────────────────────────────────────────────────────────────────────────────────────
         // The car's settings as they are now, and the pit menu as it is set, into the profile at this place.
