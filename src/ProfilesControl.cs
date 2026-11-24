@@ -67,7 +67,7 @@ namespace EnduranceManager.SimHub
             var lines = new List<string>();
             if (Profiles.Car != null) lines.Add("Profil actif : " + (Profiles.Active ?? "aucun") + (Profiles.Wetness is double wet ? $" · piste humide à {wet:0} %" : ""));
             if (Profiles.ToChange) lines.Add("La piste correspond au profil « " + Profiles.ForWeather + " ».");
-            if (!Profiles.AnyRole) lines.Add("Boutons de FMT companion introuvables : dans Black box sur boutons, clique « Préparer LMU ».");
+            if (!Profiles.AnyRole) lines.Add("Moteur des touches (FMT) pas lancé : redémarre SimHub.");
             if (!string.IsNullOrEmpty(Profiles.Message)) lines.Add(Profiles.Message);
             state.Text = string.Join("\n", lines);
         }

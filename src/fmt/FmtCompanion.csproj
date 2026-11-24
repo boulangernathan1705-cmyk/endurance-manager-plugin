@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- FMT companion : son code, retrouvé le 23/11/2026 en décompilant sa DLL 0.5 (ILSpy), désormais compilé ici. La DLL
+       produite (FMTCompanion.dll) est embarquée dans celle du plugin et lancée par Companion.cs, comme avant : SimHub ne
+       voit toujours qu'un plugin. Mêmes noms de classes, donc mêmes propriétés et actions pour SimHub et le Stream Deck. -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF Condition="'$(OS)' == 'Windows_NT'">true</UseWPF>
+    <AssemblyName>FMTCompanion</AssemblyName>
+    <RootNamespace>FmtCompanion</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <SimHubDir Condition="'$(SimHubDir)' == ''">C:\Program Files (x86)\SimHub</SimHubDir>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- Decompiled code: its warnings are not ours to fix one by one. -->
+    <NoWarn>$(NoWarn);CS0168;CS0219;CS0414;CS0649;CS0169;CS1998;CS4014;CS8321</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup>
+    <UseSimHubFacade Condition="'$(UseSimHubFacade)' == '' And !Exists('$(SimHubDir)\SimHub.Plugins.dll')">true</UseSimHubFacade>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(UseSimHubFacade)' != 'true'">
+    <Reference Include="SimHub.Plugins"><HintPath>$(SimHubDir)\SimHub.Plugins.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Newtonsoft.Json"><HintPath>$(SimHubDir)\Newtonsoft.Json.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(UseSimHubFacade)' == 'true'">
+    <ProjectReference Include="..\..\reference\SimHub.Plugins\SimHub.Plugins.csproj" Private="false" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="System.Xaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="bin\**;obj\**" />
+    <EmbeddedResource Include="FMT-companion-0.5.streamDeckProfile" LogicalName="FMT-companion-0.5.streamDeckProfile" />
+    <EmbeddedResource Include="fonctions-du-profil.txt" LogicalName="fonctions-du-profil.txt" />
+  </ItemGroup>
+</Project>

@@ -69,7 +69,7 @@ namespace EnduranceManager.SimHub
                 game = new { game.state, game.title, game.detail },
                 modules = new { relais = s.Overlays, profils = s.Profiles, bb = s.CompanionOn, mur = s.Wall, memo = s.Enabled, equipe = s.Share, dev = s.Report },
                 laps = s.StintLaps,
-                bb = new { running = plugin.Companion.Running, pending = s.CompanionOn != plugin.Companion.StartAttempted, status = plugin.Companion.Status, page = plugin.Companion.Running && (query ?? "").Contains("bb=1") ? plugin.CompanionPage.State() : null },
+                bb = new { running = plugin.Companion.Running, pending = s.CompanionOn != plugin.Companion.StartAttempted, status = plugin.Companion.Status, page = plugin.Companion.Running && (query ?? "").Contains("bb=1") ? plugin.CompanionPage.State() : null, buttons = Repartir.State(plugin) },
                 mur = new
                 {
                     running = server?.Running == true && s.Wall,
@@ -85,23 +85,47 @@ namespace EnduranceManager.SimHub
             };
         }
 
+        // The track picked in the « Circuit » list to look at another combo of the car (null = the one in LMU).
+        string viewTrack;
+
+        // The combo shown: the car with the track in LMU, or the one picked in the list (only to look and rename).
+        (string Car, string Track, bool Other) Shown()
+        {
+            var (car, track) = plugin.Profiles.Shown;
+            if (viewTrack != null && viewTrack != track && plugin.Profiles.TracksOf(car).Contains(viewTrack)) return (car, viewTrack, true);
+            return (car, track, false);
+        }
+
+        List<Profile> ShownList()
+        {
+            var (car, track, _) = Shown();
+            return car == null ? null : plugin.Profiles.For(car, track);
+        }
+
         object Profiles()
         {
             var p = plugin.Profiles;
             if (p == null) return null;
-            string car = p.Car ?? p.File.Cars.Keys.LastOrDefault();
-            var list = car == null ? new List<Profile>() : p.For(car);
-            string active = p.Car != null ? p.Active : null;
+            var (car, track, other) = Shown();
+            var list = car == null ? new List<Profile>() : p.For(car, track);
+            string from = car == null ? null : p.FromOf(car, track);
+            string active = p.Car != null && !other ? p.Active : null;
             var lines = new List<string>();
             if (plugin.Settings.Profiles)
             {
                 if (p.ToChange) lines.Add("La piste correspond au profil « " + p.ForWeather + " ».");
-                if (!p.AnyRole) lines.Add("Boutons introuvables : dans Black box sur boutons, « Préparer LMU ».");
+                if (!p.AnyRole) lines.Add("Moteur des touches (FMT) pas lancé : redémarre SimHub.");
                 if (!string.IsNullOrEmpty(p.Message)) lines.Add(p.Message);
             }
+            if (!string.IsNullOrEmpty(track) && from != null && !other)
+                lines.Insert(0, "Premier passage sur ce circuit avec cette voiture : profils repris " + (from == "" ? "de tes profils de la voiture" : "de « " + from + " »") + ". Mémorise pour les garder ici.");
             return new
             {
                 car,
+                track,
+                tracks = car == null ? new List<string>() : p.TracksOf(car),
+                here = p.Shown.Track,
+                other,
                 driving = p.Car != null,
                 active,
                 wet = p.Wetness,
@@ -141,6 +165,10 @@ namespace EnduranceManager.SimHub
                     case "copyWall": { var url = plugin.WallServer?.NetworkUrl; if (url != null) OnScreen(() => Clipboard.SetText(url)); return Ok(); }
                     case "popup": plugin.PlacePopup(); return Ok();
                     case "rename": return Rename(i, (string)a["name"]);
+                    case "cleanup": return Nettoyage.Run(plugin);
+                    case "zero": return Repartir.Zero(plugin);
+                    case "restore": return Repartir.Restore(plugin);
+                    case "track": { string t = (string)a["track"]; viewTrack = string.IsNullOrEmpty(t) ? null : t; return Ok(); }
                     case "memorise": System.Threading.ThreadPool.QueueUserWorkItem(_ => plugin.Profiles.Memorise(i)); return Ok();
                     case "apply": plugin.Profiles.Apply(i); return Ok();
                     case "pit": return Pit(i, (string)a["key"], on);
@@ -208,9 +236,8 @@ namespace EnduranceManager.SimHub
         object Rename(int i, string name)
         {
             var p = plugin.Profiles;
-            string car = p.Car ?? p.File.Cars.Keys.LastOrDefault();
-            if (car == null) return new { ok = false, message = "Pas de voiture." };
-            var list = p.For(car);
+            var list = ShownList();
+            if (list == null) return new { ok = false, message = "Pas de voiture." };
             if (i < 0 || i >= list.Count) return new { ok = false, message = "Pas de profil." };
             name = (name ?? "").Trim();
             list[i].Name = name == "" ? "Profil " + (i + 1) : name.Length > 24 ? name.Substring(0, 24) : name;
@@ -221,8 +248,7 @@ namespace EnduranceManager.SimHub
         object Pit(int i, string key, bool on)
         {
             var p = plugin.Profiles;
-            string car = p.Car ?? p.File.Cars.Keys.LastOrDefault();
-            var list = car == null ? null : p.For(car);
+            var list = ShownList();
             if (list == null || i < 0 || i >= list.Count || key == null) return new { ok = false, message = "Pas de profil." };
             var profile = list[i];
             if (on && !profile.PitApplied.Contains(key)) profile.PitApplied.Add(key);

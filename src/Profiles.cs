@@ -1,4 +1,5 @@
-// Profils de réglages : chaque pilote garde, voiture par voiture, ses réglages de black box (Sec, Inter, Pluie…). Un
+// Profils de réglages : chaque pilote garde, pour chaque combo voiture + circuit, ses réglages de black box (Sec, Inter,
+// Pluie…). Le combo est lu dans LMU, rien à choisir ; un combo jamais vu part du dernier circuit réglé avec la voiture. Un
 // bouton du volant par profil : appui court, le plugin remet la voiture dans ce profil ; appui de 2 s, il mémorise l'état
 // actuel dans ce profil.
 //
@@ -32,12 +33,23 @@ namespace EnduranceManager.SimHub
         // The pit menu lines memorised (line name → choice text), and the ones it applies (damage and driver left out by default).
         public Dictionary<string, string> Pit = new Dictionary<string, string>();
         public List<string> PitApplied = new List<string>();
+        // The place of each memorised choice in its line, used when the game shows the choice with another text.
+        public Dictionary<string, int> PitIndex = new Dictionary<string, int>();
     }
 
     public class ProfileFile
     {
-        // Car model → its profiles, in button order (button 1 = the first).
+        // Car model → its profiles, in button order (button 1 = the first). Since the combos: the car's last memorised
+        // profiles (on any track), where a track never driven with it starts from. Also used when LMU gives no track.
         public Dictionary<string, List<Profile>> Cars = new Dictionary<string, List<Profile>>();
+        // Car model → track → its profiles: one set per car + track combo.
+        public Dictionary<string, Dictionary<string, List<Profile>>> Tracks = new Dictionary<string, Dictionary<string, List<Profile>>>();
+        // Car model → the track its Cars profiles were last memorised on.
+        public Dictionary<string, string> LastTrack = new Dictionary<string, string>();
+        // Car model → track → the track its profiles were copied from, until memorised there ("" = the car's first profiles).
+        public Dictionary<string, Dictionary<string, string>> From = new Dictionary<string, Dictionary<string, string>>();
+        // The last combo seen in LMU, shown on the screen when the game is closed.
+        public string SeenCar, SeenTrack;
         // Command (Setting key + "+" or "-") → a role kept from older versions (chosen by hand). Roles are found by themselves now.
         public Dictionary<string, string> Roles = new Dictionary<string, string>();
     }
@@ -49,21 +61,22 @@ namespace EnduranceManager.SimHub
         public Func<Sample, double?> Read;
         // How close counts as reached (brake bias moves in fractions of a percent).
         public double Tolerance = 0.5;
-        // Words that find the pilot's own Control Mapper roles for it (« TC + », « ABS - », « BB + »…).
+        // Words of the pilot's own Control Mapper roles (used before 24/11; the profiles now press through FMT companion).
         public string[] Words;
 
         public static readonly Setting[] All =
         {
-            new Setting { Key = "TC", Label = "TC", Words = new[] { "tc" }, Read = s => s.TCMax > 0 ? s.TC : (double?)null },
-            new Setting { Key = "TCCut", Label = "Coupure TC", Words = new[] { "tc cut", "tc2", "coupure" }, Read = s => s.TCCutMax > 0 ? s.TCCut : (double?)null },
-            new Setting { Key = "TCSlip", Label = "TC slip", Words = new[] { "tc angle", "tc slip", "tcslip", "slip" }, Read = s => s.TCSlipMax > 0 ? s.TCSlip : (double?)null },
+            // Names and order of the in-car menu « Électronique » of LMU in French (screenshots by Nathan, 24/11/2026).
+            new Setting { Key = "TC", Label = "Contrôle de traction", Words = new[] { "tc" }, Read = s => s.TCMax > 0 ? s.TC : (double?)null },
+            new Setting { Key = "TCCut", Label = "TC Power cut", Words = new[] { "tc cut", "tc2", "coupure" }, Read = s => s.TCCutMax > 0 ? s.TCCut : (double?)null },
+            new Setting { Key = "TCSlip", Label = "TC Slip angle", Words = new[] { "tc angle", "tc slip", "tcslip", "slip", "tc glisse", "glisse" }, Read = s => s.TCSlipMax > 0 ? s.TCSlip : (double?)null },
             new Setting { Key = "ABS", Label = "ABS", Words = new[] { "abs" }, Read = s => s.ABSMax > 0 ? s.ABS : (double?)null },
-            new Setting { Key = "Bias", Label = "Répartition", Words = new[] { "bb", "bias", "répartition", "repartition" }, Tolerance = 0.05,
+            new Setting { Key = "ArbFront", Label = "ARB avant", Words = new[] { "arb av", "arb front", "front arb", "frontarb", "barre av", "antiroulis av" }, Read = s => s.AntiSwayFrontMax > 0 ? s.AntiSwayFront : (double?)null },
+            new Setting { Key = "ArbRear", Label = "ARB arrière", Words = new[] { "arb arr", "arb rear", "rear arb", "reararb", "barre arr", "antiroulis arr" }, Read = s => s.AntiSwayRearMax > 0 ? s.AntiSwayRear : (double?)null },
+            new Setting { Key = "Bias", Label = "Répartition des freins", Words = new[] { "bb", "bias", "répartition", "repartition" }, Tolerance = 0.05,
                 Read = s => s.RearBrakeBias > 0 && s.RearBrakeBias < 1 ? Math.Round((1 - s.RearBrakeBias) * 100, 1) : (double?)null },
-            new Setting { Key = "Migration", Label = "Migration", Words = new[] { "migration" }, Read = s => s.MigrationMax > 0 ? s.Migration : (double?)null },
-            new Setting { Key = "MotorMap", Label = "Carto moteur", Words = new[] { "carto", "motor map", "motormap", "map" }, Read = s => s.MotorMapMax > 0 ? s.MotorMap : (double?)null },
-            new Setting { Key = "ArbFront", Label = "Barre avant", Words = new[] { "arb av", "arb front", "front arb", "frontarb", "barre av" }, Read = s => s.AntiSwayFrontMax > 0 ? s.AntiSwayFront : (double?)null },
-            new Setting { Key = "ArbRear", Label = "Barre arrière", Words = new[] { "arb arr", "arb rear", "rear arb", "reararb", "barre arr" }, Read = s => s.AntiSwayRearMax > 0 ? s.AntiSwayRear : (double?)null },
+            new Setting { Key = "Migration", Label = "Répartition des freins (migration)", Words = new[] { "migration" }, Read = s => s.MigrationMax > 0 ? s.Migration : (double?)null },
+            new Setting { Key = "MotorMap", Label = "Cartographie moteur", Words = new[] { "carto", "motor map", "motormap", "map" }, Read = s => s.MotorMapMax > 0 ? s.MotorMap : (double?)null },
         };
     }
 
@@ -90,6 +103,8 @@ namespace EnduranceManager.SimHub
         public ProfileFile File = new ProfileFile();
         // The car being driven (or the last one), whose profiles the screen and the buttons use.
         public volatile string Car;
+        // The track of the session (empty if LMU gives none): with the car, the combo whose profiles are used.
+        public volatile string Track;
         // The profile last applied by the plugin, and what the last button did (shown on the screen and the dashs).
         public volatile string Applied;
         public volatile string Message = "";
@@ -103,6 +118,9 @@ namespace EnduranceManager.SimHub
             try { if (System.IO.File.Exists(path)) File = JsonConvert.DeserializeObject<ProfileFile>(System.IO.File.ReadAllText(path)) ?? new ProfileFile(); } catch { }
             if (File.Cars == null) File.Cars = new Dictionary<string, List<Profile>>();
             if (File.Roles == null) File.Roles = new Dictionary<string, string>();
+            if (File.Tracks == null) File.Tracks = new Dictionary<string, Dictionary<string, List<Profile>>>();
+            if (File.LastTrack == null) File.LastTrack = new Dictionary<string, string>();
+            if (File.From == null) File.From = new Dictionary<string, Dictionary<string, string>>();
         }
 
         public void Save()
@@ -133,7 +151,57 @@ namespace EnduranceManager.SimHub
             }
         }
 
-        public List<Profile> Current => For(Car);
+        // The combo's profiles, made on first sight from the car's last memorised ones (another track), so a new track
+        // never starts from zero. No track known: the car's own profiles.
+        public List<Profile> For(string car, string track)
+        {
+            if (string.IsNullOrEmpty(track)) return For(car);
+            if (string.IsNullOrEmpty(car)) return new List<Profile>();
+            lock (gate)
+            {
+                if (!File.Tracks.TryGetValue(car, out var tracks)) File.Tracks[car] = tracks = new Dictionary<string, List<Profile>>();
+                if (!tracks.TryGetValue(track, out var list))
+                {
+                    list = Copy(For(car));
+                    tracks[track] = list;
+                    if (!File.From.TryGetValue(car, out var from)) File.From[car] = from = new Dictionary<string, string>();
+                    from[track] = File.LastTrack.TryGetValue(car, out var last) ? last ?? "" : "";
+                    Save();
+                }
+                return list;
+            }
+        }
+
+        static List<Profile> Copy(List<Profile> list) =>
+            JsonConvert.DeserializeObject<List<Profile>>(JsonConvert.SerializeObject(list)) ?? new List<Profile>();
+
+        // The tracks that have profiles for this car, A to Z.
+        public List<string> TracksOf(string car)
+        {
+            lock (gate)
+                return car != null && File.Tracks.TryGetValue(car, out var tracks) ? tracks.Keys.OrderBy(t => t, StringComparer.CurrentCultureIgnoreCase).ToList() : new List<string>();
+        }
+
+        // The track a combo's profiles were copied from, while not yet memorised there (null once memorised, "" = the car's
+        // first profiles).
+        public string FromOf(string car, string track)
+        {
+            lock (gate)
+                return car != null && track != null && File.From.TryGetValue(car, out var from) && from.TryGetValue(track, out var t) ? t : null;
+        }
+
+        public List<Profile> Current => For(Car, Track);
+
+        // The combo the screen shows: the one in LMU, else the last one seen (the game closed).
+        public (string Car, string Track) Shown
+        {
+            get
+            {
+                if (Car != null) return (Car, Track);
+                lock (gate)
+                    return File.SeenCar != null ? (File.SeenCar, File.SeenTrack) : (File.Cars.Keys.LastOrDefault(), null);
+            }
+        }
 
         // Each reading of the game: the car driven, for the buttons and the screen.
         // Also in the garage and the menus with a car loaded: its profiles are made and can be memorised from there.
@@ -141,7 +209,9 @@ namespace EnduranceManager.SimHub
         {
             if (string.IsNullOrEmpty(s.Car)) return;
             seen = s;
-            if (s.Car != Car) { Car = s.Car; Applied = null; }
+            string track = (s.Track ?? "").Trim();
+            if (s.Car != Car || track != (Track ?? "")) { Car = s.Car; Track = track; Applied = null; }
+            if (File.SeenCar != s.Car || (File.SeenTrack ?? "") != track) { File.SeenCar = s.Car; File.SeenTrack = track; Save(); }
         }
         volatile object seen;
         // The car as last read, on track or not: what « Mémoriser » takes.
@@ -251,7 +321,19 @@ namespace EnduranceManager.SimHub
         static string Format(Setting setting, double value) =>
             setting.Key == "Bias" ? value.ToString("0.0", System.Globalization.CultureInfo.GetCultureInfo("fr-FR")) + " %" : value.ToString("0");
 
-        public static string Pretty(string name) => name.Length == 0 ? name : name.Substring(0, 1) + name.Substring(1).ToLowerInvariant();
+        // The pit menu lines with the names of the in-game « Arrêt aux stands » in French (screenshots by Nathan, 24/11/2026).
+        // DAMAGE and DRIVER are not shown in that menu: names of ours.
+        static readonly Dictionary<string, string> PitNames = new Dictionary<string, string>
+        {
+            ["DAMAGE"] = "Dégâts", ["DRIVER"] = "Pilote", ["VIRTUAL ENERGY"] = "Énergie Virtuelle", ["FUEL RATIO"] = "Ratio carburant",
+            ["TIRES"] = "Pneus", ["FL TIRE"] = "Pneu AvG", ["FR TIRE"] = "Pneu AvD", ["RL TIRE"] = "Pneu ArrG", ["RR TIRE"] = "Pneu ArrD",
+            ["R WING"] = "Aileron", ["GRILLE"] = "Grille",
+            ["FL PRESS"] = "Pression AvG", ["FR PRESS"] = "Pression AvD", ["RL PRESS"] = "Pression ArrG", ["RR PRESS"] = "Pression ArrD",
+            ["F BRAKE DUCT"] = "Conduit frein avant", ["R BRAKE DUCT"] = "Conduit frein arr", ["REPLACE BRAKES"] = "Remplacer les freins",
+        };
+
+        public static string Pretty(string name) =>
+            PitNames.TryGetValue(name ?? "", out var fr) ? fr : string.IsNullOrEmpty(name) ? "" : name.Substring(0, 1) + name.Substring(1).ToLowerInvariant();
 
         // ── Memorise ─────────────────────────────────────────────────────────────────────────────────────────────────
         // The car's settings as they are now, and the pit menu as it is set, into the profile at this place.
@@ -264,7 +346,8 @@ namespace EnduranceManager.SimHub
             var drive = new Dictionary<string, double>();
             foreach (var setting in Setting.All)
                 if (setting.Read(s) is double value) drive[setting.Key] = value;
-            var pit = ReadMenuTexts();
+            var indexes = new Dictionary<string, int>();
+            var pit = ReadMenuTexts(indexes);
             lock (gate)
             {
                 profile.Drive = drive;
@@ -272,8 +355,17 @@ namespace EnduranceManager.SimHub
                 {
                     bool first = profile.Pit.Count == 0;
                     profile.Pit = pit;
+                    profile.PitIndex = indexes;
                     // The first time, every line applies except the damage and the driver; later, the pilot's own choice stays.
                     if (first) profile.PitApplied = pit.Keys.Where(name => !PitOffByDefault.Contains(name)).ToList();
+                }
+                // The combo is now set on this track: the car's next new track starts from these profiles.
+                string car = Car, track = Track;
+                if (!string.IsNullOrEmpty(car) && !string.IsNullOrEmpty(track))
+                {
+                    File.Cars[car] = Copy(list);
+                    File.LastTrack[car] = track;
+                    if (File.From.TryGetValue(car, out var from)) from.Remove(track);
                 }
             }
             Save();
@@ -304,109 +396,75 @@ namespace EnduranceManager.SimHub
                     if (profile.PitApplied.Count > 0) { string problem = WriteMenu(profile); if (problem != null) problems.Add(problem); }
                     Applied = profile.Name;
                     Message = problems.Count == 0 ? $"« {profile.Name} » appliqué." : $"« {profile.Name} » appliqué sauf : " + string.Join(" · ", problems);
-                    Show(problems.Count == 0 ? $"« {profile.Name} » appliqué" : $"« {profile.Name} » appliqué en partie", problems.Count == 0 ? "" : "Pas changé : " + string.Join(" · ", problems), problems.Count == 0 ? 2 : 6);
+                    // Same look as the first press: what is still not as the profile, line by line (now → profile), not a
+                    // paragraph of role names (Nathan 23/11). The reasons stay on the plugin's screen (Message).
+                    if (problems.Count == 0) Show($"« {profile.Name} » appliqué", "", 2);
+                    else Show($"« {profile.Name} » appliqué en partie", "Pas changé : détails sur l'écran du plugin.", 6, Preview(profile, latest(), profile.PitApplied.Count > 0 ? ReadMenuTexts() : null));
                 }
                 catch { Message = $"« {profile.Name} » : erreur, rien de plus n'a été changé."; Show($"« {profile.Name} » : erreur", "Rien de plus n'a été changé.", 4); }
                 finally { busy = 0; }
             });
         }
 
-        // Presses « + » or « − » until the game shows the value aimed at. A role that moves nothing (not mapped in the Control
-        // Mapper or not bound in LMU) stops it, said in the message.
+        // One way only (Nathan 24/11, choice A): FMT companion's own command, as the black box's Électronique page sends
+        // it. It knows which button LMU listens to, its own or the pilot's one that « Préparer LMU » reused, and holds it
+        // 200 ms; nothing to link in the Control Mapper for the profiles. The game is read, the clicks needed are sent one
+        // by one (6 → 4 = two « − »), each read back; a click that moves nothing twice stops, said with the values.
         string Reach(Setting setting, double target)
         {
-            // A pilot's « + » can lower the game's level (TC counted the other way on some cars): seen once, then swapped.
+            if (SendFmt == null) return setting.Label + " (moteur FMT absent)";
+            // A « + » can lower the game's level on some cars (TC counted the other way): seen once, then swapped.
             bool swapped = false;
-            for (int presses = 0, still = 0; presses < 40; presses++)
+            for (int presses = 0, still = 0; presses < 60; presses++)
             {
                 if (!(latest() is Sample s)) return setting.Label + " (voiture plus en piste)";
                 if (!(setting.Read(s) is double now)) return null;
                 if (Math.Abs(now - target) < setting.Tolerance) return null;
-                string command = setting.Key + ((target > now) != swapped ? "+" : "-");
-                string role = Role(command);
-                if (string.IsNullOrEmpty(role)) return setting.Label + " (bouton « " + Command(command) + " » introuvable : clique « Préparer LMU » dans FMT companion)";
-                if (!PressRole(manager(), role)) return setting.Label + " (rôle « " + role + " » introuvable)";
-                // The game takes a moment to show the new level: a few readings at most, then the next press.
+                string id = FmtId(setting.Key + ((target > now) != swapped ? "+" : "-"));
+                if (id == null) return setting.Label + " (pas de commande)";
+                string why = SendFmt(id);
+                if (why != null) return setting.Label + " (" + why + ")";
+                // The game takes a moment to show the new level: up to 1.2 s, then the next click.
                 double? after = now;
-                for (int wait = 0; wait < 6 && after == now; wait++) { Thread.Sleep(60); after = latest() is Sample t ? setting.Read(t) : null; }
+                for (int wait = 0; wait < 15 && after == now; wait++) { Thread.Sleep(80); after = latest() is Sample t ? setting.Read(t) : null; }
                 still = after == now ? still + 1 : 0;
                 if (after is double moved && Math.Abs(moved - target) > Math.Abs(now - target)) swapped = !swapped;
-                if (still >= 2) return setting.Label + " (rien ne bouge avec « " + role + " »)";
+                if (still >= 2)
+                {
+                    Report.Log("profils", setting.Label + " : « " + id + " » sans effet, " + Format(setting, now) + " au lieu de " + Format(setting, target));
+                    return setting.Label + " (reste à " + Format(setting, now) + " au lieu de " + Format(setting, target) + " : « Préparer LMU » dans Black box sur boutons)";
+                }
             }
             return setting.Label + " (pas atteint)";
         }
 
-        // Alone in its method: should SimHub's Control Mapper differ from the facade (reference/), only the profiles' presses
-        // stop, caught by the caller, not the whole plugin (.NET fails the method that calls a missing member).
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        internal static IControlMapperInterface ControlMapper(PluginManager manager) => manager?.GetControlMapperInterface();
+        // FMT companion's command by its id (« TC.Next »…): null when sent, else why not. Set by the plugin.
+        public Func<string, string> SendFmt;
+        // FMT companion runs (started with the plugin while this module is on).
+        public Func<bool> FmtRunning;
+        public bool AnyRole => FmtRunning?.Invoke() == true;
 
-        static bool PressRole(PluginManager manager, string role)
+        // FMT companion's command for a setting and a sign (its Catalog.cs ids), null when it has none.
+        static string FmtId(string command)
         {
-            try { return StartStop(manager, role); } catch { return false; }
-        }
-
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        static bool StartStop(PluginManager manager, string role) => ControlMapper(manager)?.StartStopRole(role, 60) == true;
-
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        internal static List<string> ButtonRoles(PluginManager manager) => ControlMapper(manager)?.GetAvailableButtonRoles();
-
-        // The Control Mapper role that presses a command in LMU, found by itself: FMT companion's first (« FMT - … », made by
-        // its « Préparer LMU »), else one the pilot named (« TC + »), else one chosen by hand in an older version.
-        public string Role(string command)
-        {
-            var setting = Setting.All.FirstOrDefault(x => command.StartsWith(x.Key) && command.Length == x.Key.Length + 1);
-            if (setting == null) return null;
-            return Find(setting, command.EndsWith("+") ? "+" : "-", Available())
-                ?? (File.Roles.TryGetValue(command, out string kept) && !string.IsNullOrEmpty(kept) ? kept : null);
-        }
-
-        public bool AnyRole => Available().Count > 0;
-
-        List<string> available = new List<string>();
-        DateTime availableAt;
-        // The Control Mapper's button roles, read again every 5 s at most.
-        List<string> Available()
-        {
-            if (DateTime.UtcNow - availableAt < TimeSpan.FromSeconds(5)) return available;
-            availableAt = DateTime.UtcNow;
-            try { available = (ButtonRoles(manager()) ?? new List<string>()).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToList(); }
-            catch { available = new List<string>(); }
-            return available;
-        }
-
-        static readonly string[] Up = { "+", "plus", "next", "suivant", "increase", "up" }, Down = { "-", "−", "moins", "previous", "prev", "précédent", "decrease", "down" };
-
-        // The role for a setting and a sign: its last part (« FMT - Voiture - TC Next » → « tc next »), the sign at the end,
-        // what is left is the setting's name. « TC + » is TC, not « TC cut + »: short names must be the whole name.
-        internal static string Find(Setting setting, string sign, List<string> roles)
-        {
-            var ordered = roles.OrderBy(x => x.TrimStart().StartsWith("FMT", StringComparison.OrdinalIgnoreCase) ? 0 : 1);
-            foreach (string word in setting.Words)
-                foreach (string role in ordered)
-                {
-                    string text = role.ToLowerInvariant().Trim();
-                    int cut = text.LastIndexOf(" - ", StringComparison.Ordinal);
-                    if (cut >= 0 && text.StartsWith("fmt")) text = text.Substring(cut + 3).Trim();
-                    string stem = null;
-                    foreach (string end in sign == "+" ? Up : Down)
-                        if (text.EndsWith(end) && (end.Length == 1 || text.Length == end.Length || !char.IsLetter(text[text.Length - end.Length - 1])))
-                        { stem = text.Substring(0, text.Length - end.Length).Trim(' ', '-', '_'); break; }
-                    if (stem == null) continue;
-                    if (stem == word || (word.Length > 3 && stem.Contains(word))) return role;
-                }
-            return null;
-        }
-
-        public static string Command(string command)
-        {
-            var setting = Setting.All.FirstOrDefault(x => command.StartsWith(x.Key) && command.Length == x.Key.Length + 1);
-            return (setting?.Label ?? command) + " " + (command.EndsWith("+") ? "+" : "−");
+            bool up = command.EndsWith("+");
+            switch (command.Substring(0, command.Length - 1))
+            {
+                case "TC": return up ? "TC.Next" : "TC.Previous";
+                case "TCCut": return up ? "TC2.Next" : "TC2.Previous";
+                case "TCSlip": return up ? "TCSlip.Next" : "TCSlip.Previous";
+                case "ABS": return up ? "ABS.Next" : "ABS.Previous";
+                case "Bias": return up ? "Bias.Forward" : "Bias.Rearward";
+                case "Migration": return up ? "Migration.Forward" : "Migration.Rearward";
+                case "MotorMap": return up ? "MotorMap.Next" : "MotorMap.Previous";
+                case "ArbFront": return up ? "FrontARB.Next" : "FrontARB.Previous";
+                case "ArbRear": return up ? "RearARB.Next" : "RearARB.Previous";
+                default: return null;
+            }
         }
 
         // The pit menu as the game sends it: name of each line → text of its choice. Null when the game does not answer.
-        Dictionary<string, string> ReadMenuTexts()
+        Dictionary<string, string> ReadMenuTexts(Dictionary<string, int> indexes = null)
         {
             try
             {
@@ -415,7 +473,7 @@ namespace EnduranceManager.SimHub
                 foreach (var line in lines.OfType<JObject>())
                 {
                     string name = Name(line), text = Choice(line, (int?)line["currentSetting"] ?? -1);
-                    if (name != "" && text != null) texts[name] = text;
+                    if (name != "" && text != null) { texts[name] = text; if (indexes != null) indexes[name] = (int?)line["currentSetting"] ?? -1; }
                 }
                 return texts;
             }
@@ -424,25 +482,30 @@ namespace EnduranceManager.SimHub
 
         // The menu is read, the chosen lines set to the profile's choice (found by its text: the game's indexes change with
         // the car), sent back whole, then read again to check.
+        // A choice whose text changed (energy or fuel shown with laps, wing…) is found again by its place when memorised.
+        // Lines that hang together (virtual energy and fuel ratio) can be refused once: a second send for what is left.
         string WriteMenu(Profile profile)
         {
             try
             {
-                var lines = JArray.Parse(Tape.Get(client, MenuUrl));
-                var wanted = new Dictionary<string, int>();
                 var missing = new List<string>();
-                foreach (var line in lines.OfType<JObject>())
+                var wanted = new Dictionary<string, int>();
+                for (int round = 0; round < 2; round++)
                 {
-                    string name = Name(line);
-                    if (!profile.PitApplied.Contains(name) || !profile.Pit.TryGetValue(name, out string text)) continue;
-                    var settings = line["settings"] as JArray;
-                    int index = -1;
-                    for (int i = 0; settings != null && i < settings.Count; i++) if (Choice(line, i) == text) { index = i; break; }
-                    if (index < 0) { missing.Add(name); continue; }
-                    if (((int?)line["currentSetting"] ?? -1) != index) { line["currentSetting"] = index; wanted[name] = index; }
-                }
-                if (wanted.Count > 0)
-                {
+                    var lines = JArray.Parse(Tape.Get(client, MenuUrl));
+                    wanted.Clear();
+                    foreach (var line in lines.OfType<JObject>())
+                    {
+                        string name = Name(line);
+                        if (!profile.PitApplied.Contains(name) || !profile.Pit.TryGetValue(name, out string text)) continue;
+                        var settings = line["settings"] as JArray;
+                        int count = settings?.Count ?? 0, index = -1;
+                        for (int i = 0; i < count; i++) if (Choice(line, i) == text) { index = i; break; }
+                        if (index < 0 && profile.PitIndex != null && profile.PitIndex.TryGetValue(name, out int kept) && kept >= 0 && kept < count) index = kept;
+                        if (index < 0) { if (round == 0) missing.Add(name); continue; }
+                        if (((int?)line["currentSetting"] ?? -1) != index) { line["currentSetting"] = index; wanted[name] = index; }
+                    }
+                    if (wanted.Count == 0) break;
                     var body = new StringContent(lines.ToString(Formatting.None), Encoding.UTF8, "application/json");
                     client.PostAsync(LoadUrl, body).GetAwaiter().GetResult().EnsureSuccessStatusCode();
                     for (int check = 0; check < 4 && wanted.Count > 0; check++)
@@ -451,6 +514,7 @@ namespace EnduranceManager.SimHub
                         foreach (var line in JArray.Parse(Tape.Get(client, MenuUrl)).OfType<JObject>())
                             if (wanted.TryGetValue(Name(line), out int index) && ((int?)line["currentSetting"] ?? -1) == index) wanted.Remove(Name(line));
                     }
+                    if (wanted.Count == 0) break;
                 }
                 missing.AddRange(wanted.Keys);
                 return missing.Count == 0 ? null : "stand : " + string.Join(", ", missing.Select(x => x.ToLowerInvariant()));

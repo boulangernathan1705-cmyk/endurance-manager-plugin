@@ -165,6 +165,9 @@ namespace EnduranceManager.SimHub
             Numbers(s);
         }
 
+        // Sharing on but no team code: nothing is built nor read from the game, the screen says why.
+        public void Unlinked() => Status = "Colle ton code de liaison pour partager";
+
         // The snapshot the site would get, for the mur des stands on this PC (Wall.Local, solo): nothing is sent, and what
         // the site connection keeps (the track's map, what was sent) is left alone. Null when nobody drives our car.
         // read: the game's API for the cars' numbers too (not in the replay tests, whose answers come from the recording).

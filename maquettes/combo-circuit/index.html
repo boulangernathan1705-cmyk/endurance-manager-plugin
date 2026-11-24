@@ -1,0 +1,106 @@
+<title>Réglages par combo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+<style>
+/* Maquette fidèle à l'écran du plugin (Theme.cs) : fond sombre, accent cyan, cartes à bord fin. Une colonne qui s'empile. */
+:root{--bg:#0b0f10;--panel:#11181a;--panel2:#162023;--edge:#25393d;--fg:#eef3f2;--mut:#93a5a6;--faint:#64777a;--acc:#33c6cf;--warn:#e9b44c;--title:#f3e3c0;
+--sans:"Inter",system-ui,"Segoe UI",sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--sans);padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.eyebrow{color:var(--warn);letter-spacing:.14em;font-size:12px;font-weight:700;text-transform:uppercase}
+h1{color:var(--title);font-size:30px;margin:2px 0 0;text-wrap:balance}
+h2{font-size:17px;margin:0}
+.mut{color:var(--mut)}.small{font-size:13px}
+.card{background:var(--panel);border:1px solid var(--edge);border-radius:10px;padding:16px 18px}
+.combo{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
+.combo .who{flex:1;min-width:230px}
+.combo b{font-size:18px}
+.sel{display:flex;gap:10px;flex-wrap:wrap}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mut)}
+select{background:var(--panel2);color:var(--fg);border:1px solid var(--edge);border-radius:8px;padding:8px 10px;font:inherit;font-size:14px;min-width:180px;max-width:100%}
+select:focus-visible,button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.note{color:var(--warn);margin:0}
+.g3{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.prof h3{margin:0;font-size:19px;display:flex;align-items:center;gap:8px}
+.pill{font-size:11px;font-weight:700;border-radius:99px;padding:2px 8px}
+.pill.on{background:var(--acc);color:#061012}
+.pill.src{border:1px solid var(--edge);color:var(--mut);font-weight:600}
+.met{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.met div{background:var(--panel2);border:1px solid var(--edge);border-radius:8px;padding:6px 10px}
+.met small{display:block;color:var(--mut);font-size:12px}
+.met b{font-variant-numeric:tabular-nums}
+.btns{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+button{background:transparent;color:var(--fg);border:1px solid var(--edge);border-radius:8px;padding:8px 14px;font:inherit;font-weight:600;cursor:pointer}
+button:hover{border-color:var(--acc)}
+button.p{background:var(--acc);color:#061012;border-color:var(--acc)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--edge)}
+th{color:var(--mut);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+td.n{font-variant-numeric:tabular-nums;color:var(--mut)}
+tr.here td:first-child{box-shadow:inset 3px 0 0 var(--acc)}
+.tw{overflow-x:auto}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.rules div{background:var(--panel2);border-radius:8px;padding:12px 14px;font-size:14px}
+.rules b{display:block;color:var(--acc);margin-bottom:2px}
+.ask{border-color:var(--warn)}
+.ask ol{margin:6px 0 0;padding-left:20px}
+.ask li{margin:4px 0}
+</style>
+
+<div class="wrap">
+  <div>
+    <div class="eyebrow">Maquette validée le 23/11/2026 · Pour moi · 02</div>
+    <h1>Réglages voiture en course</h1>
+    <div class="mut">Un bouton du volant par profil. <b style="color:var(--fg)">Nouveau : les profils sont gardés pour chaque voiture + circuit.</b></div>
+  </div>
+
+  <!-- 1. Le combo en cours -->
+  <section class="card combo" aria-label="Combo en cours">
+    <div class="who"><b>Porsche 963 LMDh · Spa-Francorchamps</b><br><span class="mut small">combo en piste · piste humide à 2 %</span></div>
+    <div class="sel">
+      <label class="f" for="car">Voiture<select id="car"><option>Porsche 963 LMDh (en piste)</option><option>Peugeot 9X8</option><option>Ferrari 499P</option></select></label>
+      <label class="f" for="trk">Circuit<select id="trk"><option>Spa-Francorchamps (en piste)</option><option>Le Mans · réglé</option><option>Bahreïn · réglé</option><option>Monza</option></select></label>
+    </div>
+  </section>
+
+  <p class="note">Premier passage sur ce circuit avec cette voiture : profils repris de « Le Mans ». Mémorise pour les garder ici.</p>
+
+  <!-- 2. Les profils du combo -->
+  <div class="g3">
+    <article class="card prof">
+      <h3>Sec <span class="pill on">En place</span></h3>
+      <div class="mut small">Bouton « Profil1 » · <span class="pill src">repris de Le Mans</span></div>
+      <div class="met"><div><small>TC</small><b>3</b></div><div><small>Coupure TC</small><b>4</b></div><div><small>ABS</small><b>4</b></div>
+        <div><small>Répartition</small><b>54,2</b></div><div><small>Carto</small><b>1</b></div><div><small>Régén</small><b>200 kW</b></div></div>
+      <div class="btns"><button type="button">Mémoriser</button><button type="button">Appliquer</button></div>
+    </article>
+    <article class="card prof">
+      <h3>Inter</h3>
+      <div class="mut small">Bouton « Profil2 » · <span class="pill src">repris de Le Mans</span></div>
+      <div class="met"><div><small>TC</small><b>6</b></div><div><small>Coupure TC</small><b>7</b></div><div><small>ABS</small><b>6</b></div>
+        <div><small>Répartition</small><b>53,6</b></div><div><small>Carto</small><b>2</b></div><div><small>Régén</small><b>180 kW</b></div></div>
+      <div class="btns"><button type="button">Mémoriser</button><button type="button">Appliquer</button></div>
+    </article>
+    <article class="card prof">
+      <h3>Pluie</h3>
+      <div class="mut small">Bouton « Profil3 » · <span class="pill src">repris de Le Mans</span></div>
+      <div class="met"><div><small>TC</small><b>9</b></div><div><small>Coupure TC</small><b>10</b></div><div><small>ABS</small><b>8</b></div>
+        <div><small>Répartition</small><b>52,8</b></div><div><small>Carto</small><b>3</b></div><div><small>Régén</small><b>160 kW</b></div></div>
+      <div class="btns"><button type="button">Mémoriser</button><button type="button">Appliquer</button></div>
+    </article>
+  </div>
+
+  <!-- 4. Comment ça marche -->
+  <section class="card">
+    <h2>Comment ça marche</h2>
+    <div class="rules" style="margin-top:10px">
+      <div><b>Tout seul</b>Le plugin lit la voiture et le circuit dans LMU et prend les profils de ce combo. Rien à choisir.</div>
+      <div><b>Mémoriser</b>Appui de 2 s sur le bouton (ou « Mémoriser ») : garde les réglages pour ce combo seulement.</div>
+      <div><b>Nouveau combo</b>Pas encore réglé : on part du dernier circuit réglé avec cette voiture, pas de zéro.</div>
+      <div><b>Rien d'autre ne change</b>Mêmes boutons Profil1, Profil2, Profil3, même popup, même règle des 2 appuis.</div>
+    </div>
+    <p class="mut small" style="margin:12px 0 0">Tes profils actuels (par voiture) ne sont pas perdus : ils servent de départ pour chaque circuit.</p>
+  </section>
+
+</div>

@@ -1,0 +1,116 @@
+<title>Mes boutons</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+<style>
+/* Maquette au style de l'écran du plugin (Theme.cs) : fond sombre, accent cyan. Une colonne, des cartes d'étapes. */
+:root{--bg:#0b0f10;--panel:#11181a;--panel2:#162023;--edge:#25393d;--fg:#eef3f2;--mut:#93a5a6;--acc:#33c6cf;--warn:#e9b44c;--ok:#5bd68a;--bad:#e8706a;--title:#f3e3c0;
+--sans:"Inter",system-ui,"Segoe UI",sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--sans);padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.eyebrow{color:var(--warn);letter-spacing:.14em;font-size:12px;font-weight:700;text-transform:uppercase}
+h1{color:var(--title);font-size:30px;margin:2px 0 0;text-wrap:balance}
+h2{font-size:18px;margin:0}
+h3{font-size:15px;margin:0}
+.mut{color:var(--mut)}.small{font-size:13px}
+.card{background:var(--panel);border:1px solid var(--edge);border-radius:10px;padding:16px 18px}
+.state{display:flex;flex-wrap:wrap;gap:10px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:99px;padding:5px 12px;font-size:13px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}.dot.w{background:var(--warn)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tab{background:var(--panel2);border:1px solid var(--edge);color:var(--fg);border-radius:8px;padding:10px 14px;font:inherit;font-weight:600;cursor:pointer;text-align:left;flex:1;min-width:180px}
+.tab small{display:block;color:var(--mut);font-weight:400;font-size:12px}
+.tab[aria-selected="true"]{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.tab:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.steps{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:10px;counter-reset:s}
+.steps li{counter-increment:s;display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start}
+.steps li::before{content:counter(s);width:26px;height:26px;border-radius:50%;background:var(--panel2);border:1px solid var(--edge);display:grid;place-items:center;font-size:13px;font-weight:700;color:var(--acc)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:12px}
+.box{background:var(--panel2);border-radius:8px;padding:12px 14px}
+.box ul{margin:6px 0 0;padding-left:18px}.box li{margin:2px 0}
+.keep h3{color:var(--ok)}.wipe h3{color:var(--bad)}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+button{background:transparent;color:var(--fg);border:1px solid var(--edge);border-radius:8px;padding:8px 14px;font:inherit;font-weight:600;cursor:pointer}
+button:hover{border-color:var(--acc)}
+button.p{background:var(--acc);color:#061012;border-color:var(--acc)}
+.tw{overflow-x:auto;margin-top:10px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--edge);vertical-align:middle}
+th{color:var(--mut);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+td.g{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.06em;padding-top:14px}
+.linked{color:var(--ok)}.none{color:var(--mut)}
+.wait{color:var(--warn);font-weight:600}
+.rot{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:12px}
+select{background:var(--panel2);color:var(--fg);border:1px solid var(--edge);border-radius:8px;padding:7px 10px;font:inherit;font-size:14px;width:100%}
+.dial{display:flex;align-items:center;gap:14px;margin-top:12px;background:var(--panel2);border-radius:8px;padding:12px 14px}
+.knob{width:54px;height:54px;border-radius:50%;border:3px solid var(--acc);position:relative;flex:none}
+.knob::after{content:"";position:absolute;top:4px;left:50%;width:3px;height:16px;background:var(--acc);transform:translateX(-50%);border-radius:2px}
+.big{font-size:20px;font-weight:700}
+.seg{display:inline-flex;border:1px solid var(--edge);border-radius:8px;overflow:hidden;margin-top:6px}
+.seg button{border:0;border-radius:0}
+.seg button[aria-pressed="true"]{background:var(--acc);color:#061012}
+.ask{border-color:var(--warn)}
+.ask ol{margin:6px 0 0;padding-left:20px}
+[hidden]{display:none!important}
+</style>
+
+<div class="wrap">
+  <div>
+    <div class="eyebrow">Maquette · Pour moi</div>
+    <h1>Mes boutons</h1>
+    <div class="mut">Tout ce qu'il faut pour que les boutons de ton volant pilotent LMU et le plugin. Une option à la fois, étape par étape. Relier les boutons du volant (rotary, Fn) reste à faire par le pilote dans le Control Mapper.</div>
+  </div>
+
+  <section class="card" aria-label="État">
+    <div class="state">
+      <span class="chip"><span class="dot"></span>42 commandes prêtes dans LMU</span>
+                  <span class="chip"><span class="dot"></span>Sauvegarde du 24/11 à 07:30</span>
+    </div>
+  </section>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-t="zero">1. Repartir de zéro<small>Tout recréer proprement</small></button>
+    <button class="tab" role="tab" aria-selected="false" data-t="fmt">2. Retirer les touches FMT<small>Garder les tiennes</small></button>
+  </div>
+
+  <!-- 1. Repartir de zéro -->
+  <section class="card" data-p="zero">
+    <h2>Repartir de zéro</h2>
+    <p class="mut small" style="margin:4px 0 0">À faire une fois, ou quand plus rien ne marche. Tu peux revenir en arrière avec « Restaurer ».</p>
+    <div class="two">
+      <div class="box keep"><h3>Garder</h3><ul><li>Direction, accélérateur, frein, embrayage</li><li>Palettes</li><li>Réglages du volant (force, rotation)</li></ul></div>
+      <div class="box wipe"><h3>Effacer puis recréer</h3><ul><li>Toutes les autres touches de LMU</li><li>Toutes les liaisons du Control Mapper</li></ul></div>
+    </div>
+    <ol class="steps">
+      <li><div><b>Sauvegarder</b><div class="mut small">Tes touches LMU et ton Control Mapper sont copiés avant tout changement.</div></div></li>
+      <li><div><b>Effacer</b><div class="mut small">LMU doit être ouvert, au menu principal.</div></div></li>
+      <li><div><b>Recréer toutes les commandes</b><div class="mut small">TC, ABS, carto, migration, limiteur, phares, black box, profils : mêmes noms chez tous les pilotes.</div></div></li>
+      <li><div><b>Relier tes boutons</b><div class="mut small">Comme d'habitude, dans le Control Mapper de SimHub (boutons du volant, rotary, Fn). Le module n'y touche pas.</div></div></li>
+    </ol>
+    <div class="btns"><button class="p" type="button">Repartir de zéro</button><button type="button">Restaurer la sauvegarde du 24/11</button></div>
+  </section>
+
+  <!-- 4. FMT -->
+  <section class="card" data-p="fmt" hidden>
+    <h2>Retirer les touches FMT</h2>
+    <p class="mut small" style="margin:4px 0 0">Retire seulement ce que FMT a ajouté, dans LMU et le Control Mapper. Tes touches à toi restent. Sauvegarde faite avant.</p>
+    <div class="btns"><button type="button">Retirer les touches FMT</button></div>
+  </section>
+
+  <section class="card ask">
+    <h2>À valider par Nathan</h2>
+    <ol>
+      <li>L'ordre des étapes et ce qui est gardé (direction, pédales, palettes) ?</li>
+      <li>Ce menu « Mes boutons » remplace la page « Black box sur boutons » pour la création des touches ?</li>
+    </ol>
+  </section>
+</div>
+<script>
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===t));
+  document.querySelectorAll('[data-p]').forEach(p=>p.hidden=p.dataset.p!==t.dataset.t);
+}));
+document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{
+  b.parentNode.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+}));
+</script>

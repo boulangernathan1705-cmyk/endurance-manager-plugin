@@ -1,7 +1,7 @@
 // La page « Black box sur boutons » de l'écran du plugin (maquette validée par Nathan le 23/11/2026,
 // maquettes/black-box-boutons/) : tout l'écran de FMT companion 0.5, refait dans la page web. FMT companion tourne tel
-// quel (sa DLL, Companion.cs) ; son code source est perdu, donc cette page lui parle par réflexion, avec exactement les
-// appels que fait son propre écran (CompanionControl, relu dans sa DLL) : cocher une commande (SetCommandVisible),
+// quel (sa DLL, compilée depuis src/fmt/, Companion.cs) ; elle reste un assemblage à part, donc cette page lui parle par réflexion, avec exactement les
+// appels que fait son propre écran (CompanionControl, src/fmt/) : cocher une commande (SetCommandVisible),
 // Tester (Mapper.Test), Préparer LMU (Preparer.Prepare des commandes LMU cochées), Annuler (Preparer.Undo), ouvrir le
 // Control Mapper, exporter le profil Stream Deck, sauvegarder le mapping, valider une nouvelle version de LMU. Rien de ce
 // que fait FMT companion n'est réécrit. Si une version de FMT companion n'a plus ces noms, la page le dit et propose son
@@ -39,6 +39,10 @@ namespace EnduranceManager.SimHub
 
         public CompanionPage(Companion companion) { this.companion = companion; }
 
+        // « Préparer LMU » seen from elsewhere (Repartir.cs, menu « Mes boutons ») : running, and its last line.
+        public bool Preparing { get { lock (gate) return busy; } }
+        public string PrepareSummary { get { lock (gate) return summary; } }
+
         object P => companion.Instance;
 
         // ── Reflection, kept to the names FMT companion 0.5 uses ────────────────────────────────────────────────────
@@ -67,12 +71,16 @@ namespace EnduranceManager.SimHub
 
         IEnumerable<object> Functions() => ((IEnumerable)Get(Kind("Catalog"), "All")).Cast<object>();
 
-        object Function(string id) => Functions().FirstOrDefault(f => Text(Get(f, "Id")) == id) ?? throw new ArgumentException("Commande inconnue : " + id);
+        // Its keys of LMU are listed as « Key.TC.Next »: found with or without « Key. ».
+        object Function(string id) => Functions().FirstOrDefault(f => Text(Get(f, "Id")) == id) ?? Functions().FirstOrDefault(f => Text(Get(f, "Id")) == "Key." + id)
+            ?? throw new ArgumentException("Commande inconnue : " + id);
 
         // ── What the page shows ─────────────────────────────────────────────────────────────────────────────────────
         public object State()
         {
             if (P == null) return null;
+            // The page shows the pit menu FMT companion read: kept fresh while it is open.
+            companion.Touch();
             try
             {
                 Read();
@@ -243,6 +251,25 @@ namespace EnduranceManager.SimHub
             string end = !sent ? (kind == Pit || kind == Api ? "commande indisponible." : "rien envoyé, préparer LMU d'abord ou vérifier la sortie.")
                 : kind == Pit || kind == Api ? "commande envoyée." : "impulsion envoyée par la sortie Control Mapper.";
             return Said("Test « " + label + " » : " + end, sent);
+        }
+
+        // One of FMT companion's commands by its id (« TC.Next »…), as its Tester does, for the wheel's black box
+        // (BlackBoxPages.cs, page Électronique): null when sent, otherwise a short reason for the dash's title bar.
+        public string Send(string id)
+        {
+            if (P == null) return "FMT companion absent";
+            string why = null;
+            try
+            {
+                OnScreen(() =>
+                {
+                    var mapper = Get(P, "Mapper");
+                    if (mapper == null) { why = "Control Mapper pas prêt"; return; }
+                    if (!(bool)Call(mapper, "Test", Function(id))) why = "Préparer LMU dans FMT";
+                });
+            }
+            catch (Exception e) { why = Message(e); }
+            return why;
         }
 
         object Said(string text, bool ok) { lastTest = text; return new { ok, message = text }; }

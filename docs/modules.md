@@ -9,11 +9,13 @@ du site). Deux groupes, noms choisis par Nathan le 19/11/2026 :
 | --- | --- | --- | --- |
 | **Overlay relais** | Après chaque tour : temps, énergie (ou carburant) et usure des pneus face à la cible. Overlays Dash Studio « Bandeau » et « Colonne ». | `Practice.cs`, `Dashes.cs` | `Overlays` (activé) |
 | **Réglages voiture en course** | Profils perso de black box (Sec, Inter, Pluie) par voiture, appliqués en une touche. | `Profiles.cs`, `ProfilesControl.cs` | `Profiles` (coupé) |
-| **Black box sur boutons** | FMT companion 0.5 tel quel, livré dans la DLL du plugin : black box et menu des stands sur boutons (volant, Stream Deck). Dash « Black box » : la page « Arrêt aux stands » du jeu sur l'écran du volant (VoCore). | `Companion.cs`, `BlackBoxDash.cs` | `Companion` (coupé pour un nouveau pilote, activé si sa DLL était déjà là) |
+| **Black box sur boutons** | FMT companion 0.5 tel quel, livré dans la DLL du plugin : black box et menu des stands sur boutons (volant, Stream Deck). Dash « Black box » : la page « Arrêt aux stands » du jeu sur l'écran du volant (VoCore).  Menu « Mes boutons » en bas de sa page : Repartir de zéro, Restaurer, Retirer les touches FMT. | `Companion.cs`, `BlackBoxDash.cs`, `Repartir.cs`, `Nettoyage.cs` | `Companion` (coupé pour un nouveau pilote, activé si sa DLL était déjà là) |
 | **Mur des stands** | Le mur de sa propre voiture dans SimHub (dash « Endurance Manager · Mur », 2560 × 1440), sans le site. | `Wall.cs`, `WallDash.cs`, `WallProperties.cs`, `LocalRoom.cs` | `Wall` (coupé) |
 
 Les « chiffres de course » (propriétés façon NeoRed pour les dashs, `Course.cs`, `Telemetry.cs`, `Computed.cs`) ne
-sont plus un module : ils tournent quand Overlay relais ou Mur des stands est activé.
+sont plus un module : ils tournent quand Overlay relais ou Mur des stands est activé, et seulement si un dash les lit ou
+si la black box est affichée (`Watched.cs`) ; `Computed.cs` garde un historique (arrêts de chaque voiture) et tourne donc
+tant que l'un de ces deux modules ou le partage avec l'équipe est actif.
 
 ## Avec mon équipe (via le site, code de liaison)
 
