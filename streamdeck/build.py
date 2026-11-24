@@ -4,18 +4,18 @@
 # Fabrique « Endurance Manager FMT.streamDeckProfile » à côté de ce fichier : python3 streamdeck/build.py
 # (dépendance : cairosvg pour dessiner les touches). Le fichier produit est commité : les pilotes le double-cliquent.
 #
-# Mêmes briques que le profil de FMT companion 0.5, déjà utilisé en piste :
-# - « Simhub ControlMapper » (com.wotever.simhubcontrolmapper) : une touche = un rôle « FMT - … » ou « EM - Profil N »
-#   du Control Mapper de SimHub (créés par le plugin, module Black box sur boutons / Réglages voiture en course) ;
-# - « Stream Deck SimHub » (net.planetrenner.simhub) : une touche qui montre une propriété SimHub en direct (titre) et
-#   change d'image selon une autre (2 états), avec ou sans rôle sur l'appui.
-# Les boutons « dynamiques » de SimHub 9.13.6 demandent leur propre plugin Stream Deck (Stream Deck 7.6) : à reprendre
-# quand les pilotes l'auront.
+# Toutes les touches de réglage sont des boutons dynamiques de SimHub 9.13.6 (plugin Stream Deck « Simhub dynamic
+# button », livré dans SimHub\_Addons\StreamDeckPlugins, Stream Deck 7.6 ou plus) : image SVG, valeur en direct
+# (formule), image verte quand la condition est vraie, appui = rôle « FMT - … » ou « EM - Profil N » du Control Mapper
+# (créés par le plugin, modules Black box sur boutons / Réglages voiture en course). Dossiers et retour : actions de
+# Stream Deck.
 #
 # DA : celle du logo FMT (bandes arc-en-ciel) sur le fond du site ; une couleur par famille, sur l'icône, la bande du
 # bas et le coin des dossiers : Voiture rouge, Stand orange, Pneus jaune, Poste vert, Caméra bleu.
 import io
+import base64
 import json
+import re
 import os
 import uuid
 import zipfile
@@ -78,7 +78,7 @@ def svg_key(icon=None, label="", value="", fam="w", kind="", live=False, big=Fal
     if kind == "back":
         bg_top, bg_bot = "#273034", "#171E21"
     if kind == "empty":
-        return ('<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144"><rect width="144" height="144" fill="#0A0D0F"/></svg>')
+        return ('<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144"><rect width="144" height="144" fill="#0A0D0F"/></svg>')
     parts.append(f'<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{bg_top}"/>'
                  f'<stop offset="1" stop-color="{bg_bot}"/></linearGradient></defs>')
     parts.append(f'<rect width="144" height="144" fill="url(#g)"/><rect x="1" y="1" width="142" height="142" fill="none" stroke="{border}" stroke-width="2"/>')
@@ -108,13 +108,14 @@ def svg_key(icon=None, label="", value="", fam="w", kind="", live=False, big=Fal
             for line in lines:
                 parts.append(f'<text x="72" y="{y}" font-family="Arial, Liberation Sans, FreeSans" font-weight="bold" font-size="{fs}" fill="{text}" text-anchor="middle">{esc(line)}</text>')
                 y += fs + 4
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144">' + "".join(parts) + "</svg>"
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">' + "".join(parts) + "</svg>"
 
 
 class Profile:
     def __init__(self):
         self.pages = {}
         self.images = {}
+        self.preview = {}
 
     def image(self, svg):
         name = "Images/" + str(uuid.uuid5(uuid.NAMESPACE_URL, svg)).upper() + ".png"
@@ -133,30 +134,76 @@ def pid(name):
 
 
 # Key kinds, each returning a Stream Deck action (needs the profile for its images).
-def role(r, icon=None, label="", value="", fam="w", kind=""):
+# SimHub dynamic buttons (Stream Deck plugin « Simhub dynamic button », shipped with SimHub 9.13.6 in
+# _Addons/StreamDeckPlugins, needs Stream Deck 7.6). The whole button (states, images, live text, action) is kept in
+# the Stream Deck action's settings, in the format SimHub exports (.shsdb), read from SimHub's templates and from a
+# button made by Nathan on 24/11/2026 (press = Control Mapper role: ActionMode 3, ControlMapperRoleName).
+def b64svg(svg):
+    return base64.b64encode(svg.encode("utf-8")).decode("ascii")
+
+
+def icon_style(svg, font_size=14):
+    return {"ReverseIconColors": False, "IconMarginLeft": 0, "IconMarginTop": 0, "IconMarginRight": 0, "IconMarginBottom": 0,
+            "TextMarginBottom": 10, "LabelVerticalAlignment": 2, "Image": b64svg(svg), "UseBlinkingBorderColor": False,
+            "UseBlinkingIconBackgroundColor": False, "UseBlinkingIconForegroundColor": False, "UseBlinkingTextColor": False,
+            "BlinkingDuration": 500, "BlinkingTwoPhases": False, "BlinkingOffDuration": 500, "BlinkingIconBackgroundColor": "#FF000000",
+            "BlinkingIconForegroundColor": "#00FFFFFF", "BlinkingTextColor": "#FFFF0000", "Bold": True, "Italic": False,
+            "BorderColor": "#FF000000", "BlinkingBorderColor": "#FFFF0000", "BorderThickness": 0, "EnableBlinking": False,
+            "FontSize": font_size, "IconBackgroundColor": "#FF000000", "IconForegroundColor": "#00FFFFFF", "LabelFont": "Arial",
+            "TextColor": "#FFFFFFFF", "IconAlpha": 100.0}
+
+
+def sid(*parts):
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, "em-streamdeck-dyn/" + "/".join(parts)))
+
+
+def dynamic(key, off_svg, r="", formula="", on_svg=None, on_when="", size=150):
+    """One dynamic button: base image, optional live text at the bottom (NCalc formula), optional second image while
+    on_when is true, press = Control Mapper role r."""
     def make(p):
-        return {"Plugin": {"UUID": "com.wotever.simhubcontrolmapper", "Name": "Simhub ControlMapper", "Version": "1.2.0.0"},
-                "Resources": None, "Settings": {"rolename": r}, "State": 0, "Name": label or r,
-                "States": [state(p.image(svg_key(icon, label, value, fam, kind)))], "LinkedTitle": False,
-                "UUID": "com.wotever.simhubcontrolmapper", "ActionID": str(uuid.uuid5(uuid.NAMESPACE_URL, r + label + value))}
+        first = {"actionMode": 0, "labelMode": 3 if formula else 0, "iconMode": 0,
+                 "OnPress": {"ActionMode": 3, "ControlMapperRoleName": r} if r else {}, "OnShortPress": {}, "OnLongPress": {},
+                 "HasActionOverrides": False, "ButtonRenderer": {"IconStyle": icon_style(off_svg)}, "StaticLabel": "",
+                 "Uid": sid(key, "0"), "StateTitle": "Button state", "DisplayStateTitle": "Default state",
+                 "IsEnabledExpression": {"Expression": ""}, "IsConditional": False}
+        if formula:
+            first["RichLabel"] = [{"Formula": {"Expression": formula}, "Format": 0, "Size": float(size)}]
+        states = [first]
+        if on_svg and on_when:
+            states.append({"actionMode": 0, "labelMode": 2, "iconMode": 0, "HasActionOverrides": False,
+                           "ButtonRenderer": {"IconStyle": {"Overrides": ["Image", "TextColor"], "Image": b64svg(on_svg), "TextColor": "#FF04170B"}},
+                           "Uid": sid(key, "1"), "StateTitle": "Button state", "DisplayStateTitle": "Button state",
+                           "IsEnabledExpression": {"Expression": on_when}, "IsConditional": True})
+        button = {"StreamDeckButtonSetting": {"FromModel": None, "DesignWidth": 144, "DesignHeight": 144,
+                                              "SettingsBuilder": {"Settings": [], "IsEditMode": False, "Prefix": None},
+                                              "StateToggleMode": 1 if len(states) > 1 else 0, "Target": 1, "Uid": sid(key, "setting"),
+                                              "FormatVersion": 1, "States": states},
+                  "Uid": sid(key, "instance"), "ModelId": None, "InstanceMode": 0, "SettingsValues": {}, "SettingsValuesOf": ""}
+        return {"Plugin": {"UUID": "com.wotever.simhubdynamicbutton", "Name": "Simhub dynamic button", "Version": "1.6"},
+                "Resources": None, "Settings": button, "State": 0, "Name": key,
+                # Shown by Stream Deck until SimHub draws the button.
+                "States": [state(p.image(off_svg))], "LinkedTitle": False,
+                "UUID": "com.wotever.simhubdynamicbutton", "ActionID": sid(key, "action"),
+                "EMPreview": {"formula": formula, "on_when": on_when, "on": p.image(on_svg) if on_svg and on_when else None}}
     return make
+
+
+def role(r, icon=None, label="", value="", fam="w", kind=""):
+    return dynamic(r + label + value, svg_key(icon, label, value, fam, kind), r=r)
 
 
 def live(title_prop, icon=None, label="", fam="w", r="", state_prop="", fmt="", active_when_on=False, kind="", size=18):
-    """A key showing a SimHub property live; its press runs role r (if any); 2 images switched by state_prop."""
-    def make(p):
-        off = p.image(svg_key(icon, label, "", fam, kind, live=True))
-        on = p.image(svg_key(icon, label, "", fam, "active" if active_when_on else kind, live=True))
-        settings = {"longCtrl": False, "simhubControl": "", "alt": False, "longShift": False, "simhubPropertyClearNameCache": "",
-                    "shift": False, "hotkey": "", "simhubRole": r, "longKeypressSettings": {"shift": False, "alt": False, "ctrl": False, "hotkey": ""},
-                    "titleSimhubProperty": title_prop, "titleSimhubPropertyClearNameCache": "", "longKeypressShortHoldTime": 50,
-                    "titleFormat": fmt, "ctrl": False, "simhubProperty": state_prop, "hasLongKeypress": False, "longHotkey": "",
-                    "longAlt": False, "longKeypressTimeSpan": 500}
-        return {"Plugin": {"UUID": "net.planetrenner.simhub", "Name": "Stream Deck SimHub", "Version": "1.13.69.51552"},
-                "Resources": None, "Settings": settings, "State": 0, "Name": label or title_prop,
-                "States": [state(off, show=True, size=size), state(on, show=True, size=size)], "LinkedTitle": False,
-                "UUID": "net.planetrenner.simhub.hotkey", "ActionID": str(uuid.uuid5(uuid.NAMESPACE_URL, title_prop + label + r))}
-    return make
+    """A key showing a SimHub property live at the bottom; its press runs role r (if any); green while state_prop is on."""
+    formula = ""
+    if title_prop and title_prop == state_prop:
+        # On/off (limiteur, phares, essuie-glace) : la touche passe au vert, sans texte.
+        title_prop, active_when_on = "", True
+    if title_prop:
+        formula = f"format([{title_prop}], '0')" if fmt == ":0" else f"[{title_prop}]"
+    off = svg_key(icon, label, "", fam, kind, live=True)
+    on = svg_key(icon, label, "", fam, "active", live=True) if active_when_on and state_prop else None
+    return dynamic(label + r + (state_prop or title_prop), off, r=r, formula=formula, on_svg=on, on_when=f"[{state_prop}]" if on else "",
+                   size=150 if size >= 18 else 120)
 
 
 def folder(target, icon=None, label="", value="", fam="w"):
@@ -173,7 +220,7 @@ def back():
         return {"Plugin": {"UUID": "com.elgato.streamdeck.profile.backtoparent", "Name": "Open Parent Folder", "Version": "1.0"},
                 "Resources": None, "Settings": {}, "State": 0, "Name": "Retour",
                 "States": [state(p.image(svg_key("back", "", "Retour", "w", "back")))], "LinkedTitle": False,
-                "UUID": "com.elgato.streamdeck.profile.backtoparent", "ActionID": str(uuid.uuid4())}
+                "UUID": "com.elgato.streamdeck.profile.backtoparent", "ActionID": "retour"}
     return make
 
 
@@ -366,12 +413,21 @@ def build():
             for r in range(3):
                 actions.setdefault(f"{c},{r}", None)
         actions = {k: v for k, v in actions.items() if v is not None}
+        for pos, a in actions.items():
+            # The same key on two pages (Freins, Réparations…) stays two buttons: own ids per page and place.
+            if "EMPreview" in a:
+                salt = name + "/" + pos + "/"
+                a["Settings"] = json.loads(re.sub(r'"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"',
+                                                  lambda m: '"' + str(uuid.uuid5(uuid.NAMESPACE_URL, salt + m.group(1))) + '"',
+                                                  json.dumps(a["Settings"], ensure_ascii=False)))
+            a["ActionID"] = str(uuid.uuid5(uuid.NAMESPACE_URL, name + "/" + pos + "/" + a["ActionID"]))
+            p.preview[a["ActionID"]] = a.pop("EMPreview", {})
         manifests[pid(name)] = {"Controllers": [{"Actions": actions, "Type": "Keypad"}], "Icon": "", "Name": name}
     manifests[default_page] = {"Controllers": [{"Actions": None, "Type": "Keypad"}], "Icon": "", "Name": ""}
     root = {"Pages": {"Current": pid("Accueil"), "Default": default_page, "Pages": [pid("Accueil")]},
             "Name": "Endurance Manager · FMT", "Version": "3.0", "Device": {"Model": "20GBA9901", "UUID": ""}}
     package = {"DeviceModel": "20GBA9901", "OSType": "Windows", "DeviceSettings": None, "OSVersion": "10.0",
-               "RequiredPlugins": ["com.wotever.simhubcontrolmapper", "net.planetrenner.simhub"], "AppVersion": "7.4.2.22730", "FormatVersion": 1}
+               "RequiredPlugins": ["com.wotever.simhubdynamicbutton"], "AppVersion": "7.6.0.22849", "FormatVersion": 1}
     base = f"Profiles/{root_id}.sdProfile/"
     with zipfile.ZipFile(OUT, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("package.json", json.dumps(package, indent=2, ensure_ascii=False))
@@ -396,7 +452,7 @@ SAMPLE = {EM + "Profils.1.Titre": "Sec", EM + "Profils.2.Titre": "Inter\nconseil
           FMT + "Pit.VE.Percent": "85", FMT + "Pit.Ratio": "0,16", FMT + "Pit.FLPRESS": "131", FMT + "Pit.Driver.Short": "N. Boul.",
           FMT + "Pit.Tyre.FL.Badge": "MED", FMT + "Pit.Tyre.FR.Badge": "MED", FMT + "Pit.Tyre.RL.Badge": "MED", FMT + "Pit.Tyre.RR.Badge": "MED",
           FMT + "Pit.Tyres.Badge": "MED", FMT + "Pit.RWING": "P10", FMT + "Pit.GRILLE": "5", FMT + "Pit.FBRAKEDUCT": "Ouvert", FMT + "Pit.RBRAKEDUCT": "20 %"}
-ON = {EM + "Profils.1.Actif"}
+ON = {EM + "Profils.1.Actif", GD + "HeadlightsActive"}
 
 
 def preview(p, manifests, path):
@@ -409,12 +465,11 @@ def preview(p, manifests, path):
         sheet = Image.new("RGB", (5 * 152 + 8, 3 * 152 + 8), "#030506")
         for pos, a in (m["Controllers"][0]["Actions"] or {}).items():
             c, r = map(int, pos.split(","))
-            st = a.get("Settings", {})
-            on = st.get("simhubProperty") in ON
-            img = Image.open(io.BytesIO(p.images[a["States"][1 if on else 0]["Image"]])).convert("RGB")
-            title = SAMPLE.get(st.get("titleSimhubProperty", ""), "")
-            if title in ("0", "1") and st.get("simhubProperty"):
-                title = ""
+            meta = p.preview.get(a["ActionID"], {})
+            on = meta.get("on") and meta.get("on_when", "").strip("[]") in ON
+            img = Image.open(io.BytesIO(p.images[meta["on"] if on else a["States"][0]["Image"]])).convert("RGB")
+            prop = re.sub(r"^format\(\[|^\[|\].*$", "", meta.get("formula") or "")
+            title = SAMPLE.get(prop, "")
             if title:
                 d = ImageDraw.Draw(img)
                 lines = title.split("\n")

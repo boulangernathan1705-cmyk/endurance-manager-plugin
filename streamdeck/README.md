@@ -6,8 +6,8 @@ Stream Deck MK.2 (15 touches). Maquette validée par Nathan le 24/11/2026 : http
 
 ## Installer (pilote)
 
-1. Dans le logiciel Stream Deck, installer les plugins **Simhub ControlMapper** et **Stream Deck SimHub** (les mêmes
-   que pour le profil de FMT companion).
+1. Logiciel Stream Deck 7.6 ou plus, SimHub 9.13.6 ou plus. Installer le plugin Stream Deck **Simhub dynamic button** :
+   double-cliquer `C:\Program Files (x86)\SimHub\_Addons\StreamDeckPlugins\com.wotever.simhubdynamicbutton.streamDeckPlugin`.
 2. Plugin Endurance Manager : activer **Black box sur boutons** (rôles « FMT - … ») et **Réglages voiture en course**
    (rôles « EM - Profil 1/2/3 »).
 3. Double-cliquer `Endurance Manager FMT.streamDeckProfile`.
@@ -19,6 +19,9 @@ Stream Deck MK.2 (15 touches). Maquette validée par Nathan le 24/11/2026 : http
   Poste.
 - Voiture et Stand : un réglage par colonne, plus en haut, valeur en direct au milieu, moins en bas.
 - Une couleur par famille : Voiture rouge, Stand orange, Pneus jaune, Poste vert, Caméra bleu.
+- Toutes les touches de réglage sont des boutons dynamiques de SimHub : image SVG, valeur en direct en bas, vert quand
+  c'est actif (profil appliqué, limiteur, phares, essuie-glace), appui = rôle du Control Mapper. Chaque touche se
+  retouche dans SimHub (« Edit in SimHub » dans le logiciel Stream Deck).
 - Valeurs en direct : propriétés SimHub (`DataCorePlugin.GameData.*`), FMT companion (`FMTCompanionPlugin.Pit.*`) et
   plugin (`EnduranceManagerPlugin.Profils.N.Titre`, `.Actif`). Coupure TC, TC glisse, régén, migration et antiroulis :
   LMU ne les donne pas à SimHub, la touche du milieu montre seulement le nom.
@@ -28,5 +31,6 @@ Stream Deck MK.2 (15 touches). Maquette validée par Nathan le 24/11/2026 : http
 `python3 streamdeck/build.py` (avec `cairosvg` et `pillow`) réécrit le profil et `apercu.png`. Les touches sont
 décrites dans `PAGES` de `build.py`.
 
-Les boutons « dynamiques » de SimHub 9.13.6 demandent leur propre plugin Stream Deck (logiciel Stream Deck 7.6) : à
-reprendre quand les pilotes l'auront.
+Format d'une touche : celui des boutons exportés par SimHub (`.shsdb`), gardé dans les réglages de l'action Stream
+Deck. Lu dans les modèles de SimHub (`SimHub\StreamDeckButtonsTemplates`) et dans une touche faite par Nathan le
+24/11/2026 (appui sur un rôle : `"OnPress": {"ActionMode": 3, "ControlMapperRoleName": "…"}`).
