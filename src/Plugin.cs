@@ -175,6 +175,15 @@ namespace EnduranceManager.SimHub
                 // The extension already checked against SimHub (reference/simhub-api.txt): same action, same name.
                 actions.Add("Profil" + (slot + 1), () => Settings.Profiles, (manager, button) => Profiles.Press(slot), (manager, button) => Profiles.Release(slot));
                 this.AttachDelegate("Profils." + (slot + 1) + ".Nom", () => Profiles.NameAt(slot));
+                // For the Stream Deck profile (streamdeck/): the key lit when this profile is the car's, and its title with
+                // « conseillé » when the track's wetness asks for it.
+                this.AttachDelegate("Profils." + (slot + 1) + ".Actif", () => Settings.Profiles && Profiles.NameAt(slot) != "" && Profiles.NameAt(slot) == (Profiles.Active ?? Profiles.Applied));
+                this.AttachDelegate("Profils." + (slot + 1) + ".Titre", () =>
+                {
+                    string name = Profiles.NameAt(slot);
+                    bool advised = Settings.Profiles && name != "" && name == Profiles.ForWeather && name != (Profiles.Active ?? Profiles.Applied);
+                    return advised ? name + "\nconseillé" : name;
+                });
             }
             // The wheel's black box (BlackBoxDash.cs, BlackBoxPages.cs): six actions, the six MFD commands of LMU (page,
             // line, value), each doing what the game's black box does on the page shown. A change of the pit menu is read
