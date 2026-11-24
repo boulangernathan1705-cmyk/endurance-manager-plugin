@@ -69,7 +69,7 @@ namespace EnduranceManager.SimHub
                 game = new { game.state, game.title, game.detail },
                 modules = new { relais = s.Overlays, profils = s.Profiles, bb = s.CompanionOn, mur = s.Wall, memo = s.Enabled, equipe = s.Share, dev = s.Report },
                 laps = s.StintLaps,
-                bb = new { running = plugin.Companion.Running, pending = s.CompanionOn != plugin.Companion.StartAttempted, status = plugin.Companion.Status, page = plugin.Companion.Running && (query ?? "").Contains("bb=1") ? plugin.CompanionPage.State() : null },
+                bb = new { running = plugin.Companion.Running, pending = s.CompanionOn != plugin.Companion.StartAttempted, status = plugin.Companion.Status, page = plugin.Companion.Running && (query ?? "").Contains("bb=1") ? plugin.CompanionPage.State() : null, buttons = Repartir.State(plugin) },
                 mur = new
                 {
                     running = server?.Running == true && s.Wall,
@@ -130,7 +130,6 @@ namespace EnduranceManager.SimHub
                 active,
                 wet = p.Wetness,
                 notes = lines,
-                buttons = Repartir.State(plugin),
                 slots = list.Select((profile, i) => new
                 {
                     i,

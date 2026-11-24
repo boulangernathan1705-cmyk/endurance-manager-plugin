@@ -219,7 +219,7 @@ function save(k, v) { try { localStorage.setItem('em.' + k, v); } catch {} }
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const $ = (id) => document.getElementById(id);
 
-// Menu « Mes boutons » (page Profils) : Repartir de zéro, Retirer les touches FMT. Relier ses boutons, son rotary et son Fn
+// Menu « Mes boutons » (page Black box sur boutons) : Repartir de zéro, Retirer les touches FMT. Relier ses boutons, son rotary et son Fn
 // reste au pilote, dans le Control Mapper.
 function mesBoutons(b) {
   const two = (arm, go, no, label, confirm) => `<div style="display:flex;gap:10px;flex-wrap:wrap">${UI[arm]
@@ -232,7 +232,7 @@ function mesBoutons(b) {
     <div class="stack" style="gap:8px"><h3 style="margin:6px 0 0">1. Repartir de zéro</h3>
       <p class="mut small">À faire une fois, ou quand plus rien ne marche. LMU doit être ouvert, au menu principal.</p>
       <div style="display:flex;gap:12px;flex-wrap:wrap">${box('Garder', 'var(--ok)', ['Direction, accélérateur, frein, embrayage', 'Palettes, et tout ce qui est sur un axe', 'Le clavier de LMU'])}${box('Effacer puis recréer', 'var(--danger-text)', ['Les autres touches manette de LMU', 'Les liaisons du Control Mapper'])}</div>
-      <ol class="mut small" style="margin:4px 0;padding-left:20px"><li><b>Sauvegarder</b> tes touches LMU et ton Control Mapper.</li><li><b>Effacer</b> le reste dans LMU et le Control Mapper.</li><li><b>Recréer toutes les commandes</b> cochées dans Black box sur boutons (mêmes noms chez tous les pilotes).</li><li><b>Relier tes boutons</b> dans le Control Mapper, comme d'habitude.</li></ol>
+      <ol class="mut small" style="margin:4px 0;padding-left:20px"><li><b>Sauvegarder</b> tes touches LMU et ton Control Mapper.</li><li><b>Effacer</b> le reste dans LMU et le Control Mapper.</li><li><b>Recréer toutes les commandes</b> cochées plus haut (mêmes noms chez tous les pilotes).</li><li><b>Relier tes boutons</b> dans le Control Mapper, comme d'habitude.</li></ol>
       ${two('zeroArm', 'data-zero', 'data-zerono', 'Repartir de zéro', 'Confirmer : repartir de zéro')}
       ${b.backup ? `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">${UI.restoreArm ? `<button type="button" class="btn" data-restore>Confirmer : restaurer</button> <button type="button" class="btn" data-restoreno>Annuler</button>` : `<button type="button" class="btn" data-restore${b.busy ? ' disabled' : ''}>Restaurer la sauvegarde du ${esc(b.backup)}</button>`}<span class="mut small">LMU fermé.</span></div>` : ''}</div>
     <div class="stack" style="gap:8px"><h3 style="margin:10px 0 0">2. Retirer les touches FMT</h3>
@@ -399,8 +399,7 @@ const PAGES = {
           <div class="l"><span>Pneus</span><i>Medium →</i><b>Wet</b></div>
           <div style="font-size:13px;color:var(--accent);margin-top:10px">Rappuie sur le même bouton pour confirmer.</div>
           <div style="height:4px;background:#29454a;border-radius:2px;margin-top:8px"><div style="height:4px;width:62%;background:var(--accent);border-radius:2px"></div></div></div>
-      </section>
-      ${mesBoutons(p.buttons || {})}</div>`;
+      </section></div>`;
   },
 
   bb() {
@@ -445,6 +444,7 @@ const PAGES = {
       <section class="card stack">${bbTabs(rows)}
         <div class="toolbar"><input class="field" id="bbq" placeholder="Rechercher une commande…" value="${esc(UI.bbq || '')}">${g.test ? `<span class="mut small">${esc(g.test)}</span>` : ''}</div>
         <div id="bblist">${bbList(rows)}</div></section>
+      ${mesBoutons(b.buttons || {})}
       <details class="card"${UI.bbMore ? ' open' : ''} data-bbmore><summary style="margin:0">Plus</summary>
         <div class="row" style="border-top:0"><div class="t"><b>Commandes du stand actives</b><div class="mut small">Coupé : les boutons du stand ne changent plus rien dans LMU.</div></div>
           <button type="button" class="sw" role="switch" aria-checked="${g.writes}" aria-label="Commandes du stand actives" data-bbwrites><span></span></button></div>

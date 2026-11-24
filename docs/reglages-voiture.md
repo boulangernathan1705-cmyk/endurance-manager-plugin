@@ -128,7 +128,7 @@
   `BlackBoxRoles`, avec le relâchement pour l'appui de 2 s).
 - « Retirer les touches FMT » (`Nettoyage.cs`) : sauvegarde, « Annuler » de FMT (touches LMU ajoutées par FMT), délie ce
   qui vise « FMT - » dans le Control Mapper, oublie les boutons réutilisés. Les « EM - … » et les touches du pilote restent.
-- Menu « Mes boutons » (page Profils, maquette `maquettes/mes-boutons/`) : « Repartir de zéro » (`Repartir.cs`) sauvegarde
+- Menu « Mes boutons » (page Black box sur boutons depuis le 24/11/2026, maquette `maquettes/mes-boutons/`) : « Repartir de zéro » (`Repartir.cs`) sauvegarde
   (fichiers de touches de LMU, liaisons du Control Mapper, ce que FMT avait préparé, dans
   `%LOCALAPPDATA%\EnduranceManager\Sauvegardes boutons\<date>`), efface dans LMU toutes les touches manette sauf
   direction, accélérateur, frein, embrayage, palettes et axes, efface les liaisons du Control Mapper (sauf celles qui mènent
