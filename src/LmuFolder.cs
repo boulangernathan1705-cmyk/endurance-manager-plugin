@@ -123,6 +123,20 @@ namespace EnduranceManager.SimHub
                 }
             }
             catch { }
+            // Last: the usual Steam folders at the root of each drive (E:\steam, D:\SteamLibrary…).
+            try
+            {
+                foreach (var drive in DriveInfo.GetDrives())
+                {
+                    if (drive.DriveType != DriveType.Fixed) continue;
+                    foreach (var root in new[] { "steam", "Steam", "SteamLibrary", @"Program Files (x86)\Steam", @"Program Files\Steam" })
+                    {
+                        string folder = Path.Combine(drive.RootDirectory.FullName, root, "steamapps", "common", "Le Mans Ultimate");
+                        if (File.Exists(Path.Combine(folder, "Le Mans Ultimate.exe"))) return folder;
+                    }
+                }
+            }
+            catch { }
             return null;
         }
     }
