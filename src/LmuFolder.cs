@@ -18,6 +18,7 @@ namespace EnduranceManager.SimHub
         [DllImport("kernel32.dll", SetLastError = true)] static extern IntPtr OpenProcess(uint access, bool inherit, int id);
         [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)] static extern bool QueryFullProcessImageName(IntPtr process, int flags, StringBuilder name, ref int size);
         [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr handle);
+        [DllImport("iphlpapi.dll")] static extern uint GetExtendedTcpTable(IntPtr table, ref int size, bool sort, int family, int tableClass, uint reserved);
 
         // The folder holding « Le Mans Ultimate.exe », null when not found.
         public static string Install()
@@ -29,13 +30,64 @@ namespace EnduranceManager.SimHub
                     if (exe == null) try { exe = process.MainModule.FileName; } catch { }
                     if (exe != null) return Path.GetDirectoryName(exe);
                 }
+            // The process that listens on LMU's local port 6397 (whatever its name).
+            int owner = PortOwner(6397);
+            if (owner > 0) { string exe = ImagePath(owner); if (exe != null) return Path.GetDirectoryName(exe); }
             return Steam();
+        }
+
+        // TCP_TABLE_OWNER_PID_LISTENER (3), IPv4: rows of 6 uint (state, local address, local port, remote address, remote port, pid).
+        static int PortOwner(int port)
+        {
+            IntPtr table = IntPtr.Zero;
+            try
+            {
+                int size = 0;
+                GetExtendedTcpTable(IntPtr.Zero, ref size, false, 2, 3, 0);
+                table = Marshal.AllocHGlobal(size);
+                if (GetExtendedTcpTable(table, ref size, false, 2, 3, 0) != 0) return 0;
+                int rows = Marshal.ReadInt32(table);
+                for (int i = 0; i < rows; i++)
+                {
+                    IntPtr row = table + 4 + i * 24;
+                    int local = Marshal.ReadInt32(row + 8);
+                    int p = ((local & 0xFF) << 8) | ((local >> 8) & 0xFF);
+                    if (p == port) return Marshal.ReadInt32(row + 20);
+                }
+            }
+            catch { }
+            finally { if (table != IntPtr.Zero) Marshal.FreeHGlobal(table); }
+            return 0;
         }
 
         public static string Player()
         {
             string install = Install();
             return install == null ? null : Path.Combine(install, "UserData", "player");
+        }
+
+        // For the log when nothing is found: the processes that look like LMU, and what each way gave.
+        public static string Diagnose()
+        {
+            var parts = new System.Collections.Generic.List<string>();
+            try
+            {
+                foreach (var process in Process.GetProcesses())
+                    using (process)
+                    {
+                        string name = process.ProcessName;
+                        if (name.IndexOf("mans", StringComparison.OrdinalIgnoreCase) < 0 && name.IndexOf("lmu", StringComparison.OrdinalIgnoreCase) < 0) continue;
+                        string how;
+                        try { how = ImagePath(process.Id) ?? "accès refusé (" + Marshal.GetLastWin32Error() + ")"; } catch (Exception e) { how = e.Message; }
+                        parts.Add(name + " → " + how);
+                    }
+            }
+            catch (Exception e) { parts.Add(e.Message); }
+            int owner = PortOwner(6397);
+            parts.Add("port 6397 : " + (owner > 0 ? owner + " → " + (ImagePath(owner) ?? "accès refusé") : "personne"));
+            parts.Add("Steam : " + (Steam() ?? "rien"));
+            parts.Add("SimHub " + (Environment.Is64BitProcess ? "64" : "32") + " bits");
+            return string.Join(" ; ", parts);
         }
 
         static string ImagePath(int id)

@@ -77,7 +77,7 @@ namespace EnduranceManager.SimHub
         {
             if (!plugin.Companion.Running) { Say("Le moteur des touches (FMT) n'est pas lancé : redémarre SimHub, puis recommence."); return; }
             string player = LmuPlayer();
-            if (player == null) { Say("Lance LMU (menu principal), puis recommence."); return; }
+            if (player == null) { Report.Log("repartir", "dossier LMU introuvable : " + LmuFolder.Diagnose()); Say("Dossier de LMU introuvable (LMU ouvert ?). Rien n'a été changé."); return; }
             using (var lmu = new HttpClient { BaseAddress = new Uri("http://127.0.0.1:6397/"), Timeout = TimeSpan.FromSeconds(3) })
             {
                 var di = DirectInput(await Get(lmu, "rest/options/UIScreen/Controls"));
