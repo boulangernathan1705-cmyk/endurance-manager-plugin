@@ -128,6 +128,14 @@
   `BlackBoxRoles`, avec le relâchement pour l'appui de 2 s).
 - « Retirer les touches FMT » (`Nettoyage.cs`) : sauvegarde, « Annuler » de FMT (touches LMU ajoutées par FMT), délie ce
   qui vise « FMT - » dans le Control Mapper, oublie les boutons réutilisés. Les « EM - … » et les touches du pilote restent.
+- Menu « Mes boutons » (page Profils, maquette `maquettes/mes-boutons/`) : « Repartir de zéro » (`Repartir.cs`) sauvegarde
+  (fichiers de touches de LMU, liaisons du Control Mapper, ce que FMT avait préparé, dans
+  `%LOCALAPPDATA%\EnduranceManager\Sauvegardes boutons\<date>`), efface dans LMU toutes les touches manette sauf
+  direction, accélérateur, frein, embrayage, palettes et axes, efface les liaisons du Control Mapper (sauf celles qui mènent
+  à une touche gardée), puis lance « Préparer LMU ». Le pilote relie ensuite lui-même ses boutons, son rotary et son Fn
+  dans le Control Mapper (le module n'y touche jamais). « Restaurer » remet la dernière sauvegarde (LMU fermé).
+  À vérifier en vrai : `unsetConfigControl` avec `Slot 0` pour la colonne Principal (supposé ; ce qui reste est signalé
+  et rien n'est recréé), et les noms des commandes gardées dans LMU (`Repartir.Keep`).
 - **Rien d'automatique.** Seulement des rappels : profil pas actif (valeurs différentes) et humidité de la piste
   (plages par défaut : Sec < 5 %, Inter 5–12 %, Pluie > 12 %).
 - Écran simplifié le 19/11/2026 : la voiture + 3 cartes (valeurs, Mémoriser, Appliquer) + une ligne sur les boutons.

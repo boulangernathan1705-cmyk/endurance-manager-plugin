@@ -130,6 +130,7 @@ namespace EnduranceManager.SimHub
                 active,
                 wet = p.Wetness,
                 notes = lines,
+                buttons = Repartir.State(plugin),
                 slots = list.Select((profile, i) => new
                 {
                     i,
@@ -166,6 +167,8 @@ namespace EnduranceManager.SimHub
                     case "popup": plugin.PlacePopup(); return Ok();
                     case "rename": return Rename(i, (string)a["name"]);
                     case "cleanup": return Nettoyage.Run(plugin);
+                    case "zero": return Repartir.Zero(plugin);
+                    case "restore": return Repartir.Restore(plugin);
                     case "track": { string t = (string)a["track"]; viewTrack = string.IsNullOrEmpty(t) ? null : t; return Ok(); }
                     case "memorise": System.Threading.ThreadPool.QueueUserWorkItem(_ => plugin.Profiles.Memorise(i)); return Ok();
                     case "apply": plugin.Profiles.Apply(i); return Ok();

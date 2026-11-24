@@ -74,7 +74,7 @@ namespace EnduranceManager.SimHub
 
         static int Depth(Type type) { int depth = 0; for (; type != null; type = type.BaseType) depth++; return depth; }
 
-        static object Member(object target, string name)
+        internal static object Member(object target, string name)
         {
             if (target == null) return null;
             var type = target.GetType();
@@ -85,7 +85,7 @@ namespace EnduranceManager.SimHub
                 .OrderByDescending(p => Depth(p.DeclaringType)).FirstOrDefault()?.GetValue(target);
         }
 
-        static void Set(object target, string name, object value)
+        internal static void Set(object target, string name, object value)
         {
             var type = target.GetType();
             const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;

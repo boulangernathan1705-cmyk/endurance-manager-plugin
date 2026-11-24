@@ -219,6 +219,28 @@ function save(k, v) { try { localStorage.setItem('em.' + k, v); } catch {} }
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const $ = (id) => document.getElementById(id);
 
+// Menu « Mes boutons » (page Profils) : Repartir de zéro, Retirer les touches FMT. Relier ses boutons, son rotary et son Fn
+// reste au pilote, dans le Control Mapper.
+function mesBoutons(b) {
+  const two = (arm, go, no, label, confirm) => `<div style="display:flex;gap:10px;flex-wrap:wrap">${UI[arm]
+    ? `<button type="button" class="btn p" ${go}${b.busy ? ' disabled' : ''}>${confirm}</button> <button type="button" class="btn" ${no}>Annuler</button>`
+    : `<button type="button" class="btn${go === 'data-zero' ? ' p' : ''}" ${go}${b.busy ? ' disabled' : ''}>${label}</button>`}</div>`;
+  const box = (title, color, items) => `<div style="background:rgba(255,255,255,.03);border-radius:8px;padding:10px 14px;flex:1;min-width:220px"><b style="color:${color}">${title}</b><ul class="mut small" style="margin:6px 0 0;padding-left:18px">${items.map((i) => `<li>${i}</li>`).join('')}</ul></div>`;
+  return `<section class="card stack"><h2>Mes boutons</h2>
+    <p class="mut small">Relier les boutons du volant, le rotary et le Fn, c'est toi qui le fais dans le Control Mapper de SimHub. Le module n'y touche pas.</p>
+    ${b.status ? `<p class="note">${esc(b.status)}</p>` : ''}
+    <div class="stack" style="gap:8px"><h3 style="margin:6px 0 0">1. Repartir de zéro</h3>
+      <p class="mut small">À faire une fois, ou quand plus rien ne marche. LMU doit être ouvert, au menu principal.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">${box('Garder', 'var(--ok)', ['Direction, accélérateur, frein, embrayage', 'Palettes, et tout ce qui est sur un axe', 'Le clavier de LMU'])}${box('Effacer puis recréer', 'var(--danger-text)', ['Les autres touches manette de LMU', 'Les liaisons du Control Mapper'])}</div>
+      <ol class="mut small" style="margin:4px 0;padding-left:20px"><li><b>Sauvegarder</b> tes touches LMU et ton Control Mapper.</li><li><b>Effacer</b> le reste dans LMU et le Control Mapper.</li><li><b>Recréer toutes les commandes</b> cochées dans Black box sur boutons (mêmes noms chez tous les pilotes).</li><li><b>Relier tes boutons</b> dans le Control Mapper, comme d'habitude.</li></ol>
+      ${two('zeroArm', 'data-zero', 'data-zerono', 'Repartir de zéro', 'Confirmer : repartir de zéro')}
+      ${b.backup ? `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">${UI.restoreArm ? `<button type="button" class="btn" data-restore>Confirmer : restaurer</button> <button type="button" class="btn" data-restoreno>Annuler</button>` : `<button type="button" class="btn" data-restore${b.busy ? ' disabled' : ''}>Restaurer la sauvegarde du ${esc(b.backup)}</button>`}<span class="mut small">LMU fermé.</span></div>` : ''}</div>
+    <div class="stack" style="gap:8px"><h3 style="margin:10px 0 0">2. Retirer les touches FMT</h3>
+      <p class="mut small">Retire seulement ce que FMT a ajouté, dans LMU et le Control Mapper. Tes touches et tes « EM - Profil » restent. Une sauvegarde est faite avant.</p>
+      ${two('cleanArm', 'data-cleanup', 'data-cleanno', 'Retirer les touches FMT', 'Confirmer : retirer les touches FMT')}</div>
+  </section>`;
+}
+
 async function poll() {
   if (!document.hidden) {
     try {
@@ -378,10 +400,7 @@ const PAGES = {
           <div style="font-size:13px;color:var(--accent);margin-top:10px">Rappuie sur le même bouton pour confirmer.</div>
           <div style="height:4px;background:#29454a;border-radius:2px;margin-top:8px"><div style="height:4px;width:62%;background:var(--accent);border-radius:2px"></div></div></div>
       </section>
-      <section class="card stack"><h2>Repartir propre</h2>
-        <p class="mut">Retire seulement ce que FMT a ajouté : ses boutons dans le Control Mapper et ses touches dans LMU. Tes propres touches, ton volant et tes boutons « EM - Profil » restent. Une sauvegarde est faite avant.</p>
-        <p class="mut small">Ensuite : « Préparer LMU » dans Black box sur boutons. Il reprend tes touches déjà réglées dans LMU et n'ajoute que celles qui manquent.</p>
-        <div><button type="button" class="btn" data-cleanup>${UI.cleanArm ? 'Confirmer : retirer les touches FMT' : 'Retirer les touches FMT'}</button>${UI.cleanArm ? ' <button type="button" class="btn" data-cleanno>Annuler</button>' : ''}</div></section></div>`;
+      ${mesBoutons(p.buttons || {})}</div>`;
   },
 
   bb() {
@@ -581,6 +600,10 @@ document.addEventListener('click', async (e) => {
   if (d.laps) { S.laps = Math.max(1, Math.min(60, S.laps + +d.laps)); render(); act({ do: 'laps', value: S.laps }, true); return; }
   if (d.cleanup !== undefined) { if (!UI.cleanArm) { UI.cleanArm = true; render(); return; } UI.cleanArm = false; render(); act({ do: 'cleanup' }); return; }
   if (d.cleanno !== undefined) { UI.cleanArm = false; render(); return; }
+  if (d.zero !== undefined) { if (!UI.zeroArm) { UI.zeroArm = true; render(); return; } UI.zeroArm = false; render(); act({ do: 'zero' }); return; }
+  if (d.zerono !== undefined) { UI.zeroArm = false; render(); return; }
+  if (d.restore !== undefined) { if (!UI.restoreArm) { UI.restoreArm = true; render(); return; } UI.restoreArm = false; render(); act({ do: 'restore' }); return; }
+  if (d.restoreno !== undefined) { UI.restoreArm = false; render(); return; }
   if (d.memorise) { act({ do: 'memorise', i: +d.memorise }, true); toast('Mémorisation…'); return; }
   if (d.apply) { act({ do: 'apply', i: +d.apply }, true); return; }
   if (d.pit) { act({ do: 'pit', i: +d.pit, key: d.key, on: t.checked }, true); return; }

@@ -39,6 +39,10 @@ namespace EnduranceManager.SimHub
 
         public CompanionPage(Companion companion) { this.companion = companion; }
 
+        // « Préparer LMU » seen from elsewhere (Repartir.cs, menu « Mes boutons ») : running, and its last line.
+        public bool Preparing { get { lock (gate) return busy; } }
+        public string PrepareSummary { get { lock (gate) return summary; } }
+
         object P => companion.Instance;
 
         // ── Reflection, kept to the names FMT companion 0.5 uses ────────────────────────────────────────────────────
