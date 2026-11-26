@@ -1,5 +1,5 @@
 {
-  "version": "0.2.4",
+  "version": "0.2.5",
   "changes": [
     {
       "type": "mieux",
@@ -14,6 +14,11 @@
     {
       "type": "mieux",
       "text": "Stream Deck : valeurs électroniques en direct issues du plugin (TC, ABS, cartographie et autres réglages).",
+      "page": "bb"
+    },
+    {
+      "type": "mieux",
+      "text": "Cartographie : puissance électrique ou mode Course/Safety Car suivant les réglages disponibles ; profil Stream Deck Racing et pénalités.",
       "page": "bb"
     }
   ]
