@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  # Le dépôt du site (public) : son shared/live.mjs fait tourner le salon du mur dans le rejeu (tests/room-bridge.mjs).
+  # Le dépôt du site : son shared/live.mjs fait tourner le salon du mur dans le rejeu (tests/room-bridge.mjs).
   SITE_REPO: boulangernathan1705-cmyk/app-endurance-manager
   SITE_REF: dev
 
@@ -60,9 +60,17 @@ jobs:
       REPLAY_OUT: ${{ github.workspace }}\replay-out
     steps:
       - uses: actions/checkout@v4
+      - name: Vérifier l’accès CI au dépôt du site
+        shell: pwsh
+        env:
+          SITE_READ_TOKEN: ${{ secrets.SITE_READ_TOKEN || secrets.SITE_TOKEN }}
+        run: |
+          if (-not $env:SITE_READ_TOKEN) { throw 'Configurer SITE_READ_TOKEN ou SITE_TOKEN pour le rejeu inter-dépôts.' }
       - uses: actions/checkout@v4
         with:
           repository: ${{ env.SITE_REPO }}
+          token: ${{ secrets.SITE_READ_TOKEN || secrets.SITE_TOKEN }}
+          persist-credentials: false
           ref: ${{ env.SITE_REF }}
           path: site
           sparse-checkout: shared
@@ -192,7 +200,9 @@ jobs:
           }
           $open = gh pr list -R $env:SITE_REPO --head $branch --state open --json number --jq length
           if ($open -and $open -ne '0') { "PR du site déjà ouverte pour la $env:VERSION."; exit 0 }
-          git clone --depth 1 --branch dev "https://x-access-token:$env:GH_TOKEN@github.com/$env:SITE_REPO.git" "$env:RUNNER_TEMP/livraison"
+          gh auth setup-git --hostname github.com
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git clone --depth 1 --branch dev "https://github.com/$env:SITE_REPO.git" "$env:RUNNER_TEMP/livraison"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $root = $env:GITHUB_WORKSPACE
           Set-Location "$env:RUNNER_TEMP/livraison"
