@@ -512,6 +512,7 @@ namespace EnduranceManager.SimHub
 
         void ReadGame()
         {
+            LinkCode sessionDestination = null;
             var recorder = new Recorder(() => DateTime.Now, session =>
             {
                 laps += session.Laps.Count;
@@ -520,7 +521,8 @@ namespace EnduranceManager.SimHub
                 session.Service = api.Service;
                 session.Game = api.Game;
                 // Télémétrie Mémo off: the session is not kept (the other modules still read the game).
-                if (Settings.Enabled) try { uploader.Save(session); } catch { }
+                if (Settings.Enabled) try { uploader.Save(session, sessionDestination); }
+                catch (Exception e) { EnduranceManager.SimHub.Report.Error("Synchronisation mémo", e); }
             }, () => api.Setup, api.CurrentLight);
             var buffer = new byte[LmuMemory.Size];
             while (running)
@@ -571,7 +573,9 @@ namespace EnduranceManager.SimHub
                             frozen = ok && sample.Realtime && sample.ET == lastEt ? frozen + 1 : 0;
                             lastEt = sample.ET;
                             bool driving = ok && sample.Realtime && frozen < 50;
+                            var previousSession = recorder.Current;
                             recorder.Feed(sample, driving);
+                            if (!ReferenceEquals(previousSession, recorder.Current)) sessionDestination = Link;
                             latest = driving ? (object)sample : null;
                             if (ok && Settings.Profiles) Profiles.Seen(sample);
                             // Each car's pit lane and our optimal and predicted lap (Computed.cs), ten times a second, while
@@ -709,7 +713,7 @@ namespace EnduranceManager.SimHub
             Thread.Sleep(10000);
             while (running)
             {
-                if (Settings.Enabled && GameState != "track") try { uploader.SendAll(Link); } catch { }
+                if (Settings.Enabled && GameState != "track") try { uploader.SendAll(Link, () => Link); } catch { }
                 if (GameState != "track") try { EnduranceManager.SimHub.Report.SendAll(Link); } catch { }
                 // A newer version on the site, looked for once an hour: offered on the plugin's screen.
                 updater.Check(Link);
