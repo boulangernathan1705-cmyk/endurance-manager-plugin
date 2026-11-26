@@ -135,7 +135,7 @@ namespace EnduranceManager.SimHub
         bool observed;
         int? issuedLap;
         string knownKind;
-        public void Reset() { observed = false; issuedLap = null; knownKind = null; View = new Info(); }
+        public void Reset() { if (!observed && View.Type == "—") return; observed = false; issuedLap = null; knownKind = null; View = new Info(); }
         public void Observe(Sample s, Standings.Line line)
         {
             int count = s.OutstandingPenalties;

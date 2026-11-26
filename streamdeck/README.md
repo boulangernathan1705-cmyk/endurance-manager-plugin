@@ -1,4 +1,4 @@
-# Profil Stream Deck « Endurance Manager · FMT »
+# Profil Stream Deck « Endurance Manager · Racing »
 
 Stream Deck MK.2 (15 touches). Maquette validée par Nathan le 24/11/2026 : https://claude.ai/artifact/Gi7MJDFribekYZYFzec85g
 
@@ -15,8 +15,12 @@ Stream Deck MK.2 (15 touches). Maquette validée par Nathan le 24/11/2026 : http
 ## Ce qu'il montre
 
 - Accueil : les 3 profils (vert = actif, « conseillé » quand l'humidité de la piste le demande), demande d'arrêt,
-  limiteur, phares, essuie-glace, freins, réparations, appel de phares, et les dossiers Voiture, Stand, Pneus, Caméra,
+  limiteur, phares, essuie-glace, pénalités, réparations, appel de phares, et les dossiers Voiture, Stand, Pneus, Caméra,
   Poste.
+- Identité bleu nuit, or EM et l'emblème Discord développeur (image fournie le 26/11/2026).
+- Électronique : Adhérence (TC, coupure, glisse, ABS), Châssis (ARB, répartition, migration), Moteur (cartographie, recharge), dans l'ordre LMU.
+- Pénalités : type SG/DT/TEMPS, échéance exacte issue du menu STOP/GO si disponible, sinon estimation sur trois tours observés (préfixe ~). Aucune échéance inventée si le plugin démarre avec une pénalité active. Appui = effectuer/reporter le Stop & Go. Les freins restent sur la page Stands. Le décompte natif et la cartographie thermique restent à confirmer en jeu.
+- Phares : ON/OFF ; le mode auto/manuel doit être vérifié en jeu. Essuie-glaces : OFF/AUTO/LENT/RAPIDE.
 - Voiture et Stand : un réglage par colonne, plus en haut, valeur en direct au milieu, moins en bas.
 - Une couleur par famille : Voiture rouge, Stand orange, Pneus jaune, Poste vert, Caméra bleu.
 - Toutes les touches de réglage sont des boutons dynamiques de SimHub : image SVG, valeur en direct en bas, vert quand

@@ -20,6 +20,11 @@
       "type": "mieux",
       "text": "Cartographie : puissance électrique ou mode Course/Safety Car suivant les réglages disponibles ; profil Stream Deck Racing et pénalités.",
       "page": "bb"
+    },
+    {
+      "type": "mieux",
+      "text": "Pénalités : tours restants depuis le menu LMU quand disponibles ; estimation sur trois tours clairement signalée en secours. Identité Racing et logo Discord.",
+      "page": "bb"
     }
   ]
 }
