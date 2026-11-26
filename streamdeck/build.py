@@ -25,8 +25,8 @@ import cairosvg
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "Endurance Manager FMT.streamDeckProfile")
 
-FAM = {"car": "#FF5A4E", "stand": "#FF9A2E", "tyre": "#FFD23F", "post": "#5CC46A", "cam": "#3CC4FF", "w": "#EEF3F2"}
-ACTIVE = ("#6FE496", "#3CB866")
+FAM = {"car": "#EF5965", "stand": "#FFAD55", "tyre": "#ECD16C", "post": "#64C9A5", "cam": "#5FBEFA", "w": "#DFBD82", "auto": "#43C9ED", "danger": "#FF5D6B"}
+ACTIVE = ("#194635", "#102F26")
 
 I = {
     "sec": "M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8",
@@ -57,6 +57,28 @@ I = {
     "mirror": "M3 8h18v8H3zM12 16v4M8 20h8",
     "replay": "M4 12a8 8 0 1 0 2.3-5.7M4 4v4h4M10 9l5 3-5 3z",
     "vr": "M3 8h18v8h-6l-3-3-3 3H3z",
+    "chip": "M6 6h12v12H6zM9 9h6v6H9zM9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4",
+    "next": "M3 12h18M14 5l7 7-7 7",
+    "left": "M21 12H3M10 5l-7 7 7 7",
+    "right": "M3 12h18M14 5l7 7-7 7",
+    "steer": "M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20M3 9l9 4 9-4M12 13v9",
+    "onboard": "M2 7h20l-3 13H5zM8 7l2-4h4l2 4M8 17q4-8 8 0",
+    "chase": "M2 18l2-7 4-5h8l4 5 2 7v3h-4v-2H6v2H2zM5 13h5M14 13h5",
+    "broadcast": "M2 7h14v13H2zM16 11l6-4v13l-6-4M4 3q5-4 10 0",
+    "orbit": "M17 4a9 9 0 1 0 4 12M17 1v6h6M8 9h8v6H8z",
+    "move": "M12 2v20M2 12h20M9 5l3-3 3 3M19 9l3 3-3 3M9 19l3 3 3-3M5 9l-3 3 3 3",
+    "target": "M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20M12 5v4M12 15v4M5 12h4M15 12h4",
+    "play": "M6 3l15 9-15 9z",
+    "reverse": "M18 3L3 12l15 9z",
+    "square": "M5 5h14v14H5z",
+    "pause": "M6 4h4v16H6zM14 4h4v16h-4z",
+    "rewind": "M12 5L2 12l10 7zM22 5l-10 7 10 7z",
+    "forward": "M2 5l10 7-10 7zM12 5l10 7-10 7z",
+    "slow": "M3 5l11 7-11 7zM19 5v14",
+    "reset": "M4 8a9 9 0 1 1 0 9M4 2v7h7",
+    "clock": "M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20M12 6v6l5 3",
+    "width": "M2 12h20M7 7l-5 5 5 5M17 7l5 5-5 5",
+    "none": "M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20M5 5l14 14",
 }
 
 
@@ -67,31 +89,33 @@ def esc(t):
 def svg_key(icon=None, label="", value="", fam="w", kind="", live=False, big=False):
     """One key, 144 × 144. live: the bottom third stays free for the live title Stream Deck draws over the image."""
     color = FAM.get(fam, fam)
-    bg_top, bg_bot, border = "#1C2427", "#10171A", "#2B3236"
-    text, muted = "#FFFFFF", "#A9B4B8"
+    bg_top, bg_bot, border = "#14273A", "#0C1928", "#435266"
+    text, muted = "#F4F7FA", "#C2CFDB"
     parts = []
     if kind == "active":
-        bg_top, bg_bot, border = ACTIVE[0], ACTIVE[1], "#8CF0AD"
-        color, text, muted = "#062312", "#04170B", "#0A3A1D"
+        bg_top, bg_bot, border = ACTIVE[0], ACTIVE[1], "#57DFA2"
+        color, text, muted = "#57DFA2", "#F4F7FA", "#C2E5D7"
     if kind == "pm":
-        bg_top, bg_bot = "#151C1F", "#0B1012"
+        bg_top, bg_bot = "#142333", "#0C1928"
     if kind == "back":
-        bg_top, bg_bot = "#273034", "#171E21"
+        bg_top, bg_bot = "#14273A", "#0C1928"
     if kind == "empty":
         return ('<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144"><rect width="144" height="144" fill="#0A0D0F"/></svg>')
     parts.append(f'<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{bg_top}"/>'
                  f'<stop offset="1" stop-color="{bg_bot}"/></linearGradient></defs>')
     parts.append('<rect width="144" height="144" rx="12" fill="url(#g)"/>')
     parts.append(f'<rect x="2" y="2" width="140" height="140" rx="12" fill="none" stroke="{border}" stroke-width="2"/>')
+    parts.append('<path d="M11 30V17Q11 11 17 11H36" fill="none" stroke="#DFBD82" stroke-width="2"/>')
     if kind == "folder":
-        parts.append(f'<path d="M0 0h34L0 34z" fill="{color}"/>')
         parts.append(f'<path d="M122 120l8 8-8 8" fill="none" stroke="{color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>')
-    if kind not in ("pm", "back", "active"):
+    if kind != "empty":
         parts.append(f'<rect x="22" y="130" width="100" height="5" rx="2.5" fill="{color}"/>')
     # Layout: icon, label, value (static), or icon + label with the live title below.
     if kind == "pm":
         symbol = "+" if icon == "up" else "−"
-        parts.append(f'<text x="72" y="98" font-family="Arial, Liberation Sans" font-weight="bold" font-size="78" fill="{color}" text-anchor="middle">{symbol}</text>')
+        parts.append(f'<rect x="37" y="43" width="70" height="70" rx="11" fill="#1D2532" stroke="{color}" stroke-width="1.6"/>')
+        parts.append(f'<text x="72" y="96" font-family="Arial, Liberation Sans" font-weight="bold" font-size="58" fill="{color}" text-anchor="middle">{symbol}</text>')
+        parts.append(f'<text x="72" y="31" font-family="Arial, Liberation Sans" font-weight="bold" font-size="{min(17, max(11, int(116 / max(1, len(label)) / 0.72)))}" fill="{muted}" text-anchor="middle">{esc(label.upper())}</text>')
     else:
         size = 58 if not (live or value) else (32 if "\n" in value else 40)
         if big and not icon:
@@ -173,7 +197,7 @@ def dynamic(key, off_svg, r="", formula="", on_svg=None, on_when="", size=26, sa
             first["RichLabel"] = [{"Formula": {"Expression": formula}, "Format": 0, "Size": 100.0}]
         states = [first]
         if on_svg and on_when:
-            on_style = {"Overrides": ["Image", "TextColor", "FontSize", "TextMarginBottom", "LabelVerticalAlignment"], "Image": b64svg(on_svg), "TextColor": "#FF04170B", "FontSize": size, "TextMarginBottom": 26 if formula else 10, "LabelVerticalAlignment": 2}
+            on_style = {"Overrides": ["Image", "TextColor", "FontSize", "TextMarginBottom", "LabelVerticalAlignment"], "Image": b64svg(on_svg), "TextColor": "#FFF4F7FA", "FontSize": size, "TextMarginBottom": 26 if formula else 10, "LabelVerticalAlignment": 2}
             active = {"actionMode": 0, "labelMode": 3 if formula else 2, "iconMode": 0, "HasActionOverrides": False,
                       "ButtonRenderer": {"IconStyle": on_style},
                       "Uid": sid(key, "1"), "StateTitle": "Button state", "DisplayStateTitle": "Button state",
@@ -231,17 +255,25 @@ def back():
     def make(p):
         return {"Plugin": {"UUID": "com.elgato.streamdeck.profile.backtoparent", "Name": "Open Parent Folder", "Version": "1.0"},
                 "Resources": None, "Settings": {}, "State": 0, "Name": "Retour",
-                "States": [state(p.image(svg_key("back", "", "Retour", "w", "back")))], "LinkedTitle": False,
+                "States": [state(p.image(svg_key("back", "EM", "Retour", "w", "back")))], "LinkedTitle": False,
                 "UUID": "com.elgato.streamdeck.profile.backtoparent", "ActionID": "retour"}
     return make
 
 
+def step_label(r):
+    name = r.split(" - ")[-1]
+    for prefix, label in (("Coupure TC", "COUPURE"), ("TC glisse", "GLISSE"), ("Antiroulis avant", "ARB AV"), ("Antiroulis arrière", "ARB AR"), ("Carto moteur", "CARTO"), ("Régénération", "RECHARGE"), ("Répartition", "RÉPARTITION"), ("Migration", "MIGRATION"), ("Énergie", "RAVITAIL."), ("Pressions", "PRESSION"), ("Ratio", "RATIO"), ("Aileron", "AILERON")):
+        if name.startswith(prefix):
+            return label
+    return name.split()[0]
+
+
 def plus(r, fam):
-    return role(r, "up", "", "", fam, "pm")
+    return role(r, "up", step_label(r), "", fam, "pm")
 
 
 def minus(r, fam):
-    return role(r, "down", "", "", fam, "pm")
+    return role(r, "down", step_label(r), "", fam, "pm")
 
 
 EM = "EnduranceManagerPlugin."
@@ -267,6 +299,13 @@ def refuel_key():
     return live("", None, "Ravitaillement", "stand", formula_override=formula, size=18, sample="85 %")
 
 
+def penalty_key():
+    sg, dt, tp, total = [EM + "Race.Player.Penalties" + x for x in (".SG", ".DT", ".TIME", "")]
+    serve = FMT + "Pit.StopGo.Serve"
+    formula = f"if(isnull([{sg}],-1) > 0, if([{serve}] = 1, 'SG OUI', if([{serve}] = 0, 'SG NON', 'SG')), if(isnull([{dt}],-1) > 0, 'DT', if(isnull([{tp}],-1) > 0, 'TEMPS', if(isnull([{total}],-1) = 0, 'RAS', if(isnull([{total}],-1) > 0, 'PENA', '—')))))"
+    return live("", None, "Pénalités", "danger", r=S + "Stop & Go effectuer ou reporter", formula_override=formula, size=12, sample="SG NON")
+
+
 def tag(text, fam):
     """A key that shows only a label (a value LMU does not give SimHub)."""
     return live("", None, text, fam)
@@ -278,40 +317,47 @@ PAGES = {
         "0,0": profile_key(1, "sec"), "1,0": profile_key(2, "inter"), "2,0": profile_key(3, "pluie"),
         "4,0": role(V + "Demande d'arrêt", "stop", "Demande", "Arrêt", "car"),
         "3,0": live(GD + "PitLimiterOn", "lim", "Limiteur", "car", r=V + "Limiteur", state_prop=GD + "PitLimiterOn"),
-        "0,1": folder("Voiture", "car", "Voiture", "", "car"),
-        "1,1": folder("Stand", "stand", "Stand", "", "stand"),
+        "0,1": folder("Voiture", "chip", "Électronique", "", "car"),
+        "1,1": folder("Stand", "stand", "Stands", "", "stand"),
         "2,1": folder("Pneus", "tyre", "Pneus", "", "tyre"),
         "3,1": folder("Caméra", "cam", "Caméra", "", "cam"),
         "4,1": folder("Poste", "seat", "Poste", "", "post"),
         "0,2": live("", None, "Phares", "car", r=V + "Phares", state_prop=GD + "HeadlightsActive", active_when_on=True, formula_override=f"if(isnull([{GD}HeadlightsActive],-1) = -1, '—', if([{GD}HeadlightsActive], 'ON', 'OFF'))", size=16, sample="ON"),
         "1,2": live("", None, "Essuie-glace", "car", r=V + "Essuie-glace", state_prop=GD + "WipersActive", active_when_on=True, formula_override=f"if(isnull([{EM}Voiture.EssuieGlaces],-1) = 0, 'OFF', if([{EM}Voiture.EssuieGlaces] = 1, 'AUTO', if([{EM}Voiture.EssuieGlaces] = 2, 'LENT', if([{EM}Voiture.EssuieGlaces] = 3, 'RAPIDE', '—'))))", size=14, sample="AUTO"),
-        "2,2": live(FMT + "Pit.Brakes.Short", "brake", "Freins", "stand", r=S + "Freins changer ou garder", state_prop=FMT + "Pit.Brakes.Replace", size=12),
+        "2,2": penalty_key(),
         "3,2": live(FMT + "Pit.Damage.Short", "repair", "Réparations", "stand", r=S + "Réparations choix suivant en boucle", size=12),
         "4,2": role(V + "Appel de phares", "flash", "Appel", "de phares", "car"),
     },
     "Voiture": {
         "0,0": back(), "1,0": plus(V + "TC suivant", "car"), "2,0": plus(V + "Coupure TC suivant", "car"),
-        "3,0": plus(V + "ABS suivant", "car"), "4,0": plus(V + "Carto moteur suivante", "car"),
-        "0,2": folder("Voiture suite", "more", "Suite", "", "car"),
-        "1,1": live(EM + "Voiture.Reglages.TC", None, "TC", "car", size=25), "2,1": live(EM + "Voiture.Reglages.CoupureTC", None, "Coupure TC", "car", size=25),
-        "3,1": live(EM + "Voiture.Reglages.ABS", None, "ABS", "car", size=25), "4,1": live(EM + "Voiture.Reglages.Carto", None, "Carto", "car", size=25),
-        "0,1": live(EM + "Profils.Actif", "sec", "Profil", "w", size=15),
+        "3,0": plus(V + "TC glisse suivant", "car"), "4,0": plus(V + "ABS suivant", "car"),
+        "0,1": folder("Voiture suite", "next", "Châssis", "", "w"),
+        "1,1": live(EM + "Voiture.Reglages.TC", None, "TC", "car", size=25),
+        "2,1": live(EM + "Voiture.Reglages.CoupureTC", None, "TC coupure", "car", size=25),
+        "3,1": live(EM + "Voiture.Reglages.GlisseTC", None, "TC glisse", "car", size=25),
+        "4,1": live(EM + "Voiture.Reglages.ABS", None, "ABS", "car", size=25),
+        "0,2": live(EM + "Profils.Actif", None, "Profil actif", "w", size=15),
         "1,2": minus(V + "TC précédent", "car"), "2,2": minus(V + "Coupure TC précédent", "car"),
-        "3,2": minus(V + "ABS précédent", "car"), "4,2": minus(V + "Carto moteur précédente", "car"),
+        "3,2": minus(V + "TC glisse précédent", "car"), "4,2": minus(V + "ABS précédent", "car"),
     },
     "Voiture suite": {
-        "0,0": back(), "1,0": plus(V + "TC glisse suivant", "car"), "2,0": plus(V + "Régénération suivante", "car"),
+        "0,0": back(), "1,0": plus(V + "Antiroulis avant suivant", "car"), "2,0": plus(V + "Antiroulis arrière suivant", "car"),
         "3,0": plus(V + "Répartition vers l'avant", "car"), "4,0": plus(V + "Migration vers l'avant", "car"),
-        "0,1": folder("Antiroulis", "car", "Antiroulis", "Avant, arrière", "car"),
-        "1,1": live(EM + "Voiture.Reglages.GlisseTC", None, "TC glisse", "car", size=25), "2,1": live(EM + "Voiture.Reglages.Regen", None, "Régén", "car", size=17),
-        "3,1": live(EM + "Voiture.Reglages.Repartition", None, "Répartition", "car", size=17), "4,1": live(EM + "Voiture.Reglages.Migration", None, "Migration", "car", size=25),
-        "1,2": minus(V + "TC glisse précédent", "car"), "2,2": minus(V + "Régénération précédente", "car"),
+        "0,1": folder("Antiroulis", "next", "Moteur", "", "w"),
+        "1,1": live(EM + "Voiture.Reglages.AntiroulisAV", None, "ARB AV", "car", size=17),
+        "2,1": live(EM + "Voiture.Reglages.AntiroulisAR", None, "ARB AR", "car", size=17),
+        "3,1": live(EM + "Voiture.Reglages.Repartition", None, "Répartition", "car", size=17),
+        "4,1": live(EM + "Voiture.Reglages.Migration", None, "Migration", "car", size=17),
+        "0,2": live(EM + "Profils.Actif", None, "Profil actif", "w", size=15),
+        "1,2": minus(V + "Antiroulis avant précédent", "car"), "2,2": minus(V + "Antiroulis arrière précédent", "car"),
         "3,2": minus(V + "Répartition vers l'arrière", "car"), "4,2": minus(V + "Migration vers l'arrière", "car"),
     },
     "Antiroulis": {
-        "0,0": back(), "1,0": plus(V + "Antiroulis avant suivant", "car"), "2,0": plus(V + "Antiroulis arrière suivant", "car"),
-        "1,1": live(EM + "Voiture.Reglages.AntiroulisAV", None, "Antiroulis AV", "car", size=25), "2,1": live(EM + "Voiture.Reglages.AntiroulisAR", None, "Antiroulis AR", "car", size=25),
-        "1,2": minus(V + "Antiroulis avant précédent", "car"), "2,2": minus(V + "Antiroulis arrière précédent", "car"),
+        "0,0": back(), "1,0": plus(V + "Carto moteur suivante", "car"), "2,0": plus(V + "Régénération suivante", "car"),
+        "1,1": live(EM + "Voiture.Reglages.Carto", None, "Carto", "car", size=16),
+        "2,1": live(EM + "Voiture.Reglages.Regen", None, "Recharge", "car", size=16),
+        "0,2": live(EM + "Profils.Actif", None, "Profil actif", "w", size=15),
+        "1,2": minus(V + "Carto moteur précédente", "car"), "2,2": minus(V + "Régénération précédente", "car"),
     },
     "Stand": {
         "0,0": back(), "1,0": plus(S + "Énergie suivante", "stand"), "2,0": plus(S + "Ratio suivant", "stand"),
@@ -335,7 +381,7 @@ PAGES = {
         "2,1": live(FMT + "Pit.Tyre.RR.Badge", "tyre", "AR droit", "tyre", size=16, r=S + "Pneu arrière droit gomme suivante en boucle"),
         "4,0": role(S + "Pneus 4 roues même gomme neuve", "four", "4 roues", "Neufs même\ngomme", "tyre"),
         "4,1": live(FMT + "Pit.Tyres.Badge", "four", "4 roues", "tyre", size=16, r=S + "Pneus 4 roues gomme suivante en boucle"),
-        "4,2": role(S + "Pneus 4 roues aucun changement", "four", "4 roues", "Aucun\nchangement", "tyre"),
+        "4,2": role(S + "Pneus 4 roues aucun changement", "none", "4 roues", "Aucun\nchangement", "tyre"),
     },
     "Aéro": {
         "0,0": back(), "1,0": plus(S + "Aileron suivant", "stand"),
@@ -345,14 +391,14 @@ PAGES = {
         "3,2": live(FMT + "Pit.RBRAKEDUCT", "brake", "Écopes AR", "stand", r=S + "Écopes arrière suivantes en boucle"),
     },
     "Caméra": {
-        "0,0": back(), "1,0": role(C + "Conduite", "cam", "Conduite", "", "cam"), "2,0": role(C + "Embarquée", "cam", "Embarquée", "", "cam"),
-        "3,0": role(C + "Poursuite", "cam", "Poursuite", "", "cam"), "4,0": role(C + "Spectateur", "cam", "Spectateur", "", "cam"),
-        "0,1": role(C + "Swingman", "cam", "Swingman", "", "cam"), "1,1": role(C + "Voiture précédente", "up", "Voiture", "précédente", "cam"),
+        "0,0": back(), "1,0": role(C + "Conduite", "steer", "Conduite", "", "cam"), "2,0": role(C + "Embarquée", "onboard", "Embarquée", "", "cam"),
+        "3,0": role(C + "Poursuite", "chase", "Poursuite", "", "cam"), "4,0": role(C + "Spectateur", "broadcast", "Spectateur", "", "cam"),
+        "0,1": role(C + "Swingman", "orbit", "Swingman", "", "cam"), "1,1": role(C + "Voiture précédente", "up", "Voiture", "précédente", "cam"),
         "2,1": role(C + "Revenir à ma voiture", "car", "Ma voiture", "", "cam"), "3,1": role(C + "Voiture suivante", "down", "Voiture", "suivante", "cam"),
         "4,1": role(C + "Changer de vue", "cam", "Changer", "de vue", "cam"),
         "0,2": role(C + "Zoom TV -", "down", "Zoom TV", "−", "cam"), "1,2": role(C + "Zoom TV +", "up", "Zoom TV", "+", "cam"),
-        "2,2": folder("Swingman", "cam", "Swing", "", "cam"), "3,2": folder("Caméra libre", "cam", "Libre", "", "cam"),
-        "4,2": folder("Replay", "replay", "Replay", "", "cam"),
+        "2,2": folder("Swingman", "orbit", "Swing", "", "cam"), "3,2": folder("Caméra libre", "move", "Libre", "", "cam"),
+        "4,2": folder("Replay", "play", "Replay", "", "cam"),
     },
     "Swingman": {
         "0,0": back(), "2,0": role(C + "Swingman haut", "up", "Haut", "", "cam"), "2,2": role(C + "Swingman bas", "down", "Bas", "", "cam"),
@@ -372,7 +418,7 @@ PAGES = {
         "4,0": role(C + "Caméra libre incliner vers le haut", None, "Incliner", "haut", "cam"),
         "4,1": role(C + "Caméra libre incliner vers le bas", None, "Incliner", "bas", "cam"),
         "1,2": role(C + "Caméra libre recentrer", None, "Recentrer", "", "cam"), "3,2": role(C + "Caméra libre lente", None, "Lente", "", "cam"),
-        "4,2": folder("Objectif", "cam", "Objectif", "", "cam"),
+        "4,2": folder("Objectif", "target", "Objectif", "", "cam"),
     },
     "Objectif": {
         "0,0": back(), "1,0": role(C + "Objectif libre on/off", "cam", "Objectif", "on/off", "cam"),
@@ -385,11 +431,11 @@ PAGES = {
         "4,2": role(C + "Caméra libre à la souris", None, "Souris", "", "cam"),
     },
     "Replay": {
-        "0,0": back(), "1,0": role(C + "Replay lecture", "replay", "Lecture", "", "cam"),
-        "1,1": role(C + "Replay lecture arrière", None, "Lecture", "arrière", "cam"), "2,0": role(C + "Replay stop", None, "Stop", "", "cam"),
-        "0,1": role(C + "Replay retour rapide", None, "Retour", "rapide", "cam"), "2,1": role(C + "Replay avance rapide", None, "Avance", "rapide", "cam"),
-        "3,0": role(C + "Replay ralenti", None, "Ralenti", "", "cam"), "4,0": role(C + "Ralenti instantané", None, "Ralenti", "instantané", "cam"),
-        "0,2": role(C + "Garder la caméra TV", None, "Garder", "caméra TV", "cam"), "1,2": role(C + "Pause du suivi TV", None, "Pause", "suivi TV", "cam"),
+        "0,0": back(), "1,0": role(C + "Replay lecture", "play", "Lecture", "", "cam"),
+        "1,1": role(C + "Replay lecture arrière", "reverse", "Lecture", "arrière", "cam"), "2,0": role(C + "Replay stop", "square", "Stop", "", "cam"),
+        "0,1": role(C + "Replay retour rapide", "rewind", "Retour", "rapide", "cam"), "2,1": role(C + "Replay avance rapide", "forward", "Avance", "rapide", "cam"),
+        "3,0": role(C + "Replay ralenti", "slow", "Ralenti", "", "cam"), "4,0": role(C + "Ralenti instantané", "clock", "Ralenti", "instantané", "cam"),
+        "0,2": role(C + "Garder la caméra TV", None, "Garder", "caméra TV", "cam"), "1,2": role(C + "Pause du suivi TV", "pause", "Pause", "suivi TV", "cam"),
         "2,2": role(C + "Zoom TV reset", None, "Zoom TV", "reset", "cam"), "3,2": role(C + "Noms des voitures", None, "Noms", "voitures", "cam"),
     },
     "Poste": {
@@ -397,13 +443,13 @@ PAGES = {
         "1,0": role(P + "FOV vertical -", None, "FOV", "−", "post"), "3,0": role(P + "FOV vertical +", None, "FOV", "+", "post"),
         "1,1": role(P + "Siège avant", "seat", "Siège", "avant", "post"), "3,1": role(P + "Siège arrière", "seat", "Siège", "arrière", "post"),
         "2,0": role(P + "Siège haut", "up", "Siège", "haut", "post"), "2,2": role(P + "Siège bas", "down", "Siège", "bas", "post"),
-        "4,0": role(P + "Recentrer la VR", "vr", "Recentrer", "la VR", "post"), "4,2": role(P + "Reset FFB", None, "Reset", "FFB", "post"),
+        "4,0": role(P + "Recentrer la VR", "vr", "Recentrer", "la VR", "post"), "4,2": role(P + "Reset FFB", "steer", "Reset", "FFB", "post"),
         "4,1": folder("Rétros", "mirror", "Rétros", "", "post"),
     },
     "Rétros": {
         "0,0": back(), "1,0": folder("Rétro gauche", "mirror", "Gauche", "", "post"), "2,0": folder("Rétro droit", "mirror", "Droit", "", "post"),
         "3,0": folder("Rétro central", "mirror", "Central", "", "post"), "4,0": folder("Rétros tous", "mirror", "Tous", "", "post"),
-        "1,1": folder("Largeur", "mirror", "Largeur", "", "post"), "2,1": folder("Angle central", "mirror", "Angle", "central", "post"),
+        "1,1": folder("Largeur", "width", "Largeur", "", "post"), "2,1": folder("Angle central", "target", "Angle", "central", "post"),
     },
 }
 
@@ -413,7 +459,7 @@ for page, prefix in [("Rétro gauche", "Rétro gauche"), ("Rétro droit", "Rétr
     PAGES[page] = {
         "0,0": back(),
         "2,0": role(f"{P}{prefix} haut", "up", page, "haut", "post"), "2,2": role(f"{P}{prefix} bas", "down", page, "bas", "post"),
-        "1,1": role(f"{P}{prefix} gauche", None, page, "gauche", "post"), "3,1": role(f"{P}{prefix} droite", None, page, "droite", "post"),
+        "1,1": role(f"{P}{prefix} gauche", "left", page, "gauche", "post"), "3,1": role(f"{P}{prefix} droite", "right", page, "droite", "post"),
     }
 
 # The pages a folder opens: each page's parent is where its folder key is.
@@ -478,7 +524,7 @@ def build():
                     assert style["TextMarginBottom"] == base_style["TextMarginBottom"], action["Name"]
     manifests[default_page] = {"Controllers": [{"Actions": None, "Type": "Keypad"}], "Icon": "", "Name": ""}
     root = {"Pages": {"Current": pid("Accueil"), "Default": default_page, "Pages": [pid("Accueil")]},
-            "Name": "Endurance Manager · FMT", "Version": "3.0", "Device": {"Model": "20GBA9901", "UUID": ""}}
+            "Name": "Endurance Manager · Racing", "Version": "3.0", "Device": {"Model": "20GBA9901", "UUID": ""}}
     package = {"DeviceModel": "20GBA9901", "OSType": "Windows", "DeviceSettings": None, "OSVersion": "10.0",
                "RequiredPlugins": ["com.wotever.simhubdynamicbutton"], "AppVersion": "7.6.0.22849", "FormatVersion": 1}
     base = f"Profiles/{root_id}.sdProfile/"
@@ -539,7 +585,7 @@ def preview(p, manifests, path):
                 y = 83 - (px + 3) * len(lines) / 2
                 for line in lines:
                     w = d.textlength(line, font=font)
-                    d.text(((144 - w) / 2, y), line, font=font, fill="#04170B" if on else "#FFFFFF")
+                    d.text(((144 - w) / 2, y), line, font=font, fill="#F4F7FA")
                     y += px + 3
             sheet.paste(img, (8 + c * 152, 8 + r * 152))
         tiles.append(sheet)
