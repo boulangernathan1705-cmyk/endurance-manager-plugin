@@ -444,6 +444,38 @@ def build():
             a["ActionID"] = str(uuid.uuid5(uuid.NAMESPACE_URL, name + "/" + pos + "/" + a["ActionID"]))
             p.preview[a["ActionID"]] = a.pop("EMPreview", {})
         manifests[pid(name)] = {"Controllers": [{"Actions": actions, "Type": "Keypad"}], "Icon": "", "Name": name}
+    # Audit all pages, including the six mirror subpages.
+    ids = set()
+    visited = set()
+    def visit(page_id):
+        if page_id in visited:
+            return
+        visited.add(page_id)
+        assert page_id in manifests, ("Missing folder target", page_id)
+        for action in manifests[page_id]["Controllers"][0]["Actions"].values():
+            if action["UUID"] == "com.elgato.streamdeck.profile.openchild":
+                visit(action["Settings"]["ProfileUUID"])
+    visit(pid("Accueil"))
+    assert visited == set(manifests), ("Unreachable pages", set(manifests) - visited)
+    for page_id, manifest in manifests.items():
+        actions = manifest["Controllers"][0]["Actions"]
+        assert len(actions) <= 15
+        if page_id != pid("Accueil"):
+            assert any(a["UUID"] == "com.elgato.streamdeck.profile.backtoparent" for a in actions.values()), manifest["Name"]
+        for action in actions.values():
+            assert action["ActionID"] not in ids
+            ids.add(action["ActionID"])
+            if action["UUID"] != "com.wotever.simhubdynamicbutton":
+                continue
+            states = action["Settings"]["StreamDeckButtonSetting"]["States"]
+            first = states[0]
+            if first.get("RichLabel"):
+                base_style = first["ButtonRenderer"]["IconStyle"]
+                for conditional in states[1:]:
+                    assert conditional.get("RichLabel") == first["RichLabel"], action["Name"]
+                    style = conditional["ButtonRenderer"]["IconStyle"]
+                    assert style["FontSize"] == base_style["FontSize"], action["Name"]
+                    assert style["TextMarginBottom"] == base_style["TextMarginBottom"], action["Name"]
     manifests[default_page] = {"Controllers": [{"Actions": None, "Type": "Keypad"}], "Icon": "", "Name": ""}
     root = {"Pages": {"Current": pid("Accueil"), "Default": default_page, "Pages": [pid("Accueil")]},
             "Name": "Endurance Manager · FMT", "Version": "3.0", "Device": {"Model": "20GBA9901", "UUID": ""}}
