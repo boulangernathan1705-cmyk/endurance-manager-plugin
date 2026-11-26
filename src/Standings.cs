@@ -26,6 +26,7 @@ namespace EnduranceManager.SimHub
         {
             public string FinishStatus, VehicleName;
             public int? DT, SG, Time;
+            public DateTime ReceivedUtc;
         }
         public volatile Line Player;
 
@@ -57,6 +58,7 @@ namespace EnduranceManager.SimHub
                     wait = 5;
                 }
                 catch { }
+                Clear();
                 // The game closed or not ready yet: again a little later, less and less often.
                 Sleep(wait);
                 wait = Math.Min(60, wait * 2);
@@ -107,12 +109,55 @@ namespace EnduranceManager.SimHub
             }
             catch { }
             var me = (JObject.Parse(text)["body"] as JArray)?.OfType<JObject>().FirstOrDefault(car => (bool?)car["player"] == true);
-            if (me == null) return;
+            if (me == null) { Clear(); return; }
             Player = new Line
             {
+                ReceivedUtc = DateTime.UtcNow,
                 FinishStatus = (string)me["finishStatus"], VehicleName = (string)me["vehicleName"],
                 DT = (int?)me["penalties"]?["DT"], SG = (int?)me["penalties"]?["SG"], Time = (int?)me["penalties"]?["TIME"]
             };
+        }
+    }
+
+    // Fallback only: three laps after an observed new single penalty. A late start,
+    // missed samples, multiple penalties or a new session invalidate the estimate.
+    // The actual STOP/GO menu deadline takes priority in the Stream Deck.
+    public sealed class PenaltyTracker
+    {
+        public sealed class Info
+        {
+            public string Type = "—", Text = "—";
+            public int? EstimatedLaps;
+            public bool Pending;
+        }
+        public volatile Info View = new Info();
+        Sample previous;
+        bool observed;
+        int? issuedLap;
+        string knownKind;
+        public void Reset() { if (!observed && View.Type == "—") return; observed = false; issuedLap = null; knownKind = null; View = new Info(); }
+        public void Observe(Sample s, Standings.Line line)
+        {
+            int count = s.OutstandingPenalties;
+            if (!s.Realtime || s.Control != 0 || count < 0 || s.LapsDone < 0) { Reset(); return; }
+            bool continuous = observed && s.Session == previous.Session && s.Id == previous.Id && s.Track == previous.Track
+                && s.Car == previous.Car && s.Driver == previous.Driver && s.ET >= previous.ET && s.ET - previous.ET <= 5
+                && s.LapsDone >= previous.LapsDone && s.LapsDone <= previous.LapsDone + 1;
+            if (!continuous || count == 0) { issuedLap = null; knownKind = null; }
+            else if (count == 1 && previous.OutstandingPenalties == 0 && s.LapsDone == previous.LapsDone)
+            { issuedLap = s.LapsDone; knownKind = null; }
+            else if (count != previous.OutstandingPenalties) { issuedLap = null; knownKind = null; }
+            previous = s; observed = true;
+            if (count == 0) { View = new Info { Type = "RAS", Text = "RAS" }; return; }
+            int sg = line?.SG ?? 0, dt = line?.DT ?? 0, time = line?.Time ?? 0;
+            string kind = sg > 0 && dt > 0 ? "SG+DT" : sg > 0 ? "SG" : dt > 0 ? "DT" : time > 0 ? "TEMPS" : "PENA";
+            bool single = count == 1 && sg + dt == 1 && time == 0 && (kind == "SG" || kind == "DT");
+            if (kind != "PENA" && knownKind != null && kind != knownKind) issuedLap = null;
+            if (kind != "PENA") knownKind = kind;
+            int? left = single && issuedLap.HasValue ? Math.Max(0, 3 - (s.LapsDone - issuedLap.Value)) : (int?)null;
+            string label = kind + (count > 1 ? " x" + count : "");
+            if (left.HasValue) label += "\n~" + left.Value + " T";
+            View = new Info { Type = single ? kind : count > 1 ? "MULTI" : kind == "SG" || kind == "DT" ? "PENA" : kind, Text = label, EstimatedLaps = left, Pending = true };
         }
     }
 }
