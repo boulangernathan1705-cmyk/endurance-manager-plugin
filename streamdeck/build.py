@@ -64,7 +64,7 @@ def esc(t):
     return t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def svg_key(icon=None, label="", value="", fam="w", kind="", live=False, big=False):
+def svg_key(icon=None, label="", value="", fam="w", kind="", live=False, big=False, transparent=False):
     """One key, 144 × 144. live: the bottom third stays free for the live title Stream Deck draws over the image."""
     color = FAM.get(fam, fam)
     bg_top, bg_bot, border = "#1C2427", "#10171A", "#2B3236"
@@ -83,7 +83,7 @@ def svg_key(icon=None, label="", value="", fam="w", kind="", live=False, big=Fal
                  f'<stop offset="1" stop-color="{bg_bot}"/></linearGradient></defs>')
     # A dynamic label needs a genuinely transparent image region: the native SimHub background
     # supplies the colour, not an opaque SVG painted over the value.
-    if not live:
+    if not transparent:
         parts.append('<rect width="144" height="144" fill="url(#g)"/>')
     parts.append(f'<rect x="1" y="1" width="142" height="142" fill="none" stroke="{border}" stroke-width="2"/>')
     if kind == "folder":
@@ -207,8 +207,8 @@ def live(title_prop, icon=None, label="", fam="w", r="", state_prop="", fmt="", 
     if title_prop:
         formula = f"format([{title_prop}], '0')" if fmt == ":0" else f"[{title_prop}]"
     # Keep the original layout even for state-only keys; transparency is needed only for keys with text.
-    off = svg_key(icon, label, "", fam, kind, live=bool(formula))
-    on = svg_key(icon, label, "", fam, "active", live=bool(formula)) if active_when_on and state_prop else None
+    off = svg_key(icon, label, "", fam, kind, live=True, transparent=bool(formula))
+    on = svg_key(icon, label, "", fam, "active", live=True, transparent=bool(formula)) if active_when_on and state_prop else None
     return dynamic(label + r + (state_prop or title_prop), off, r=r, formula=formula, on_svg=on, on_when=f"[{state_prop}]" if on else "",
                    size=150 if size >= 18 else 120)
 
