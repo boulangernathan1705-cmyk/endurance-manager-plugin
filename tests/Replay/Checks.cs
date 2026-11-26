@@ -88,7 +88,7 @@ namespace EnduranceManager.SimHub.Replay
                 bool ok = uploader.Waiting(a) == 1 && uploader.Held(b) == 3 && transport.Tokens.Count == 0;
                 uploader.SendAll(a, () => b);
                 ok &= transport.Tokens.Count == 0;
-                transport.Answers.Enqueue(HttpStatusCode.TooManyRequests);
+                transport.Answers.Enqueue((HttpStatusCode)429);
                 transport.Answers.Enqueue(HttpStatusCode.Forbidden);
                 transport.Answers.Enqueue(HttpStatusCode.OK);
                 uploader.SendAll(a, () => a);
