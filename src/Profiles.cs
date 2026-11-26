@@ -394,7 +394,8 @@ namespace EnduranceManager.SimHub
                     foreach (var setting in Setting.All)
                         if (profile.Drive.TryGetValue(setting.Key, out double target)) { string problem = Reach(setting, target); if (problem != null) problems.Add(problem); }
                     if (profile.PitApplied.Count > 0) { string problem = WriteMenu(profile); if (problem != null) problems.Add(problem); }
-                    Applied = profile.Name;
+                    // Never mark a partially applied profile as successfully applied.
+                    Applied = problems.Count == 0 ? profile.Name : null;
                     Message = problems.Count == 0 ? $"« {profile.Name} » appliqué." : $"« {profile.Name} » appliqué sauf : " + string.Join(" · ", problems);
                     // Same look as the first press: what is still not as the profile, line by line (now → profile), not a
                     // paragraph of role names (Nathan 23/11). The reasons stay on the plugin's screen (Message).
@@ -424,9 +425,14 @@ namespace EnduranceManager.SimHub
                 if (id == null) return setting.Label + " (pas de commande)";
                 string why = SendFmt(id);
                 if (why != null) return setting.Label + " (" + why + ")";
-                // The game takes a moment to show the new level: up to 1.2 s, then the next click.
-                double? after = now;
+                // FMT holds the Control Mapper role for 200 ms. A telemetry change can arrive before release.
+                // Give the output time to release and LMU time to see the low state before retriggering.
+                // Stay on the profiles worker thread: no delay in the SimHub UI or manual FMT buttons.
+                Thread.Sleep(320);
+                // The game takes a moment to show the new level: up to another 1.2 s.
+                double? after = latest() is Sample readAfterRelease ? setting.Read(readAfterRelease) : null;
                 for (int wait = 0; wait < 15 && after == now; wait++) { Thread.Sleep(80); after = latest() is Sample t ? setting.Read(t) : null; }
+                if (!after.HasValue) return setting.Label + " (lecture interrompue)";
                 still = after == now ? still + 1 : 0;
                 if (after is double moved && Math.Abs(moved - target) > Math.Abs(now - target)) swapped = !swapped;
                 if (still >= 2)
