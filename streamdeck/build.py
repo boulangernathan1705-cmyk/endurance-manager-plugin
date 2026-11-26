@@ -102,6 +102,9 @@ def svg_key(icon=None, label="", value="", fam="w", kind="", live=False, big=Fal
     if kind == "auto":
         bg_top, bg_bot, border = "#173B54", "#102C40", "#43C9ED"
         color, text, muted = "#43C9ED", "#F4F7FA", "#D0E8F4"
+    if kind == "danger":
+        bg_top, bg_bot, border = "#46232D", "#301821", "#FF5D6B"
+        color, text, muted = "#FF5D6B", "#F4F7FA", "#F5D0D4"
     if kind == "warning":
         bg_top, bg_bot, border = "#392A24", "#281F1B", "#FFAD55"
         color, text, muted = "#FFAD55", "#F4F7FA", "#F5DDBE"
@@ -315,11 +318,11 @@ def wiper_key():
 
 
 def penalty_key():
-    sg, dt, tp, total = [EM + "Race.Player.Penalties" + x for x in (".SG", ".DT", ".TIME", "")]
-    serve = FMT + "Pit.StopGo.Serve"
-    formula = f"if(isnull([{sg}],-1) > 0, if([{serve}] = 1, 'SG OUI', if([{serve}] = 0, 'SG NON', 'SG')), if(isnull([{dt}],-1) > 0, 'DT', if(isnull([{tp}],-1) > 0, 'TEMPS', if(isnull([{total}],-1) = 0, 'RAS', if(isnull([{total}],-1) > 0, 'PENA', '—')))))"
-    pending = f"isnull([{sg}],0) > 0 or isnull([{dt}],0) > 0 or isnull([{tp}],0) > 0 or isnull([{total}],0) > 0"
-    return dynamic("penalties", svg_key(None, "Pénalités", "", "w", live=True), r=S + "Stop & Go effectuer ou reporter", formula=formula, size=12, sample="SG NON", on_svg=svg_key(None, "Pénalités", "", "stand", "warning", live=True), on_when=pending)
+    typ, label, pending, estimate = [EM + "StreamDeck.Penalty." + x for x in ("Type", "Text", "Pending", "EstimatedLaps")]
+    native, native_text, serve = [FMT + "Pit.StopGo." + x for x in ("LapsLeft", "DeckText", "Serve")]
+    formula = f"if([{typ}] = 'SG', if(isnull([{native}],-1) >= 0, [{native_text}], [{label}] + if([{serve}] = 1, ' OUI', if([{serve}] = 0, ' NON', ''))), [{label}])"
+    urgent = f"if([{typ}] = 'SG' and isnull([{native}],-1) >= 0, [{native}] <= 1, isnull([{estimate}],-1) >= 0 and [{estimate}] <= 1)"
+    return dynamic("penalties", svg_key(None, "Pénalités", "", "w", live=True), r=S + "Stop & Go effectuer ou reporter", formula=formula, size=11, sample="SG\n2 T\nNON", on_svg=svg_key(None, "Pénalités", "", "stand", "warning", live=True), on_when=f"[{pending}] and not ({urgent})", variants=[(svg_key(None, "Pénalités", "", "danger", "danger", live=True), f"[{pending}] and ({urgent})"), (svg_key(None, "Pénalités", "", "w", "active", live=True), f"[{typ}] = 'RAS'")])
 
 
 def tag(text, fam):
