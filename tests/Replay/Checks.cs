@@ -32,7 +32,7 @@ namespace EnduranceManager.SimHub.Replay
 
         public static bool RunAll(List<string> fixtures, string outDir)
         {
-            bool allOk = Recorder() & BlackBoxLines();
+            bool allOk = Recorder() & BlackBoxLines() & ProfileCommands();
             foreach (var file in fixtures)
             {
                 var f = Fixture.Load(file);
@@ -52,6 +52,26 @@ namespace EnduranceManager.SimHub.Replay
                 allOk &= report.Failures.Count == 0;
             }
             return allOk;
+        }
+
+        // The profiles' FMT adapter must preserve null as success, not treat it as a missing companion.
+        static bool ProfileCommands()
+        {
+            int tc = 6, calls = 0;
+            Func<string, string> send = id =>
+            {
+                if (id != "TC.Previous") return "unexpected command";
+                calls++;
+                tc--;
+                return null;
+            };
+            while (tc > 2 && calls < 4)
+                if (ProfileCommand.Send(send, "TC.Previous") != null) break;
+            bool ok = tc == 2 && calls == 4
+                && ProfileCommand.Send(null, "TC.Previous") == "FMT companion absent"
+                && ProfileCommand.Send(_ => "Control Mapper pas prêt", "TC.Previous") == "Control Mapper pas prêt";
+            Console.WriteLine((ok ? "OK    " : "ÉCHEC ") + "Profils : succès FMT, quatre commandes successives, erreurs conservées");
+            return ok;
         }
 
         // The wheel's black box (BlackBoxDash.cs): the line changed last is the chosen one, the 7-line window follows it,

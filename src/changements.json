@@ -1,14 +1,14 @@
 {
-  "version": "0.2.1",
+  "version": "0.2.2",
   "changes": [
     {
       "type": "corrige",
-      "text": "Application des profils : espacement des commandes pour atteindre les réglages mémorisés.",
+      "text": "Application des profils : une commande FMT réussie ne provoque plus un arrêt après le premier cran.",
       "page": "profils"
     },
     {
       "type": "corrige",
-      "text": "Indication du profil actif fondée sur les réglages lus dans la voiture.",
+      "text": "Suppression de l'attente fixe ajoutée en 0.2.1 ; le réglage suivant attend toujours le retour de LMU.",
       "page": "profils"
     }
   ]
