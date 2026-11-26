@@ -81,7 +81,11 @@ def svg_key(icon=None, label="", value="", fam="w", kind="", live=False, big=Fal
         return ('<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144"><rect width="144" height="144" fill="#0A0D0F"/></svg>')
     parts.append(f'<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{bg_top}"/>'
                  f'<stop offset="1" stop-color="{bg_bot}"/></linearGradient></defs>')
-    parts.append(f'<rect width="144" height="144" fill="url(#g)"/><rect x="1" y="1" width="142" height="142" fill="none" stroke="{border}" stroke-width="2"/>')
+    # A dynamic label needs a genuinely transparent image region: the native SimHub background
+    # supplies the colour, not an opaque SVG painted over the value.
+    if not live:
+        parts.append('<rect width="144" height="144" fill="url(#g)"/>')
+    parts.append(f'<rect x="1" y="1" width="142" height="142" fill="none" stroke="{border}" stroke-width="2"/>')
     if kind == "folder":
         parts.append(f'<path d="M0 0h34L0 34z" fill="{color}"/>')
         parts.append(f'<path d="M122 120l8 8-8 8" fill="none" stroke="{color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>')
@@ -142,14 +146,14 @@ def b64svg(svg):
     return base64.b64encode(svg.encode("utf-8")).decode("ascii")
 
 
-def icon_style(svg, font_size=14):
+def icon_style(svg, font_size=14, background="#FF000000"):
     return {"ReverseIconColors": False, "IconMarginLeft": 0, "IconMarginTop": 0, "IconMarginRight": 0, "IconMarginBottom": 0,
             "TextMarginBottom": 10, "LabelVerticalAlignment": 2, "Image": b64svg(svg), "UseBlinkingBorderColor": False,
             "UseBlinkingIconBackgroundColor": False, "UseBlinkingIconForegroundColor": False, "UseBlinkingTextColor": False,
-            "BlinkingDuration": 500, "BlinkingTwoPhases": False, "BlinkingOffDuration": 500, "BlinkingIconBackgroundColor": "#FF000000",
+            "BlinkingDuration": 500, "BlinkingTwoPhases": False, "BlinkingOffDuration": 500, "BlinkingIconBackgroundColor": background,
             "BlinkingIconForegroundColor": "#00FFFFFF", "BlinkingTextColor": "#FFFF0000", "Bold": True, "Italic": False,
             "BorderColor": "#FF000000", "BlinkingBorderColor": "#FFFF0000", "BorderThickness": 0, "EnableBlinking": False,
-            "FontSize": font_size, "IconBackgroundColor": "#FF000000", "IconForegroundColor": "#00FFFFFF", "LabelFont": "Arial",
+            "FontSize": font_size, "IconBackgroundColor": background, "IconForegroundColor": "#00FFFFFF", "LabelFont": "Arial",
             "TextColor": "#FFFFFFFF", "IconAlpha": 100.0}
 
 
@@ -161,17 +165,19 @@ def dynamic(key, off_svg, r="", formula="", on_svg=None, on_when="", size=150):
     """One dynamic button: base image, optional live text at the bottom (NCalc formula), optional second image while
     on_when is true, press = Control Mapper role r."""
     def make(p):
+        background = "#FF10171A" if formula else "#FF000000"
         first = {"actionMode": 0, "labelMode": 3 if formula else 0, "iconMode": 0,
                  "OnPress": {"ActionMode": 3, "ControlMapperRoleName": r} if r else {}, "OnShortPress": {}, "OnLongPress": {},
-                 "HasActionOverrides": False, "ButtonRenderer": {"IconStyle": icon_style(off_svg)}, "StaticLabel": "",
+                 "HasActionOverrides": False, "ButtonRenderer": {"IconStyle": icon_style(off_svg, background=background)}, "StaticLabel": "",
                  "Uid": sid(key, "0"), "StateTitle": "Button state", "DisplayStateTitle": "Default state",
                  "IsEnabledExpression": {"Expression": ""}, "IsConditional": False}
         if formula:
             first["RichLabel"] = [{"Formula": {"Expression": formula}, "Format": 0, "Size": float(size)}]
         states = [first]
         if on_svg and on_when:
+            on_style = {"Overrides": ["Image", "TextColor", "IconBackgroundColor"], "Image": b64svg(on_svg), "TextColor": "#FF04170B", "IconBackgroundColor": "#FF3CB866" if formula else "#FF000000"}
             states.append({"actionMode": 0, "labelMode": 2, "iconMode": 0, "HasActionOverrides": False,
-                           "ButtonRenderer": {"IconStyle": {"Overrides": ["Image", "TextColor"], "Image": b64svg(on_svg), "TextColor": "#FF04170B"}},
+                           "ButtonRenderer": {"IconStyle": on_style},
                            "Uid": sid(key, "1"), "StateTitle": "Button state", "DisplayStateTitle": "Button state",
                            "IsEnabledExpression": {"Expression": on_when}, "IsConditional": True})
         button = {"StreamDeckButtonSetting": {"FromModel": None, "DesignWidth": 144, "DesignHeight": 144,
@@ -200,8 +206,9 @@ def live(title_prop, icon=None, label="", fam="w", r="", state_prop="", fmt="", 
         title_prop, active_when_on = "", True
     if title_prop:
         formula = f"format([{title_prop}], '0')" if fmt == ":0" else f"[{title_prop}]"
-    off = svg_key(icon, label, "", fam, kind, live=True)
-    on = svg_key(icon, label, "", fam, "active", live=True) if active_when_on and state_prop else None
+    # Keep the original layout even for state-only keys; transparency is needed only for keys with text.
+    off = svg_key(icon, label, "", fam, kind, live=bool(formula))
+    on = svg_key(icon, label, "", fam, "active", live=bool(formula)) if active_when_on and state_prop else None
     return dynamic(label + r + (state_prop or title_prop), off, r=r, formula=formula, on_svg=on, on_when=f"[{state_prop}]" if on else "",
                    size=150 if size >= 18 else 120)
 
@@ -467,7 +474,11 @@ def preview(p, manifests, path):
             c, r = map(int, pos.split(","))
             meta = p.preview.get(a["ActionID"], {})
             on = meta.get("on") and meta.get("on_when", "").strip("[]") in ON
-            img = Image.open(io.BytesIO(p.images[meta["on"] if on else a["States"][0]["Image"]])).convert("RGB")
+            decoration = Image.open(io.BytesIO(p.images[meta["on"] if on else a["States"][0]["Image"]])).convert("RGBA")
+            native_bg = "#3CB866" if on and meta.get("formula") else "#10171A" if meta.get("formula") else "#000000"
+            img = Image.new("RGBA", decoration.size, native_bg)
+            img.alpha_composite(decoration)
+            img = img.convert("RGB")
             prop = re.sub(r"^format\(\[|^\[|\].*$", "", meta.get("formula") or "")
             title = SAMPLE.get(prop, "")
             if title:
@@ -489,5 +500,14 @@ def preview(p, manifests, path):
 
 if __name__ == "__main__":
     prof, mans = build()
+    # Check the actual exported decoration, not only the preview: no opaque pixel where the live value belongs.
+    from PIL import Image
+    for action_id, meta in prof.preview.items():
+        if not meta.get("formula"):
+            continue
+        action = next(a for m in mans.values() for a in (m["Controllers"][0]["Actions"] or {}).values() if a["ActionID"] == action_id)
+        for name in filter(None, [action["States"][0]["Image"], meta.get("on")]):
+            alpha = Image.open(io.BytesIO(prof.images[name])).convert("RGBA").getchannel("A")
+            assert alpha.crop((20, 86, 124, 134)).getextrema() == (0, 0), (action["Name"], name)
     preview(prof, mans, os.path.join(HERE, "apercu.png"))
     print("écrit :", OUT)
