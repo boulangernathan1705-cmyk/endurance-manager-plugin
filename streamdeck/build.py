@@ -97,6 +97,12 @@ def svg_key(icon=None, label="", value="", fam="w", kind="", live=False, big=Fal
         color, text, muted = "#57DFA2", "#F4F7FA", "#C2E5D7"
     if kind == "pm":
         bg_top, bg_bot = "#142333", "#0C1928"
+    if kind == "auto":
+        bg_top, bg_bot, border = "#173B54", "#102C40", "#43C9ED"
+        color, text, muted = "#43C9ED", "#F4F7FA", "#D0E8F4"
+    if kind == "warning":
+        bg_top, bg_bot, border = "#392A24", "#281F1B", "#FFAD55"
+        color, text, muted = "#FFAD55", "#F4F7FA", "#F5DDBE"
     if kind == "back":
         bg_top, bg_bot = "#14273A", "#0C1928"
     if kind == "empty":
@@ -184,7 +190,7 @@ def sid(*parts):
     return str(uuid.uuid5(uuid.NAMESPACE_URL, "em-streamdeck-dyn/" + "/".join(parts)))
 
 
-def dynamic(key, off_svg, r="", formula="", on_svg=None, on_when="", size=26, sample=""):
+def dynamic(key, off_svg, r="", formula="", on_svg=None, on_when="", size=26, sample="", variants=()):
     """One dynamic button: base image, optional live text at the bottom (NCalc formula), optional second image while
     on_when is true, press = Control Mapper role r."""
     def make(p):
@@ -196,12 +202,13 @@ def dynamic(key, off_svg, r="", formula="", on_svg=None, on_when="", size=26, sa
         if formula:
             first["RichLabel"] = [{"Formula": {"Expression": formula}, "Format": 0, "Size": 100.0}]
         states = [first]
-        if on_svg and on_when:
-            on_style = {"Overrides": ["Image", "TextColor", "FontSize", "TextMarginBottom", "LabelVerticalAlignment"], "Image": b64svg(on_svg), "TextColor": "#FFF4F7FA", "FontSize": size, "TextMarginBottom": 26 if formula else 10, "LabelVerticalAlignment": 2}
+        conditional_states = ([(on_svg, on_when)] if on_svg and on_when else []) + list(variants)
+        for index, (variant_svg, variant_when) in enumerate(conditional_states, 1):
+            on_style = {"Overrides": ["Image", "TextColor", "FontSize", "TextMarginBottom", "LabelVerticalAlignment"], "Image": b64svg(variant_svg), "TextColor": "#FFF4F7FA", "FontSize": size, "TextMarginBottom": 26 if formula else 10, "LabelVerticalAlignment": 2}
             active = {"actionMode": 0, "labelMode": 3 if formula else 2, "iconMode": 0, "HasActionOverrides": False,
                       "ButtonRenderer": {"IconStyle": on_style},
-                      "Uid": sid(key, "1"), "StateTitle": "Button state", "DisplayStateTitle": "Button state",
-                      "IsEnabledExpression": {"Expression": on_when}, "IsConditional": True}
+                      "Uid": sid(key, str(index)), "StateTitle": "Button state", "DisplayStateTitle": "Button state",
+                      "IsEnabledExpression": {"Expression": variant_when}, "IsConditional": True}
             if formula:
                 active["RichLabel"] = [{"Formula": {"Expression": formula}, "Format": 0, "Size": 100.0}]
             states.append(active)
@@ -299,11 +306,18 @@ def refuel_key():
     return live("", None, "Ravitaillement", "stand", formula_override=formula, size=18, sample="85 %")
 
 
+def wiper_key():
+    prop = EM + "Voiture.EssuieGlaces"
+    expr = f"if(isnull([{prop}],-1) = 0, 'OFF', if([{prop}] = 1, 'AUTO', if([{prop}] = 2, 'LENT', if([{prop}] = 3, 'RAPIDE', '—'))))"
+    return dynamic("wipers", svg_key(None, "Essuie-glace", "", "car", live=True), r=V + "Essuie-glace", formula=expr, size=14, sample="AUTO", on_svg=svg_key(None, "Essuie-glace", "", "auto", "auto", live=True), on_when=f"[{prop}] = 1", variants=[(svg_key(None, "Essuie-glace", "", "car", "active", live=True), f"[{prop}] = 2"), (svg_key(None, "Essuie-glace", "", "stand", "warning", live=True), f"[{prop}] = 3")])
+
+
 def penalty_key():
     sg, dt, tp, total = [EM + "Race.Player.Penalties" + x for x in (".SG", ".DT", ".TIME", "")]
     serve = FMT + "Pit.StopGo.Serve"
     formula = f"if(isnull([{sg}],-1) > 0, if([{serve}] = 1, 'SG OUI', if([{serve}] = 0, 'SG NON', 'SG')), if(isnull([{dt}],-1) > 0, 'DT', if(isnull([{tp}],-1) > 0, 'TEMPS', if(isnull([{total}],-1) = 0, 'RAS', if(isnull([{total}],-1) > 0, 'PENA', '—')))))"
-    return live("", None, "Pénalités", "danger", r=S + "Stop & Go effectuer ou reporter", formula_override=formula, size=12, sample="SG NON")
+    pending = f"isnull([{sg}],0) > 0 or isnull([{dt}],0) > 0 or isnull([{tp}],0) > 0 or isnull([{total}],0) > 0"
+    return dynamic("penalties", svg_key(None, "Pénalités", "", "w", live=True), r=S + "Stop & Go effectuer ou reporter", formula=formula, size=12, sample="SG NON", on_svg=svg_key(None, "Pénalités", "", "stand", "warning", live=True), on_when=pending)
 
 
 def tag(text, fam):
@@ -316,14 +330,14 @@ PAGES = {
     "Accueil": {
         "0,0": profile_key(1, "sec"), "1,0": profile_key(2, "inter"), "2,0": profile_key(3, "pluie"),
         "4,0": role(V + "Demande d'arrêt", "stop", "Demande", "Arrêt", "car"),
-        "3,0": live(GD + "PitLimiterOn", "lim", "Limiteur", "car", r=V + "Limiteur", state_prop=GD + "PitLimiterOn"),
+        "3,0": live("", None, "Limiteur", "car", r=V + "Limiteur", state_prop=GD + "PitLimiterOn", active_when_on=True, formula_override=f"if(isnull([{GD}PitLimiterOn],-1) = -1, '—', if([{GD}PitLimiterOn], 'ON', 'OFF'))", size=16, sample="OFF"),
         "0,1": folder("Voiture", "chip", "Électronique", "", "car"),
         "1,1": folder("Stand", "stand", "Stands", "", "stand"),
         "2,1": folder("Pneus", "tyre", "Pneus", "", "tyre"),
         "3,1": folder("Caméra", "cam", "Caméra", "", "cam"),
         "4,1": folder("Poste", "seat", "Poste", "", "post"),
         "0,2": live("", None, "Phares", "car", r=V + "Phares", state_prop=GD + "HeadlightsActive", active_when_on=True, formula_override=f"if(isnull([{GD}HeadlightsActive],-1) = -1, '—', if([{GD}HeadlightsActive], 'ON', 'OFF'))", size=16, sample="ON"),
-        "1,2": live("", None, "Essuie-glace", "car", r=V + "Essuie-glace", state_prop=GD + "WipersActive", active_when_on=True, formula_override=f"if(isnull([{EM}Voiture.EssuieGlaces],-1) = 0, 'OFF', if([{EM}Voiture.EssuieGlaces] = 1, 'AUTO', if([{EM}Voiture.EssuieGlaces] = 2, 'LENT', if([{EM}Voiture.EssuieGlaces] = 3, 'RAPIDE', '—'))))", size=14, sample="AUTO"),
+        "1,2": wiper_key(),
         "2,2": penalty_key(),
         "3,2": live(FMT + "Pit.Damage.Short", "repair", "Réparations", "stand", r=S + "Réparations choix suivant en boucle", size=12),
         "4,2": role(V + "Appel de phares", "flash", "Appel", "de phares", "car"),
@@ -362,16 +376,16 @@ PAGES = {
     "Stand": {
         "0,0": back(), "1,0": plus(S + "Énergie suivante", "stand"), "2,0": plus(S + "Ratio suivant", "stand"),
         "3,0": plus(S + "Pressions 4 roues suivantes", "stand"),
-        "4,0": live(FMT + "Pit.Brakes.Short", "brake", "Freins", "stand", r=S + "Freins changer ou garder", state_prop=FMT + "Pit.Brakes.Replace", size=12),
+        "4,2": live(FMT + "Pit.Brakes.Short", "brake", "Freins", "stand", r=S + "Freins changer ou garder", state_prop=FMT + "Pit.Brakes.Replace", size=12),
         "0,1": folder("Pneus", "tyre", "Pneus", "", "tyre"),
         "1,1": refuel_key(),
         "2,1": live(FMT + "Pit.Ratio", "fuel", "Ratio", "stand", size=16, formula_override=f"if(isnull([{FMT}Pit.Ratio],-1) >= 0, format([{FMT}Pit.Ratio], '0.00'), '—')", sample="0,16"),
         "3,1": live(FMT + "Pit.FLPRESS", "press", "Pressions", "stand", size=16),
-        "4,1": live(FMT + "Pit.Damage.Short", "repair", "Réparations", "stand", r=S + "Réparations choix suivant en boucle", size=12),
+        "4,0": live(FMT + "Pit.Damage.Short", "repair", "Réparations", "stand", r=S + "Réparations choix suivant en boucle", size=12),
         "0,2": folder("Aéro", "aero", "Aéro", "Aileron, écopes", "stand"),
         "1,2": minus(S + "Énergie précédente", "stand"), "2,2": minus(S + "Ratio précédent", "stand"),
         "3,2": minus(S + "Pressions 4 roues précédentes", "stand"),
-        "4,2": live(FMT + "Pit.Driver.Short", "driver", "Pilote", "stand", r=S + "Pilote suivant en boucle", size=12),
+        "4,1": live(FMT + "Pit.Driver.Short", "driver", "Pilote", "stand", r=S + "Pilote suivant en boucle", size=12),
     },
     "Pneus": {
         "0,0": back(),
@@ -489,7 +503,7 @@ def build():
                                                   json.dumps(a["Settings"], ensure_ascii=False)))
             a["ActionID"] = str(uuid.uuid5(uuid.NAMESPACE_URL, name + "/" + pos + "/" + a["ActionID"]))
             p.preview[a["ActionID"]] = a.pop("EMPreview", {})
-        manifests[pid(name)] = {"Controllers": [{"Actions": actions, "Type": "Keypad"}], "Icon": "", "Name": name}
+        manifests[pid(name)] = {"Controllers": [{"Actions": actions, "Type": "Keypad"}], "Icon": "", "Name": {"Voiture": "Adhérence", "Voiture suite": "Châssis", "Antiroulis": "Moteur"}.get(name, name)}
     # Audit all pages, including the six mirror subpages.
     ids = set()
     visited = set()
@@ -550,7 +564,7 @@ def build():
 # What the live titles show in the preview (Stream Deck draws them over the key images).
 SAMPLE = {EM + "Profils.1.Titre": "Sec", EM + "Profils.2.Titre": "Inter\nconseillé", EM + "Profils.3.Titre": "Pluie", GD + "PitLimiterOn": "0",
           GD + "HeadlightsActive": "1", GD + "WipersActive": "0", FMT + "Pit.Brakes.Short": "Garder", FMT + "Pit.Damage.Short": "Toutes",
-          EM + "Voiture.Reglages.TC": "4", EM + "Voiture.Reglages.CoupureTC": "3", EM + "Voiture.Reglages.GlisseTC": "2", EM + "Voiture.Reglages.Regen": "80 kW", EM + "Voiture.Reglages.Migration": "2", EM + "Voiture.Reglages.AntiroulisAV": "5", EM + "Voiture.Reglages.AntiroulisAR": "4", EM + "Voiture.Reglages.ABS": "3", EM + "Voiture.Reglages.Carto": "2", EM + "Profils.Actif": "Sec", EM + "Voiture.Reglages.Repartition": "54,2",
+          EM + "Voiture.Reglages.TC": "4", EM + "Voiture.Reglages.CoupureTC": "3", EM + "Voiture.Reglages.GlisseTC": "2", EM + "Voiture.Reglages.Regen": "80 kW", EM + "Voiture.Reglages.Migration": "2", EM + "Voiture.Reglages.AntiroulisAV": "P5", EM + "Voiture.Reglages.AntiroulisAR": "P4", EM + "Voiture.Reglages.ABS": "3", EM + "Voiture.Reglages.Carto": "120 kW", EM + "Profils.Actif": "Sec", EM + "Voiture.Reglages.Repartition": "54,2",
           FMT + "Pit.VE.Percent": "85", FMT + "Pit.Ratio": "0,16", FMT + "Pit.FLPRESS": "131", FMT + "Pit.Driver.Short": "N. Boul.",
           FMT + "Pit.Tyre.FL.Badge": "MED", FMT + "Pit.Tyre.FR.Badge": "MED", FMT + "Pit.Tyre.RL.Badge": "MED", FMT + "Pit.Tyre.RR.Badge": "MED",
           FMT + "Pit.Tyres.Badge": "MED", FMT + "Pit.RWING": "P10", FMT + "Pit.GRILLE": "5", FMT + "Pit.FBRAKEDUCT": "Ouvert", FMT + "Pit.RBRAKEDUCT": "20 %"}
