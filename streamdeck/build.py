@@ -81,16 +81,17 @@ def svg_key(icon=None, label="", value="", fam="w", kind="", live=False, big=Fal
         return ('<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144"><rect width="144" height="144" fill="#0A0D0F"/></svg>')
     parts.append(f'<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{bg_top}"/>'
                  f'<stop offset="1" stop-color="{bg_bot}"/></linearGradient></defs>')
-    parts.append('<rect width="144" height="144" fill="url(#g)"/>')
-    parts.append(f'<rect x="1" y="1" width="142" height="142" fill="none" stroke="{border}" stroke-width="2"/>')
+    parts.append('<rect width="144" height="144" rx="12" fill="url(#g)"/>')
+    parts.append(f'<rect x="2" y="2" width="140" height="140" rx="12" fill="none" stroke="{border}" stroke-width="2"/>')
     if kind == "folder":
         parts.append(f'<path d="M0 0h34L0 34z" fill="{color}"/>')
         parts.append(f'<path d="M122 120l8 8-8 8" fill="none" stroke="{color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>')
     if kind not in ("pm", "back", "active"):
-        parts.append(f'<rect x="0" y="136" width="144" height="8" fill="{color}"/>')
+        parts.append(f'<rect x="22" y="130" width="100" height="5" rx="2.5" fill="{color}"/>')
     # Layout: icon, label, value (static), or icon + label with the live title below.
     if kind == "pm":
-        parts.append(f'<g transform="translate(32 32) scale(3.33)"><path d="{I[icon]}" fill="none" stroke="{color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g>')
+        symbol = "+" if icon == "up" else "−"
+        parts.append(f'<text x="72" y="98" font-family="Arial, Liberation Sans" font-weight="bold" font-size="78" fill="{color}" text-anchor="middle">{symbol}</text>')
     else:
         size = 58 if not (live or value) else 46
         if big and not icon:
@@ -99,9 +100,9 @@ def svg_key(icon=None, label="", value="", fam="w", kind="", live=False, big=Fal
         if icon and size:
             k = size / 24
             parts.append(f'<g transform="translate({72 - size / 2} {y_icon}) scale({k})"><path d="{I[icon]}" fill="none" stroke="{color if kind != "back" else "#EEF3F2"}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>')
-        y_label = (y_icon + size + 18) if icon and size else 34
+        y_label = (y_icon + size + 18) if icon and size else 32
         if label:
-            parts.append(f'<text x="72" y="{y_label}" font-family="Arial, Liberation Sans, FreeSans" font-weight="bold" font-size="{16 if len(label) <= 11 else 13}" fill="{muted}" text-anchor="middle" letter-spacing="{1 if len(label) <= 11 else 0}">{esc(label.upper())}</text>')
+            parts.append(f'<text x="72" y="{y_label}" font-family="Arial, Liberation Sans, FreeSans" font-weight="bold" font-size="{min(18, max(10, int(122 / max(1, len(label)) / 0.72)))}" fill="{muted}" text-anchor="middle" letter-spacing="{1 if len(label) <= 11 else 0}">{esc(label.upper())}</text>')
         if value and not live:
             lines = value.split("\n")
             fs = 22 if max(len(l) for l in lines) <= 10 else 18
@@ -158,17 +159,17 @@ def sid(*parts):
     return str(uuid.uuid5(uuid.NAMESPACE_URL, "em-streamdeck-dyn/" + "/".join(parts)))
 
 
-def dynamic(key, off_svg, r="", formula="", on_svg=None, on_when="", size=150):
+def dynamic(key, off_svg, r="", formula="", on_svg=None, on_when="", size=26, sample=""):
     """One dynamic button: base image, optional live text at the bottom (NCalc formula), optional second image while
     on_when is true, press = Control Mapper role r."""
     def make(p):
         first = {"actionMode": 0, "labelMode": 3 if formula else 0, "iconMode": 0,
                  "OnPress": {"ActionMode": 3, "ControlMapperRoleName": r} if r else {}, "OnShortPress": {}, "OnLongPress": {},
-                 "HasActionOverrides": False, "ButtonRenderer": {"IconStyle": icon_style(off_svg)}, "StaticLabel": "",
+                 "HasActionOverrides": False, "ButtonRenderer": {"IconStyle": icon_style(off_svg, font_size=size)}, "StaticLabel": "",
                  "Uid": sid(key, "0"), "StateTitle": "Button state", "DisplayStateTitle": "Default state",
                  "IsEnabledExpression": {"Expression": ""}, "IsConditional": False}
         if formula:
-            first["RichLabel"] = [{"Formula": {"Expression": formula}, "Format": 0, "Size": float(size)}]
+            first["RichLabel"] = [{"Formula": {"Expression": formula}, "Format": 0, "Size": 100.0}]
         states = [first]
         if on_svg and on_when:
             on_style = {"Overrides": ["Image", "TextColor"], "Image": b64svg(on_svg), "TextColor": "#FF04170B"}
@@ -187,7 +188,7 @@ def dynamic(key, off_svg, r="", formula="", on_svg=None, on_when="", size=150):
                 # Leave the action icon at its default; artwork belongs exclusively to SimHub.
                 "States": [{k: v for k, v in state(None).items() if k != "Image"}], "LinkedTitle": False,
                 "UUID": "com.wotever.simhubdynamicbutton", "ActionID": sid(key, "action"),
-                "EMPreview": {"off": p.image(off_svg), "formula": formula, "on_when": on_when, "on": p.image(on_svg) if on_svg and on_when else None}}
+                "EMPreview": {"off": p.image(off_svg), "size": size, "sample": sample, "formula": formula, "on_when": on_when, "on": p.image(on_svg) if on_svg and on_when else None}}
     return make
 
 
@@ -195,7 +196,7 @@ def role(r, icon=None, label="", value="", fam="w", kind=""):
     return dynamic(r + label + value, svg_key(icon, label, value, fam, kind), r=r)
 
 
-def live(title_prop, icon=None, label="", fam="w", r="", state_prop="", fmt="", active_when_on=False, kind="", size=18):
+def live(title_prop, icon=None, label="", fam="w", r="", state_prop="", fmt="", active_when_on=False, kind="", size=26, formula_override="", sample=""):
     """A key showing a SimHub property live at the bottom; its press runs role r (if any); green while state_prop is on."""
     formula = ""
     if title_prop and title_prop == state_prop:
@@ -203,10 +204,14 @@ def live(title_prop, icon=None, label="", fam="w", r="", state_prop="", fmt="", 
         title_prop, active_when_on = "", True
     if title_prop:
         formula = f"format([{title_prop}], '0')" if fmt == ":0" else f"[{title_prop}]"
-    off = svg_key(icon, label, "", fam, kind, live=True)
-    on = svg_key(icon, label, "", fam, "active", live=True) if active_when_on and state_prop else None
+    formula = formula_override or formula
+    # Live values get the centre of the key; icons remain on state-only controls.
+    if formula:
+        icon = None
+    off = svg_key(icon, label, "", fam, kind, live=bool(formula))
+    on = svg_key(icon, label, "", fam, "active", live=bool(formula)) if active_when_on and state_prop else None
     return dynamic(label + r + (state_prop or title_prop), off, r=r, formula=formula, on_svg=on, on_when=f"[{state_prop}]" if on else "",
-                   size=150 if size >= 18 else 120)
+                   size=size, sample=sample)
 
 
 def folder(target, icon=None, label="", value="", fam="w"):
@@ -246,7 +251,16 @@ P = "FMT - Poste - "
 
 def profile_key(n, icon):
     # Title = the profile's name (renamable), « conseillé » under it when the track asks for it; green when active.
-    return live(EM + f"Profils.{n}.Titre", icon, "Profil", "w", r=f"EM - Profil {n}", state_prop=EM + f"Profils.{n}.Actif", active_when_on=True)
+    return live(EM + f"Profils.{n}.Titre", icon, f"Profil {n}", "w", r=f"EM - Profil {n}", state_prop=EM + f"Profils.{n}.Actif", active_when_on=True, size=23)
+
+
+def refuel_key():
+    # The pit properties use -1 for a missing row; 0 is a valid selected amount.
+    # Existing Refuel.Next/Previous commands already choose the same menu row.
+    ve = FMT + "Pit.VE.Percent"
+    fuel = FMT + "Pit.Fuel.Litres"
+    formula = f"if(isnull([{ve}],-1) >= 0, format([{ve}], '0') + ' %', if(isnull([{fuel}],-1) >= 0, format([{fuel}], '0.#') + ' L', '—'))"
+    return live("", None, "Ravitaillement", "stand", formula_override=formula, size=36, sample="85 %")
 
 
 def tag(text, fam):
@@ -258,26 +272,26 @@ PAGES = {
     # Positions « colonne,ligne » (5 × 3).
     "Accueil": {
         "0,0": profile_key(1, "sec"), "1,0": profile_key(2, "inter"), "2,0": profile_key(3, "pluie"),
-        "3,0": role(V + "Demande d'arrêt", "stop", "Demande", "Arrêt", "car"),
-        "4,0": live(GD + "PitLimiterOn", "lim", "Limiteur", "car", r=V + "Limiteur", state_prop=GD + "PitLimiterOn"),
-        "0,1": folder("Voiture", "car", "Voiture", "TC, ABS, carto", "car"),
-        "1,1": folder("Stand", "stand", "Stand", "Énergie, ratio", "stand"),
-        "2,1": folder("Pneus", "tyre", "Pneus", "4 roues", "tyre"),
-        "3,1": live(GD + "HeadlightsActive", "lights", "Phares", "car", r=V + "Phares", state_prop=GD + "HeadlightsActive"),
-        "4,1": live(GD + "WipersActive", "wiper", "Essuie-glace", "car", r=V + "Essuie-glace", state_prop=GD + "WipersActive"),
-        "0,2": folder("Caméra", "cam", "Caméra", "TV, replay", "cam"),
-        "1,2": folder("Poste", "seat", "Poste", "Siège, rétros", "post"),
-        "2,2": live(FMT + "Pit.Brakes.Short", "brake", "Freins", "stand", r=S + "Freins changer ou garder", state_prop=FMT + "Pit.Brakes.Replace"),
-        "3,2": live(FMT + "Pit.Damage.Short", "repair", "Réparations", "stand", r=S + "Réparations choix suivant en boucle"),
+        "4,0": role(V + "Demande d'arrêt", "stop", "Demande", "Arrêt", "car"),
+        "3,0": live(GD + "PitLimiterOn", "lim", "Limiteur", "car", r=V + "Limiteur", state_prop=GD + "PitLimiterOn"),
+        "0,1": folder("Voiture", "car", "Voiture", "", "car"),
+        "1,1": folder("Stand", "stand", "Stand", "", "stand"),
+        "2,1": folder("Pneus", "tyre", "Pneus", "", "tyre"),
+        "3,1": folder("Caméra", "cam", "Caméra", "", "cam"),
+        "4,1": folder("Poste", "seat", "Poste", "", "post"),
+        "0,2": live(GD + "HeadlightsActive", "lights", "Phares", "car", r=V + "Phares", state_prop=GD + "HeadlightsActive"),
+        "1,2": live(GD + "WipersActive", "wiper", "Essuie-glace", "car", r=V + "Essuie-glace", state_prop=GD + "WipersActive"),
+        "2,2": live(FMT + "Pit.Brakes.Short", "brake", "Freins", "stand", r=S + "Freins changer ou garder", state_prop=FMT + "Pit.Brakes.Replace", size=24),
+        "3,2": live(FMT + "Pit.Damage.Short", "repair", "Réparations", "stand", r=S + "Réparations choix suivant en boucle", size=22),
         "4,2": role(V + "Appel de phares", "flash", "Appel", "de phares", "car"),
     },
     "Voiture": {
         "0,0": back(), "1,0": plus(V + "TC suivant", "car"), "2,0": plus(V + "Coupure TC suivant", "car"),
         "3,0": plus(V + "ABS suivant", "car"), "4,0": plus(V + "Carto moteur suivante", "car"),
-        "0,1": folder("Voiture suite", "more", "Suite", "Glisse, régén…", "car"),
-        "1,1": live(EM + "Voiture.Reglages.TC", None, "TC", "car", size=26), "2,1": live(EM + "Voiture.Reglages.CoupureTC", None, "Coupure TC", "car", size=26),
-        "3,1": live(EM + "Voiture.Reglages.ABS", None, "ABS", "car", size=26), "4,1": live(EM + "Voiture.Reglages.Carto", None, "Carto", "car", size=26),
-        "0,2": live(EM + "Profils.Actif", "sec", "Profil", "w"),
+        "0,2": folder("Voiture suite", "more", "Suite", "", "car"),
+        "1,1": live(EM + "Voiture.Reglages.TC", None, "TC", "car", size=44), "2,1": live(EM + "Voiture.Reglages.CoupureTC", None, "Coupure TC", "car", size=44),
+        "3,1": live(EM + "Voiture.Reglages.ABS", None, "ABS", "car", size=44), "4,1": live(EM + "Voiture.Reglages.Carto", None, "Carto", "car", size=44),
+        "0,1": live(EM + "Profils.Actif", "sec", "Profil", "w", size=23),
         "1,2": minus(V + "TC précédent", "car"), "2,2": minus(V + "Coupure TC précédent", "car"),
         "3,2": minus(V + "ABS précédent", "car"), "4,2": minus(V + "Carto moteur précédente", "car"),
     },
@@ -285,38 +299,38 @@ PAGES = {
         "0,0": back(), "1,0": plus(V + "TC glisse suivant", "car"), "2,0": plus(V + "Régénération suivante", "car"),
         "3,0": plus(V + "Répartition vers l'avant", "car"), "4,0": plus(V + "Migration vers l'avant", "car"),
         "0,1": folder("Antiroulis", "car", "Antiroulis", "Avant, arrière", "car"),
-        "1,1": live(EM + "Voiture.Reglages.GlisseTC", None, "TC glisse", "car", size=26), "2,1": live(EM + "Voiture.Reglages.Regen", None, "Régén", "car", size=26),
-        "3,1": live(EM + "Voiture.Reglages.Repartition", None, "Répartition", "car", size=22), "4,1": live(EM + "Voiture.Reglages.Migration", None, "Migration", "car", size=26),
+        "1,1": live(EM + "Voiture.Reglages.GlisseTC", None, "TC glisse", "car", size=44), "2,1": live(EM + "Voiture.Reglages.Regen", None, "Régén", "car", size=30),
+        "3,1": live(EM + "Voiture.Reglages.Repartition", None, "Répartition", "car", size=30), "4,1": live(EM + "Voiture.Reglages.Migration", None, "Migration", "car", size=44),
         "1,2": minus(V + "TC glisse précédent", "car"), "2,2": minus(V + "Régénération précédente", "car"),
         "3,2": minus(V + "Répartition vers l'arrière", "car"), "4,2": minus(V + "Migration vers l'arrière", "car"),
     },
     "Antiroulis": {
         "0,0": back(), "1,0": plus(V + "Antiroulis avant suivant", "car"), "2,0": plus(V + "Antiroulis arrière suivant", "car"),
-        "1,1": live(EM + "Voiture.Reglages.AntiroulisAV", None, "Antiroulis AV", "car", size=26), "2,1": live(EM + "Voiture.Reglages.AntiroulisAR", None, "Antiroulis AR", "car", size=26),
+        "1,1": live(EM + "Voiture.Reglages.AntiroulisAV", None, "Antiroulis AV", "car", size=44), "2,1": live(EM + "Voiture.Reglages.AntiroulisAR", None, "Antiroulis AR", "car", size=44),
         "1,2": minus(V + "Antiroulis avant précédent", "car"), "2,2": minus(V + "Antiroulis arrière précédent", "car"),
     },
     "Stand": {
         "0,0": back(), "1,0": plus(S + "Énergie suivante", "stand"), "2,0": plus(S + "Ratio suivant", "stand"),
         "3,0": plus(S + "Pressions 4 roues suivantes", "stand"),
-        "4,0": live(FMT + "Pit.Brakes.Short", "brake", "Freins", "stand", r=S + "Freins changer ou garder", state_prop=FMT + "Pit.Brakes.Replace"),
+        "4,0": live(FMT + "Pit.Brakes.Short", "brake", "Freins", "stand", r=S + "Freins changer ou garder", state_prop=FMT + "Pit.Brakes.Replace", size=24),
         "0,1": folder("Pneus", "tyre", "Pneus", "", "tyre"),
-        "1,1": live(FMT + "Pit.VE.Percent", "energy", "Énergie", "stand", fmt=":0"),
-        "2,1": live(FMT + "Pit.Ratio", "fuel", "Ratio carbu", "stand"),
-        "3,1": live(FMT + "Pit.FLPRESS", "press", "Pressions", "stand"),
-        "4,1": live(FMT + "Pit.Damage.Short", "repair", "Réparations", "stand", r=S + "Réparations choix suivant en boucle"),
+        "1,1": refuel_key(),
+        "2,1": live(FMT + "Pit.Ratio", "fuel", "Ratio", "stand", size=32),
+        "3,1": live(FMT + "Pit.FLPRESS", "press", "Pressions", "stand", size=32),
+        "4,1": live(FMT + "Pit.Damage.Short", "repair", "Réparations", "stand", r=S + "Réparations choix suivant en boucle", size=22),
         "0,2": folder("Aéro", "aero", "Aéro", "Aileron, écopes", "stand"),
         "1,2": minus(S + "Énergie précédente", "stand"), "2,2": minus(S + "Ratio précédent", "stand"),
         "3,2": minus(S + "Pressions 4 roues précédentes", "stand"),
-        "4,2": live(FMT + "Pit.Driver.Short", "driver", "Pilote", "stand", r=S + "Pilote suivant en boucle"),
+        "4,2": live(FMT + "Pit.Driver.Short", "driver", "Pilote", "stand", r=S + "Pilote suivant en boucle", size=22),
     },
     "Pneus": {
         "0,0": back(),
-        "1,0": live(FMT + "Pit.Tyre.FL.Badge", "tyre", "Avant gauche", "tyre", r=S + "Pneu avant gauche gomme suivante en boucle"),
-        "2,0": live(FMT + "Pit.Tyre.FR.Badge", "tyre", "Avant droit", "tyre", r=S + "Pneu avant droit gomme suivante en boucle"),
-        "1,1": live(FMT + "Pit.Tyre.RL.Badge", "tyre", "Arrière gauche", "tyre", r=S + "Pneu arrière gauche gomme suivante en boucle"),
-        "2,1": live(FMT + "Pit.Tyre.RR.Badge", "tyre", "Arrière droit", "tyre", r=S + "Pneu arrière droit gomme suivante en boucle"),
+        "1,0": live(FMT + "Pit.Tyre.FL.Badge", "tyre", "AV gauche", "tyre", size=32, r=S + "Pneu avant gauche gomme suivante en boucle"),
+        "2,0": live(FMT + "Pit.Tyre.FR.Badge", "tyre", "AV droit", "tyre", size=32, r=S + "Pneu avant droit gomme suivante en boucle"),
+        "1,1": live(FMT + "Pit.Tyre.RL.Badge", "tyre", "AR gauche", "tyre", size=32, r=S + "Pneu arrière gauche gomme suivante en boucle"),
+        "2,1": live(FMT + "Pit.Tyre.RR.Badge", "tyre", "AR droit", "tyre", size=32, r=S + "Pneu arrière droit gomme suivante en boucle"),
         "4,0": role(S + "Pneus 4 roues même gomme neuve", "four", "4 roues", "Neufs même\ngomme", "tyre"),
-        "4,1": live(FMT + "Pit.Tyres.Badge", "four", "4 roues", "tyre", r=S + "Pneus 4 roues gomme suivante en boucle"),
+        "4,1": live(FMT + "Pit.Tyres.Badge", "four", "4 roues", "tyre", size=32, r=S + "Pneus 4 roues gomme suivante en boucle"),
         "4,2": role(S + "Pneus 4 roues aucun changement", "four", "4 roues", "Aucun\nchangement", "tyre"),
     },
     "Aéro": {
@@ -463,7 +477,7 @@ ON = {EM + "Profils.1.Actif", GD + "HeadlightsActive"}
 
 def preview(p, manifests, path):
     from PIL import Image, ImageDraw, ImageFont
-    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 22)
+    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
     order = ["Accueil", "Voiture", "Stand", "Pneus", "Voiture suite", "Aéro", "Caméra", "Poste"]
     tiles = []
     for name in order:
@@ -476,15 +490,20 @@ def preview(p, manifests, path):
             image_name = meta["on"] if on else meta.get("off") or a["States"][0]["Image"]
             img = Image.open(io.BytesIO(p.images[image_name])).convert("RGB")
             prop = re.sub(r"^format\(\[|^\[|\].*$", "", meta.get("formula") or "")
-            title = SAMPLE.get(prop, "")
+            title = meta.get("sample") or SAMPLE.get(prop, "")
             if title:
                 d = ImageDraw.Draw(img)
                 lines = title.split("\n")
-                y = 144 - 14 - 26 * len(lines)
+                px = meta.get("size", 26)
+                font = ImageFont.truetype(font_path, px)
+                while px > 12 and max(d.textlength(line, font=font) for line in lines) > 124:
+                    px -= 1
+                    font = ImageFont.truetype(font_path, px)
+                y = 83 - (px + 3) * len(lines) / 2
                 for line in lines:
                     w = d.textlength(line, font=font)
                     d.text(((144 - w) / 2, y), line, font=font, fill="#04170B" if on else "#FFFFFF")
-                    y += 26
+                    y += px + 3
             sheet.paste(img, (8 + c * 152, 8 + r * 152))
         tiles.append(sheet)
     w, h = tiles[0].size
