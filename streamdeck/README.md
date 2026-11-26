@@ -25,6 +25,10 @@ Stream Deck MK.2 (15 touches). Maquette validée par Nathan le 24/11/2026 : http
 - Valeurs en direct : propriétés SimHub (`DataCorePlugin.GameData.*`), FMT companion (`FMTCompanionPlugin.Pit.*`) et
   plugin (`EnduranceManagerPlugin.Profils.N.Titre`, `.Actif`). Les niveaux TC, coupure, glisse, ABS, carto, migration, antiroulis et la répartition proviennent de `EnduranceManagerPlugin.Voiture.Reglages.*` (mémoire LMU). La régénération est une puissance lue en kW, pas un niveau de réglage. Un tiret signale une valeur indisponible lorsque la télémétrie est présente. Le rendu réel doit être validé dans SimHub.
 
+- Ravitaillement : énergie virtuelle en % si disponible, sinon carburant en litres ; un tiret si le menu est indisponible. Les boutons +/− utilisent le choix du menu LMU existant.
+- Ne jamais définir d'image personnalisée dans Stream Deck sur une action SimHub : elle bloque le rendu dynamique. Réinitialiser l'icône par défaut si nécessaire. Le SVG est exclusivement configuré dans SimHub. Les dossiers et la navigation conservent leur image fixe.
+- Typographie adaptée par touche : grands chiffres pour les niveaux, police réduite pour les noms et états longs. Les tailles du moteur SimHub et le rendu sur MK.2 restent à vérifier en jeu.
+
 ## Refaire le profil
 
 `python3 streamdeck/build.py` (avec `cairosvg` et `pillow`) réécrit le profil et `apercu.png`. Les touches sont
