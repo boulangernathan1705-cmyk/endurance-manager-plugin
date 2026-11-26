@@ -315,7 +315,7 @@ PAGES = {
         "4,0": live(FMT + "Pit.Brakes.Short", "brake", "Freins", "stand", r=S + "Freins changer ou garder", state_prop=FMT + "Pit.Brakes.Replace", size=24),
         "0,1": folder("Pneus", "tyre", "Pneus", "", "tyre"),
         "1,1": refuel_key(),
-        "2,1": live(FMT + "Pit.Ratio", "fuel", "Ratio", "stand", size=32),
+        "2,1": live(FMT + "Pit.Ratio", "fuel", "Ratio", "stand", size=32, formula_override=f"if(isnull([{FMT}Pit.Ratio],-1) >= 0, format([{FMT}Pit.Ratio], '0.00'), '—')", sample="0,16"),
         "3,1": live(FMT + "Pit.FLPRESS", "press", "Pressions", "stand", size=32),
         "4,1": live(FMT + "Pit.Damage.Short", "repair", "Réparations", "stand", r=S + "Réparations choix suivant en boucle", size=22),
         "0,2": folder("Aéro", "aero", "Aéro", "Aileron, écopes", "stand"),
