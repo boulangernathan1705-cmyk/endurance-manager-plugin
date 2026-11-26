@@ -1,5 +1,5 @@
 {
-  "version": "0.2.3",
+  "version": "0.2.4",
   "changes": [
     {
       "type": "mieux",
@@ -9,6 +9,11 @@
     {
       "type": "mieux",
       "text": "Les commandes manuelles de la Black Box conservent leur fonctionnement.",
+      "page": "bb"
+    },
+    {
+      "type": "mieux",
+      "text": "Stream Deck : valeurs électroniques en direct issues du plugin (TC, ABS, cartographie et autres réglages).",
       "page": "bb"
     }
   ]
