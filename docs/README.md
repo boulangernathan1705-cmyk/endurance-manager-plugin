@@ -4,6 +4,7 @@
 
 | Fichier | Sujet |
 | --- | --- |
+| [ai-workflow.md](ai-workflow.md) | Méthode commune aux IA, reprise, validations, tests et compte rendu |
 | [modules.md](modules.md) | Les 7 modules (Pour moi / Avec mon équipe), ce que fait chacun, ses fichiers, son état |
 | [decisions.md](decisions.md) | Les choix de Nathan et les idées refusées (à ne pas reproposer) |
 | [ecran.md](ecran.md) | L'écran du plugin en page web (menu à gauche, charte du site), ses données, son secours WPF |
