@@ -217,6 +217,15 @@ public sealed class FMTCompanionPlugin : IPlugin, IWPFSettingsV2, IWPFSettings
 		});
 		Show("Pit.Brakes.Replace", () => Yes("REPLACE BRAKES:"));
 		Show("Pit.StopGo.Serve", () => Yes("STOP/GO:"));
+		// Read the actual countdown from the selected LMU menu choice; never replace it with a guessed value.
+		Show("Pit.StopGo.LapsLeft", () => StopGoLaps(ReadValue("STOP/GO:")));
+		Show("Pit.StopGo.DeckText", () => {
+			string value = ReadValue("STOP/GO:");
+			int laps = StopGoLaps(value);
+			if (laps < 0) return "";
+			string status = Regex.IsMatch(value.Trim(), @"^(OUI|YES)\b", RegexOptions.IgnoreCase) ? "OUI" : "NON";
+			return "SG\n" + (laps <= 1 ? "CE TOUR" : laps.ToString(CultureInfo.InvariantCulture) + " T") + "\n" + status;
+		});
 		this.AttachDelegate("Last.Command", () => lastLabel);
 		this.AttachDelegate("Last.Ok", () => (!lastIsPit) ? ((lastCount > 0) ? 1 : (-1)) : Volatile.Read(ref Service.LastOk));
 		this.AttachDelegate("Last.Count", () => lastCount);
@@ -718,6 +727,14 @@ public sealed class FMTCompanionPlugin : IPlugin, IWPFSettingsV2, IWPFSettings
 			"PLUIE" => "\ud83d\udd35 PLUIE", 
 			_ => name, 
 		};
+	}
+
+	// LMU's STOP/GO choice is Yes/No (remaining laps), with an optional localized lap suffix.
+	// Reject durations in seconds and unrecognised strings rather than displaying a false deadline.
+	internal static int StopGoLaps(string value)
+	{
+		Match m = Regex.Match(value ?? "", @"^\s*(?:OUI|NON|YES|NO)\s*\(\s*(\d+)\s*(?:(?:laps?|tours?))?\s*\)\s*$", RegexOptions.IgnoreCase);
+		return m.Success && int.TryParse(m.Groups[1].Value, out int n) && n >= 0 && n <= 3 ? n : -1;
 	}
 
 	private int YesRaw(string row)
