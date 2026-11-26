@@ -177,11 +177,11 @@ namespace EnduranceManager.SimHub
                 this.AttachDelegate("Profils." + (slot + 1) + ".Nom", () => Profiles.NameAt(slot));
                 // For the Stream Deck profile (streamdeck/): the key lit when this profile is the car's, and its title with
                 // « conseillé » when the track's wetness asks for it.
-                this.AttachDelegate("Profils." + (slot + 1) + ".Actif", () => Settings.Profiles && Profiles.NameAt(slot) != "" && Profiles.NameAt(slot) == (Profiles.Active ?? Profiles.Applied));
+                this.AttachDelegate("Profils." + (slot + 1) + ".Actif", () => Settings.Profiles && Profiles.NameAt(slot) != "" && Profiles.NameAt(slot) == Profiles.Active);
                 this.AttachDelegate("Profils." + (slot + 1) + ".Titre", () =>
                 {
                     string name = Profiles.NameAt(slot);
-                    bool advised = Settings.Profiles && name != "" && name == Profiles.ForWeather && name != (Profiles.Active ?? Profiles.Applied);
+                    bool advised = Settings.Profiles && name != "" && name == Profiles.ForWeather && name != Profiles.Active;
                     return advised ? name + "\nconseillé" : name;
                 });
             }
