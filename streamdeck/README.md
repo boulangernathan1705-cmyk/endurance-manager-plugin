@@ -23,8 +23,7 @@ Stream Deck MK.2 (15 touches). Maquette validée par Nathan le 24/11/2026 : http
   c'est actif (profil appliqué, limiteur, phares, essuie-glace), appui = rôle du Control Mapper. Chaque touche se
   retouche dans SimHub (« Edit in SimHub » dans le logiciel Stream Deck).
 - Valeurs en direct : propriétés SimHub (`DataCorePlugin.GameData.*`), FMT companion (`FMTCompanionPlugin.Pit.*`) et
-  plugin (`EnduranceManagerPlugin.Profils.N.Titre`, `.Actif`). Coupure TC, TC glisse, régén, migration et antiroulis :
-  LMU ne les donne pas à SimHub, la touche du milieu montre seulement le nom.
+  plugin (`EnduranceManagerPlugin.Profils.N.Titre`, `.Actif`). Les niveaux TC, coupure, glisse, ABS, carto, migration, antiroulis et la répartition proviennent de `EnduranceManagerPlugin.Voiture.Reglages.*` (mémoire LMU). La régénération est une puissance lue en kW, pas un niveau de réglage. Un tiret signale une valeur indisponible lorsque la télémétrie est présente. Le rendu réel doit être validé dans SimHub.
 
 ## Refaire le profil
 
