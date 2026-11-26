@@ -4,6 +4,8 @@ Ce que Nathan a décidé, avec la date. Les idées refusées ne sont pas à repr
 
 ## Manière de travailler
 
+- 26/11/2026 : ChatGPT, Claude, GitHub Copilot ou toute autre IA autorisée utilisent une base de connaissances commune sur GitHub, sans communication automatisée entre elles. Nathan pilote le produit par demandes et itérations, sans coder ; les agents prennent en charge la réalisation technique. Voir [ai-workflow.md](ai-workflow.md).
+
 - Nouvelle fonction ou nouvel écran : proposer et dessiner ensemble d'abord (efficace, joli, ergonomique), coder après
   accord. Petites corrections : directement.
 - Toujours spécifique à LMU, jamais de règle iRacing.
