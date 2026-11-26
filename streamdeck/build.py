@@ -272,8 +272,8 @@ PAGES = {
         "0,0": back(), "1,0": plus(V + "TC suivant", "car"), "2,0": plus(V + "Coupure TC suivant", "car"),
         "3,0": plus(V + "ABS suivant", "car"), "4,0": plus(V + "Carto moteur suivante", "car"),
         "0,1": folder("Voiture suite", "more", "Suite", "Glisse, régén…", "car"),
-        "1,1": live(GD + "TCLevel", None, "TC", "car", size=26), "2,1": tag("Coupure TC", "car"),
-        "3,1": live(GD + "ABSLevel", None, "ABS", "car", size=26), "4,1": live(GD + "EngineMap", None, "Carto", "car", size=26),
+        "1,1": live(EM + "Voiture.Reglages.TC", None, "TC", "car", size=26), "2,1": live(EM + "Voiture.Reglages.CoupureTC", None, "Coupure TC", "car", size=26),
+        "3,1": live(EM + "Voiture.Reglages.ABS", None, "ABS", "car", size=26), "4,1": live(EM + "Voiture.Reglages.Carto", None, "Carto", "car", size=26),
         "0,2": live(EM + "Profils.Actif", "sec", "Profil", "w"),
         "1,2": minus(V + "TC précédent", "car"), "2,2": minus(V + "Coupure TC précédent", "car"),
         "3,2": minus(V + "ABS précédent", "car"), "4,2": minus(V + "Carto moteur précédente", "car"),
@@ -282,14 +282,14 @@ PAGES = {
         "0,0": back(), "1,0": plus(V + "TC glisse suivant", "car"), "2,0": plus(V + "Régénération suivante", "car"),
         "3,0": plus(V + "Répartition vers l'avant", "car"), "4,0": plus(V + "Migration vers l'avant", "car"),
         "0,1": folder("Antiroulis", "car", "Antiroulis", "Avant, arrière", "car"),
-        "1,1": tag("TC glisse", "car"), "2,1": tag("Régén", "car"),
-        "3,1": live(GD + "BrakeBias", None, "Répartition", "car", size=22), "4,1": tag("Migration", "car"),
+        "1,1": live(EM + "Voiture.Reglages.GlisseTC", None, "TC glisse", "car", size=26), "2,1": live(EM + "Voiture.Reglages.Regen", None, "Régén", "car", size=26),
+        "3,1": live(EM + "Voiture.Reglages.Repartition", None, "Répartition", "car", size=22), "4,1": live(EM + "Voiture.Reglages.Migration", None, "Migration", "car", size=26),
         "1,2": minus(V + "TC glisse précédent", "car"), "2,2": minus(V + "Régénération précédente", "car"),
         "3,2": minus(V + "Répartition vers l'arrière", "car"), "4,2": minus(V + "Migration vers l'arrière", "car"),
     },
     "Antiroulis": {
         "0,0": back(), "1,0": plus(V + "Antiroulis avant suivant", "car"), "2,0": plus(V + "Antiroulis arrière suivant", "car"),
-        "1,1": tag("Antiroulis AV", "car"), "2,1": tag("Antiroulis AR", "car"),
+        "1,1": live(EM + "Voiture.Reglages.AntiroulisAV", None, "Antiroulis AV", "car", size=26), "2,1": live(EM + "Voiture.Reglages.AntiroulisAR", None, "Antiroulis AR", "car", size=26),
         "1,2": minus(V + "Antiroulis avant précédent", "car"), "2,2": minus(V + "Antiroulis arrière précédent", "car"),
     },
     "Stand": {
@@ -448,7 +448,7 @@ def build():
 # What the live titles show in the preview (Stream Deck draws them over the key images).
 SAMPLE = {EM + "Profils.1.Titre": "Sec", EM + "Profils.2.Titre": "Inter\nconseillé", EM + "Profils.3.Titre": "Pluie", GD + "PitLimiterOn": "0",
           GD + "HeadlightsActive": "1", GD + "WipersActive": "0", FMT + "Pit.Brakes.Short": "Garder", FMT + "Pit.Damage.Short": "Toutes",
-          GD + "TCLevel": "4", GD + "ABSLevel": "3", GD + "EngineMap": "2", EM + "Profils.Actif": "Sec", GD + "BrakeBias": "54,2",
+          EM + "Voiture.Reglages.TC": "4", EM + "Voiture.Reglages.CoupureTC": "3", EM + "Voiture.Reglages.GlisseTC": "2", EM + "Voiture.Reglages.Regen": "80 kW", EM + "Voiture.Reglages.Migration": "2", EM + "Voiture.Reglages.AntiroulisAV": "5", EM + "Voiture.Reglages.AntiroulisAR": "4", EM + "Voiture.Reglages.ABS": "3", EM + "Voiture.Reglages.Carto": "2", EM + "Profils.Actif": "Sec", EM + "Voiture.Reglages.Repartition": "54,2",
           FMT + "Pit.VE.Percent": "85", FMT + "Pit.Ratio": "0,16", FMT + "Pit.FLPRESS": "131", FMT + "Pit.Driver.Short": "N. Boul.",
           FMT + "Pit.Tyre.FL.Badge": "MED", FMT + "Pit.Tyre.FR.Badge": "MED", FMT + "Pit.Tyre.RL.Badge": "MED", FMT + "Pit.Tyre.RR.Badge": "MED",
           FMT + "Pit.Tyres.Badge": "MED", FMT + "Pit.RWING": "P10", FMT + "Pit.GRILLE": "5", FMT + "Pit.FBRAKEDUCT": "Ouvert", FMT + "Pit.RBRAKEDUCT": "20 %"}
