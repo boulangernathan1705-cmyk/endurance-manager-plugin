@@ -191,7 +191,7 @@ namespace EnduranceManager.SimHub
             BlackBox = new BlackBox(() => Menu.Raw, () => { Menu.Read(); BlackBox.Update(Menu.Items); });
             BlackBoxPages = new BlackBoxPages(BlackBox, id => CompanionPage.Send(id));
             // The profiles too, when a Control Mapper role moves nothing (Profiles.Reach).
-            Profiles.SendFmt = id => CompanionPage?.Send(id) ?? "FMT companion absent";
+            Profiles.SendFmt = id => ProfileCommand.Send(CompanionPage == null ? null : new Func<string, string>(CompanionPage.Send), id);
             Profiles.FmtRunning = () => Companion.Running;
             // Black box sur boutons changes at SimHub's next launch (FMT companion starts with SimHub): so do its actions.
             bool blackBoxAtStart = Settings.CompanionOn;

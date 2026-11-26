@@ -425,12 +425,8 @@ namespace EnduranceManager.SimHub
                 if (id == null) return setting.Label + " (pas de commande)";
                 string why = SendFmt(id);
                 if (why != null) return setting.Label + " (" + why + ")";
-                // FMT holds the Control Mapper role for 200 ms. A telemetry change can arrive before release.
-                // Give the output time to release and LMU time to see the low state before retriggering.
-                // Stay on the profiles worker thread: no delay in the SimHub UI or manual FMT buttons.
-                Thread.Sleep(320);
-                // The game takes a moment to show the new level: up to another 1.2 s.
-                double? after = latest() is Sample readAfterRelease ? setting.Read(readAfterRelease) : null;
+                // Wait for LMU to show the new value before sending the next command (up to 1.2 s).
+                double? after = now;
                 for (int wait = 0; wait < 15 && after == now; wait++) { Thread.Sleep(80); after = latest() is Sample t ? setting.Read(t) : null; }
                 if (!after.HasValue) return setting.Label + " (lecture interrompue)";
                 still = after == now ? still + 1 : 0;
