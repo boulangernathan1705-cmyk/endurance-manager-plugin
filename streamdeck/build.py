@@ -93,7 +93,7 @@ def svg_key(icon=None, label="", value="", fam="w", kind="", live=False, big=Fal
         symbol = "+" if icon == "up" else "−"
         parts.append(f'<text x="72" y="98" font-family="Arial, Liberation Sans" font-weight="bold" font-size="78" fill="{color}" text-anchor="middle">{symbol}</text>')
     else:
-        size = 58 if not (live or value) else 46
+        size = 58 if not (live or value) else (32 if "\n" in value else 40)
         if big and not icon:
             size = 0
         y_icon = 14 if (live or value) else 26
@@ -105,11 +105,12 @@ def svg_key(icon=None, label="", value="", fam="w", kind="", live=False, big=Fal
             parts.append(f'<text x="72" y="{y_label}" font-family="Arial, Liberation Sans, FreeSans" font-weight="bold" font-size="{min(18, max(10, int(122 / max(1, len(label)) / 0.72)))}" fill="{muted}" text-anchor="middle" letter-spacing="{1 if len(label) <= 11 else 0}">{esc(label.upper())}</text>')
         if value and not live:
             lines = value.split("\n")
-            fs = 22 if max(len(l) for l in lines) <= 10 else 18
-            y = y_label + 28
+            fs = min(20, max(11, int(112 / max(1, max(len(l) for l in lines)) / 0.72)))
+            fs = min(fs, max(10, int((122 - y_label - 5 - 3 * (len(lines) - 1)) / len(lines))))
+            y = y_label + fs + 4
             for line in lines:
                 parts.append(f'<text x="72" y="{y}" font-family="Arial, Liberation Sans, FreeSans" font-weight="bold" font-size="{fs}" fill="{text}" text-anchor="middle">{esc(line)}</text>')
-                y += fs + 4
+                y += fs + 3
     return '<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">' + "".join(parts) + "</svg>"
 
 
@@ -144,9 +145,9 @@ def b64svg(svg):
     return base64.b64encode(svg.encode("utf-8")).decode("ascii")
 
 
-def icon_style(svg, font_size=14):
+def icon_style(svg, font_size=14, live=False):
     return {"ReverseIconColors": False, "IconMarginLeft": 0, "IconMarginTop": 0, "IconMarginRight": 0, "IconMarginBottom": 0,
-            "TextMarginBottom": 10, "LabelVerticalAlignment": 2, "Image": b64svg(svg), "UseBlinkingBorderColor": False,
+            "TextMarginBottom": 26 if live else 10, "LabelVerticalAlignment": 2, "Image": b64svg(svg), "UseBlinkingBorderColor": False,
             "UseBlinkingIconBackgroundColor": False, "UseBlinkingIconForegroundColor": False, "UseBlinkingTextColor": False,
             "BlinkingDuration": 500, "BlinkingTwoPhases": False, "BlinkingOffDuration": 500, "BlinkingIconBackgroundColor": "#FF000000",
             "BlinkingIconForegroundColor": "#00FFFFFF", "BlinkingTextColor": "#FFFF0000", "Bold": True, "Italic": False,
@@ -165,18 +166,21 @@ def dynamic(key, off_svg, r="", formula="", on_svg=None, on_when="", size=26, sa
     def make(p):
         first = {"actionMode": 0, "labelMode": 3 if formula else 0, "iconMode": 0,
                  "OnPress": {"ActionMode": 3, "ControlMapperRoleName": r} if r else {}, "OnShortPress": {}, "OnLongPress": {},
-                 "HasActionOverrides": False, "ButtonRenderer": {"IconStyle": icon_style(off_svg, font_size=size)}, "StaticLabel": "",
+                 "HasActionOverrides": False, "ButtonRenderer": {"IconStyle": icon_style(off_svg, font_size=size, live=bool(formula))}, "StaticLabel": "",
                  "Uid": sid(key, "0"), "StateTitle": "Button state", "DisplayStateTitle": "Default state",
                  "IsEnabledExpression": {"Expression": ""}, "IsConditional": False}
         if formula:
             first["RichLabel"] = [{"Formula": {"Expression": formula}, "Format": 0, "Size": 100.0}]
         states = [first]
         if on_svg and on_when:
-            on_style = {"Overrides": ["Image", "TextColor"], "Image": b64svg(on_svg), "TextColor": "#FF04170B"}
-            states.append({"actionMode": 0, "labelMode": 2, "iconMode": 0, "HasActionOverrides": False,
-                           "ButtonRenderer": {"IconStyle": on_style},
-                           "Uid": sid(key, "1"), "StateTitle": "Button state", "DisplayStateTitle": "Button state",
-                           "IsEnabledExpression": {"Expression": on_when}, "IsConditional": True})
+            on_style = {"Overrides": ["Image", "TextColor", "FontSize", "TextMarginBottom", "LabelVerticalAlignment"], "Image": b64svg(on_svg), "TextColor": "#FF04170B", "FontSize": size, "TextMarginBottom": 26 if formula else 10, "LabelVerticalAlignment": 2}
+            active = {"actionMode": 0, "labelMode": 3 if formula else 2, "iconMode": 0, "HasActionOverrides": False,
+                      "ButtonRenderer": {"IconStyle": on_style},
+                      "Uid": sid(key, "1"), "StateTitle": "Button state", "DisplayStateTitle": "Button state",
+                      "IsEnabledExpression": {"Expression": on_when}, "IsConditional": True}
+            if formula:
+                active["RichLabel"] = [{"Formula": {"Expression": formula}, "Format": 0, "Size": 100.0}]
+            states.append(active)
         button = {"StreamDeckButtonSetting": {"FromModel": None, "DesignWidth": 144, "DesignHeight": 144,
                                               "SettingsBuilder": {"Settings": [], "IsEditMode": False, "Prefix": None},
                                               "StateToggleMode": 1 if len(states) > 1 else 0, "Target": 1, "Uid": sid(key, "setting"),
@@ -196,7 +200,7 @@ def role(r, icon=None, label="", value="", fam="w", kind=""):
     return dynamic(r + label + value, svg_key(icon, label, value, fam, kind), r=r)
 
 
-def live(title_prop, icon=None, label="", fam="w", r="", state_prop="", fmt="", active_when_on=False, kind="", size=26, formula_override="", sample=""):
+def live(title_prop, icon=None, label="", fam="w", r="", state_prop="", fmt="", active_when_on=False, kind="", size=15, formula_override="", sample=""):
     """A key showing a SimHub property live at the bottom; its press runs role r (if any); green while state_prop is on."""
     formula = ""
     if title_prop and title_prop == state_prop:
@@ -251,7 +255,7 @@ P = "FMT - Poste - "
 
 def profile_key(n, icon):
     # Title = the profile's name (renamable), « conseillé » under it when the track asks for it; green when active.
-    return live(EM + f"Profils.{n}.Titre", icon, f"Profil {n}", "w", r=f"EM - Profil {n}", state_prop=EM + f"Profils.{n}.Actif", active_when_on=True, size=23)
+    return live(EM + f"Profils.{n}.Titre", icon, f"Profil {n}", "w", r=f"EM - Profil {n}", state_prop=EM + f"Profils.{n}.Actif", active_when_on=True, size=15)
 
 
 def refuel_key():
@@ -260,7 +264,7 @@ def refuel_key():
     ve = FMT + "Pit.VE.Percent"
     fuel = FMT + "Pit.Fuel.Litres"
     formula = f"if(isnull([{ve}],-1) >= 0, format([{ve}], '0') + ' %', if(isnull([{fuel}],-1) >= 0, format([{fuel}], '0.#') + ' L', '—'))"
-    return live("", None, "Ravitaillement", "stand", formula_override=formula, size=36, sample="85 %")
+    return live("", None, "Ravitaillement", "stand", formula_override=formula, size=18, sample="85 %")
 
 
 def tag(text, fam):
@@ -281,17 +285,17 @@ PAGES = {
         "4,1": folder("Poste", "seat", "Poste", "", "post"),
         "0,2": live(GD + "HeadlightsActive", "lights", "Phares", "car", r=V + "Phares", state_prop=GD + "HeadlightsActive"),
         "1,2": live(GD + "WipersActive", "wiper", "Essuie-glace", "car", r=V + "Essuie-glace", state_prop=GD + "WipersActive"),
-        "2,2": live(FMT + "Pit.Brakes.Short", "brake", "Freins", "stand", r=S + "Freins changer ou garder", state_prop=FMT + "Pit.Brakes.Replace", size=24),
-        "3,2": live(FMT + "Pit.Damage.Short", "repair", "Réparations", "stand", r=S + "Réparations choix suivant en boucle", size=22),
+        "2,2": live(FMT + "Pit.Brakes.Short", "brake", "Freins", "stand", r=S + "Freins changer ou garder", state_prop=FMT + "Pit.Brakes.Replace", size=12),
+        "3,2": live(FMT + "Pit.Damage.Short", "repair", "Réparations", "stand", r=S + "Réparations choix suivant en boucle", size=12),
         "4,2": role(V + "Appel de phares", "flash", "Appel", "de phares", "car"),
     },
     "Voiture": {
         "0,0": back(), "1,0": plus(V + "TC suivant", "car"), "2,0": plus(V + "Coupure TC suivant", "car"),
         "3,0": plus(V + "ABS suivant", "car"), "4,0": plus(V + "Carto moteur suivante", "car"),
         "0,2": folder("Voiture suite", "more", "Suite", "", "car"),
-        "1,1": live(EM + "Voiture.Reglages.TC", None, "TC", "car", size=44), "2,1": live(EM + "Voiture.Reglages.CoupureTC", None, "Coupure TC", "car", size=44),
-        "3,1": live(EM + "Voiture.Reglages.ABS", None, "ABS", "car", size=44), "4,1": live(EM + "Voiture.Reglages.Carto", None, "Carto", "car", size=44),
-        "0,1": live(EM + "Profils.Actif", "sec", "Profil", "w", size=23),
+        "1,1": live(EM + "Voiture.Reglages.TC", None, "TC", "car", size=25), "2,1": live(EM + "Voiture.Reglages.CoupureTC", None, "Coupure TC", "car", size=25),
+        "3,1": live(EM + "Voiture.Reglages.ABS", None, "ABS", "car", size=25), "4,1": live(EM + "Voiture.Reglages.Carto", None, "Carto", "car", size=25),
+        "0,1": live(EM + "Profils.Actif", "sec", "Profil", "w", size=15),
         "1,2": minus(V + "TC précédent", "car"), "2,2": minus(V + "Coupure TC précédent", "car"),
         "3,2": minus(V + "ABS précédent", "car"), "4,2": minus(V + "Carto moteur précédente", "car"),
     },
@@ -299,38 +303,38 @@ PAGES = {
         "0,0": back(), "1,0": plus(V + "TC glisse suivant", "car"), "2,0": plus(V + "Régénération suivante", "car"),
         "3,0": plus(V + "Répartition vers l'avant", "car"), "4,0": plus(V + "Migration vers l'avant", "car"),
         "0,1": folder("Antiroulis", "car", "Antiroulis", "Avant, arrière", "car"),
-        "1,1": live(EM + "Voiture.Reglages.GlisseTC", None, "TC glisse", "car", size=44), "2,1": live(EM + "Voiture.Reglages.Regen", None, "Régén", "car", size=30),
-        "3,1": live(EM + "Voiture.Reglages.Repartition", None, "Répartition", "car", size=30), "4,1": live(EM + "Voiture.Reglages.Migration", None, "Migration", "car", size=44),
+        "1,1": live(EM + "Voiture.Reglages.GlisseTC", None, "TC glisse", "car", size=25), "2,1": live(EM + "Voiture.Reglages.Regen", None, "Régén", "car", size=17),
+        "3,1": live(EM + "Voiture.Reglages.Repartition", None, "Répartition", "car", size=17), "4,1": live(EM + "Voiture.Reglages.Migration", None, "Migration", "car", size=25),
         "1,2": minus(V + "TC glisse précédent", "car"), "2,2": minus(V + "Régénération précédente", "car"),
         "3,2": minus(V + "Répartition vers l'arrière", "car"), "4,2": minus(V + "Migration vers l'arrière", "car"),
     },
     "Antiroulis": {
         "0,0": back(), "1,0": plus(V + "Antiroulis avant suivant", "car"), "2,0": plus(V + "Antiroulis arrière suivant", "car"),
-        "1,1": live(EM + "Voiture.Reglages.AntiroulisAV", None, "Antiroulis AV", "car", size=44), "2,1": live(EM + "Voiture.Reglages.AntiroulisAR", None, "Antiroulis AR", "car", size=44),
+        "1,1": live(EM + "Voiture.Reglages.AntiroulisAV", None, "Antiroulis AV", "car", size=25), "2,1": live(EM + "Voiture.Reglages.AntiroulisAR", None, "Antiroulis AR", "car", size=25),
         "1,2": minus(V + "Antiroulis avant précédent", "car"), "2,2": minus(V + "Antiroulis arrière précédent", "car"),
     },
     "Stand": {
         "0,0": back(), "1,0": plus(S + "Énergie suivante", "stand"), "2,0": plus(S + "Ratio suivant", "stand"),
         "3,0": plus(S + "Pressions 4 roues suivantes", "stand"),
-        "4,0": live(FMT + "Pit.Brakes.Short", "brake", "Freins", "stand", r=S + "Freins changer ou garder", state_prop=FMT + "Pit.Brakes.Replace", size=24),
+        "4,0": live(FMT + "Pit.Brakes.Short", "brake", "Freins", "stand", r=S + "Freins changer ou garder", state_prop=FMT + "Pit.Brakes.Replace", size=12),
         "0,1": folder("Pneus", "tyre", "Pneus", "", "tyre"),
         "1,1": refuel_key(),
-        "2,1": live(FMT + "Pit.Ratio", "fuel", "Ratio", "stand", size=32, formula_override=f"if(isnull([{FMT}Pit.Ratio],-1) >= 0, format([{FMT}Pit.Ratio], '0.00'), '—')", sample="0,16"),
-        "3,1": live(FMT + "Pit.FLPRESS", "press", "Pressions", "stand", size=32),
-        "4,1": live(FMT + "Pit.Damage.Short", "repair", "Réparations", "stand", r=S + "Réparations choix suivant en boucle", size=22),
+        "2,1": live(FMT + "Pit.Ratio", "fuel", "Ratio", "stand", size=16, formula_override=f"if(isnull([{FMT}Pit.Ratio],-1) >= 0, format([{FMT}Pit.Ratio], '0.00'), '—')", sample="0,16"),
+        "3,1": live(FMT + "Pit.FLPRESS", "press", "Pressions", "stand", size=16),
+        "4,1": live(FMT + "Pit.Damage.Short", "repair", "Réparations", "stand", r=S + "Réparations choix suivant en boucle", size=12),
         "0,2": folder("Aéro", "aero", "Aéro", "Aileron, écopes", "stand"),
         "1,2": minus(S + "Énergie précédente", "stand"), "2,2": minus(S + "Ratio précédent", "stand"),
         "3,2": minus(S + "Pressions 4 roues précédentes", "stand"),
-        "4,2": live(FMT + "Pit.Driver.Short", "driver", "Pilote", "stand", r=S + "Pilote suivant en boucle", size=22),
+        "4,2": live(FMT + "Pit.Driver.Short", "driver", "Pilote", "stand", r=S + "Pilote suivant en boucle", size=12),
     },
     "Pneus": {
         "0,0": back(),
-        "1,0": live(FMT + "Pit.Tyre.FL.Badge", "tyre", "AV gauche", "tyre", size=32, r=S + "Pneu avant gauche gomme suivante en boucle"),
-        "2,0": live(FMT + "Pit.Tyre.FR.Badge", "tyre", "AV droit", "tyre", size=32, r=S + "Pneu avant droit gomme suivante en boucle"),
-        "1,1": live(FMT + "Pit.Tyre.RL.Badge", "tyre", "AR gauche", "tyre", size=32, r=S + "Pneu arrière gauche gomme suivante en boucle"),
-        "2,1": live(FMT + "Pit.Tyre.RR.Badge", "tyre", "AR droit", "tyre", size=32, r=S + "Pneu arrière droit gomme suivante en boucle"),
+        "1,0": live(FMT + "Pit.Tyre.FL.Badge", "tyre", "AV gauche", "tyre", size=16, r=S + "Pneu avant gauche gomme suivante en boucle"),
+        "2,0": live(FMT + "Pit.Tyre.FR.Badge", "tyre", "AV droit", "tyre", size=16, r=S + "Pneu avant droit gomme suivante en boucle"),
+        "1,1": live(FMT + "Pit.Tyre.RL.Badge", "tyre", "AR gauche", "tyre", size=16, r=S + "Pneu arrière gauche gomme suivante en boucle"),
+        "2,1": live(FMT + "Pit.Tyre.RR.Badge", "tyre", "AR droit", "tyre", size=16, r=S + "Pneu arrière droit gomme suivante en boucle"),
         "4,0": role(S + "Pneus 4 roues même gomme neuve", "four", "4 roues", "Neufs même\ngomme", "tyre"),
-        "4,1": live(FMT + "Pit.Tyres.Badge", "four", "4 roues", "tyre", size=32, r=S + "Pneus 4 roues gomme suivante en boucle"),
+        "4,1": live(FMT + "Pit.Tyres.Badge", "four", "4 roues", "tyre", size=16, r=S + "Pneus 4 roues gomme suivante en boucle"),
         "4,2": role(S + "Pneus 4 roues aucun changement", "four", "4 roues", "Aucun\nchangement", "tyre"),
     },
     "Aéro": {
@@ -478,7 +482,7 @@ ON = {EM + "Profils.1.Actif", GD + "HeadlightsActive"}
 def preview(p, manifests, path):
     from PIL import Image, ImageDraw, ImageFont
     font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-    order = ["Accueil", "Voiture", "Stand", "Pneus", "Voiture suite", "Aéro", "Caméra", "Poste"]
+    order = list(PAGES)
     tiles = []
     for name in order:
         m = manifests[pid(name)]
@@ -494,11 +498,12 @@ def preview(p, manifests, path):
             if title:
                 d = ImageDraw.Draw(img)
                 lines = title.split("\n")
-                px = meta.get("size", 26)
+                # The physical MK.2 showed roughly twice the requested font size in the 144px design.
+                px = round(meta.get("size", 15) * 1.9)
                 font = ImageFont.truetype(font_path, px)
-                while px > 12 and max(d.textlength(line, font=font) for line in lines) > 124:
-                    px -= 1
-                    font = ImageFont.truetype(font_path, px)
+                # Do not hide clipping in previews by silently shrinking the text.
+                if max(d.textlength(line, font=font) for line in lines) > 124:
+                    print("A vérifier :", name, a["Name"], repr(title), px)
                 y = 83 - (px + 3) * len(lines) / 2
                 for line in lines:
                     w = d.textlength(line, font=font)
@@ -507,7 +512,7 @@ def preview(p, manifests, path):
             sheet.paste(img, (8 + c * 152, 8 + r * 152))
         tiles.append(sheet)
     w, h = tiles[0].size
-    out = Image.new("RGB", (2 * w + 24, 4 * h + 72), "#07090A")
+    out = Image.new("RGB", (2 * w + 24, ((len(tiles) + 1) // 2) * (h + 24)), "#07090A")
     for i, t in enumerate(tiles):
         out.paste(t, ((i % 2) * (w + 24), (i // 2) * (h + 24)))
     out.save(path)
