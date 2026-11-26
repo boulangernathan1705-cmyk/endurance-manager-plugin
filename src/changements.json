@@ -1,15 +1,15 @@
 {
-  "version": "0.2.2",
+  "version": "0.2.3",
   "changes": [
     {
-      "type": "corrige",
-      "text": "Application des profils : une commande FMT réussie ne provoque plus un arrêt après le premier cran.",
+      "type": "mieux",
+      "text": "Application des profils accélérée : impulsions FMT de 60 ms et lecture des réglages toutes les 60 ms.",
       "page": "profils"
     },
     {
-      "type": "corrige",
-      "text": "Suppression de l'attente fixe ajoutée en 0.2.1 ; le réglage suivant attend toujours le retour de LMU.",
-      "page": "profils"
+      "type": "mieux",
+      "text": "Les commandes manuelles de la Black Box conservent leur fonctionnement.",
+      "page": "bb"
     }
   ]
 }
