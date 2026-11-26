@@ -31,7 +31,8 @@ namespace EnduranceManager.SimHub
             plugin.Updater.Check(code);
             var uploader = plugin.Uploader;
             string host = code == null ? "" : new Uri(code.Origin).Host;
-            int waiting = uploader?.Waiting ?? 0;
+            int waiting = uploader?.Waiting(code) ?? 0;
+            int held = uploader?.Held(code) ?? 0;
             string kept = waiting > 0 ? $" {waiting} séance{(waiting > 1 ? "s" : "")} en attente, rien n'est perdu." : "";
 
             (string state, string title, string detail) site;
@@ -54,7 +55,8 @@ namespace EnduranceManager.SimHub
             var server = plugin.WallServer;
             int files = Report.WaitingCount;
             string memo = !s.Enabled ? "Module coupé : aucune séance enregistrée." : plugin.LastSession is string recorded ? "Dernière séance : " + recorded : "Aucune séance depuis le lancement de SimHub.";
-            if (s.Enabled && code == null) memo += " Pas encore relié : les séances attendent sur ce PC.";
+            if (held > 0) memo += $" {held} séance(s) conservées sur ce PC, sans envoi avec ce code.";
+            if (waiting > 0) memo += kept;
             if (uploader?.LastRefusal is string refusal) memo += " Une séance a été refusée par le site " + refusal + ".";
             return new
             {

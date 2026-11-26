@@ -224,7 +224,8 @@ namespace EnduranceManager.SimHub
             paste.Content = LinkCode.Parse(plugin.Settings.Code) == null ? "Coller mon code" : "Changer de code";
             open.Visibility = code == null ? Visibility.Collapsed : Visibility.Visible;
 
-            int waiting = uploader?.Waiting ?? 0;
+            int waiting = uploader?.Waiting(code) ?? 0;
+            int held = uploader?.Held(code) ?? 0;
             string kept = waiting > 0 ? $" {waiting} séance{(waiting > 1 ? "s" : "")} en attente, rien n'est perdu." : "";
             if (!siteOn) Show(linkDot, Grey, linkTitle, "Aucun module d'équipe activé", linkDetail, "Le plugin marche seul : rien n'est envoyé ni lu sur le site." + kept);
             else if (code == null) Show(linkDot, Orange, linkTitle, "Pas encore relié", linkDetail, "Sur le site : Fiches combo → « Relier SimHub » → « Créer mon code ». Le plugin le trouve tout seul ici.");
@@ -250,8 +251,9 @@ namespace EnduranceManager.SimHub
             if (api.Setup is string setup) service += "\nRéglage chargé : " + setup;
             sessionText.Text = !plugin.Settings.Enabled ? "Module coupé : aucune séance enregistrée. Celles déjà enregistrées attendent sur le PC."
                 : plugin.LastSession is string recorded ? "Dernière séance enregistrée : " + recorded : "Aucune séance enregistrée depuis le lancement de SimHub.";
-            if (plugin.Settings.Enabled && code == null) sessionText.Text += "\nPas encore relié au site : les séances restent sur ce PC, elles partiront une fois relié.";
-            if (uploader?.LastRefusal is string refusal) sessionText.Text += "\nUne séance a été refusée par le site " + refusal + ". Elle est gardée dans le dossier sessions\\refused.";
+            if (held > 0) sessionText.Text += $"\n{held} séance(s) conservées sur ce PC, sans envoi avec ce code.";
+            if (waiting > 0) sessionText.Text += kept;
+            if (uploader?.LastRefusal is string refusal) sessionText.Text += "\nUne séance a été refusée par le site " + refusal + ". Elle est conservée dans le dossier de la liaison.";
             recordText.Text = Tape.Status;
             if (DateTime.Now > reportSaid)
             {

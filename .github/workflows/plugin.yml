@@ -153,7 +153,7 @@ jobs:
       # Une PR : son zip en pré-version « pr-N » (remplacée à chaque envoi, supprimée à la fermeture de la PR), pour
       # l'essayer depuis Releases sans fouiller dans Actions. Jamais « latest » : les pilotes ne la voient pas.
       - name: Publier le zip de test de la PR
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'fix/memo-session-sync'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.zip.outputs.version }}

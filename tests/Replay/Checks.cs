@@ -8,6 +8,10 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -32,7 +36,7 @@ namespace EnduranceManager.SimHub.Replay
 
         public static bool RunAll(List<string> fixtures, string outDir)
         {
-            bool allOk = Recorder() & BlackBoxLines() & ProfileCommands();
+            bool allOk = Recorder() & BlackBoxLines() & ProfileCommands() & SessionQueue();
             foreach (var file in fixtures)
             {
                 var f = Fixture.Load(file);
@@ -52,6 +56,52 @@ namespace EnduranceManager.SimHub.Replay
                 allOk &= report.Failures.Count == 0;
             }
             return allOk;
+        }
+
+        sealed class SyncTransport : HttpMessageHandler
+        {
+            public readonly Queue<HttpStatusCode> Answers = new Queue<HttpStatusCode>();
+            public readonly List<string> Tokens = new List<string>();
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                Tokens.Add(request.Headers.Authorization.Parameter);
+                var status = Answers.Dequeue();
+                return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(
+                    status == HttpStatusCode.OK ? "{\"created\":false}" : "{\"error\":\"test\"}") });
+            }
+        }
+
+        static bool SessionQueue()
+        {
+            var home = Path.Combine(Path.GetTempPath(), "em-sync-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                var a = new LinkCode { Origin = "https://a.example", Token = new string('a', 64) };
+                var b = new LinkCode { Origin = "https://b.example", Token = new string('b', 64) };
+                var transport = new SyncTransport();
+                var uploader = new Uploader(home, transport);
+                File.WriteAllText(Path.Combine(uploader.Folder, "legacy.json"), "{}");
+                var session = new LiveSession { At = 1790000000000, Track = "Spa", Car = "Ferrari" };
+                uploader.Save(session, a);
+                uploader.Save(session, null);
+                uploader.SendAll(b, () => b);
+                bool ok = uploader.Waiting(a) == 1 && uploader.Held(b) == 3 && transport.Tokens.Count == 0;
+                uploader.SendAll(a, () => b);
+                ok &= transport.Tokens.Count == 0;
+                transport.Answers.Enqueue((HttpStatusCode)429);
+                transport.Answers.Enqueue(HttpStatusCode.Forbidden);
+                transport.Answers.Enqueue(HttpStatusCode.OK);
+                uploader.SendAll(a, () => a);
+                ok &= uploader.Waiting(a) == 1 && uploader.Reached == false;
+                uploader.SendAll(a, () => a);
+                ok &= uploader.Waiting(a) == 1 && uploader.Refused != null;
+                uploader.SendAll(a, () => a);
+                ok &= uploader.Waiting(a) == 0 && uploader.Refused == null && uploader.LastSent.HasValue &&
+                    transport.Tokens.SequenceEqual(Enumerable.Repeat(a.Token,3)) && uploader.Held(a) == 2;
+                Console.WriteLine((ok ? "OK    " : "ÉCHEC ") + "Synchronisation : file isolée, refus temporaire et accusé de réception.");
+                return ok;
+            }
+            finally { if (Directory.Exists(home)) Directory.Delete(home, true); }
         }
 
         // The profiles' FMT adapter must preserve null as success, not treat it as a missing companion.
