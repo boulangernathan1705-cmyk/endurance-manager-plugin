@@ -64,7 +64,7 @@ def esc(t):
     return t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def svg_key(icon=None, label="", value="", fam="w", kind="", live=False, big=False, transparent=False):
+def svg_key(icon=None, label="", value="", fam="w", kind="", live=False, big=False):
     """One key, 144 × 144. live: the bottom third stays free for the live title Stream Deck draws over the image."""
     color = FAM.get(fam, fam)
     bg_top, bg_bot, border = "#1C2427", "#10171A", "#2B3236"
@@ -81,10 +81,7 @@ def svg_key(icon=None, label="", value="", fam="w", kind="", live=False, big=Fal
         return ('<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144"><rect width="144" height="144" fill="#0A0D0F"/></svg>')
     parts.append(f'<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{bg_top}"/>'
                  f'<stop offset="1" stop-color="{bg_bot}"/></linearGradient></defs>')
-    # A dynamic label needs a genuinely transparent image region: the native SimHub background
-    # supplies the colour, not an opaque SVG painted over the value.
-    if not transparent:
-        parts.append('<rect width="144" height="144" fill="url(#g)"/>')
+    parts.append('<rect width="144" height="144" fill="url(#g)"/>')
     parts.append(f'<rect x="1" y="1" width="142" height="142" fill="none" stroke="{border}" stroke-width="2"/>')
     if kind == "folder":
         parts.append(f'<path d="M0 0h34L0 34z" fill="{color}"/>')
@@ -146,14 +143,14 @@ def b64svg(svg):
     return base64.b64encode(svg.encode("utf-8")).decode("ascii")
 
 
-def icon_style(svg, font_size=14, background="#FF000000"):
+def icon_style(svg, font_size=14):
     return {"ReverseIconColors": False, "IconMarginLeft": 0, "IconMarginTop": 0, "IconMarginRight": 0, "IconMarginBottom": 0,
             "TextMarginBottom": 10, "LabelVerticalAlignment": 2, "Image": b64svg(svg), "UseBlinkingBorderColor": False,
             "UseBlinkingIconBackgroundColor": False, "UseBlinkingIconForegroundColor": False, "UseBlinkingTextColor": False,
-            "BlinkingDuration": 500, "BlinkingTwoPhases": False, "BlinkingOffDuration": 500, "BlinkingIconBackgroundColor": background,
+            "BlinkingDuration": 500, "BlinkingTwoPhases": False, "BlinkingOffDuration": 500, "BlinkingIconBackgroundColor": "#FF000000",
             "BlinkingIconForegroundColor": "#00FFFFFF", "BlinkingTextColor": "#FFFF0000", "Bold": True, "Italic": False,
             "BorderColor": "#FF000000", "BlinkingBorderColor": "#FFFF0000", "BorderThickness": 0, "EnableBlinking": False,
-            "FontSize": font_size, "IconBackgroundColor": background, "IconForegroundColor": "#00FFFFFF", "LabelFont": "Arial",
+            "FontSize": font_size, "IconBackgroundColor": "#FF000000", "IconForegroundColor": "#00FFFFFF", "LabelFont": "Arial",
             "TextColor": "#FFFFFFFF", "IconAlpha": 100.0}
 
 
@@ -165,17 +162,16 @@ def dynamic(key, off_svg, r="", formula="", on_svg=None, on_when="", size=150):
     """One dynamic button: base image, optional live text at the bottom (NCalc formula), optional second image while
     on_when is true, press = Control Mapper role r."""
     def make(p):
-        background = "#FF10171A" if formula else "#FF000000"
         first = {"actionMode": 0, "labelMode": 3 if formula else 0, "iconMode": 0,
                  "OnPress": {"ActionMode": 3, "ControlMapperRoleName": r} if r else {}, "OnShortPress": {}, "OnLongPress": {},
-                 "HasActionOverrides": False, "ButtonRenderer": {"IconStyle": icon_style(off_svg, background=background)}, "StaticLabel": "",
+                 "HasActionOverrides": False, "ButtonRenderer": {"IconStyle": icon_style(off_svg)}, "StaticLabel": "",
                  "Uid": sid(key, "0"), "StateTitle": "Button state", "DisplayStateTitle": "Default state",
                  "IsEnabledExpression": {"Expression": ""}, "IsConditional": False}
         if formula:
             first["RichLabel"] = [{"Formula": {"Expression": formula}, "Format": 0, "Size": float(size)}]
         states = [first]
         if on_svg and on_when:
-            on_style = {"Overrides": ["Image", "TextColor", "IconBackgroundColor"], "Image": b64svg(on_svg), "TextColor": "#FF04170B", "IconBackgroundColor": "#FF3CB866" if formula else "#FF000000"}
+            on_style = {"Overrides": ["Image", "TextColor"], "Image": b64svg(on_svg), "TextColor": "#FF04170B"}
             states.append({"actionMode": 0, "labelMode": 2, "iconMode": 0, "HasActionOverrides": False,
                            "ButtonRenderer": {"IconStyle": on_style},
                            "Uid": sid(key, "1"), "StateTitle": "Button state", "DisplayStateTitle": "Button state",
@@ -187,10 +183,11 @@ def dynamic(key, off_svg, r="", formula="", on_svg=None, on_when="", size=150):
                   "Uid": sid(key, "instance"), "ModelId": None, "InstanceMode": 0, "SettingsValues": {}, "SettingsValuesOf": ""}
         return {"Plugin": {"UUID": "com.wotever.simhubdynamicbutton", "Name": "Simhub dynamic button", "Version": "1.6"},
                 "Resources": None, "Settings": button, "State": 0, "Name": key,
-                # Shown by Stream Deck until SimHub draws the button.
-                "States": [state(p.image(off_svg))], "LinkedTitle": False,
+                # A custom Stream Deck image overrides the plugin renderer (confirmed on physical MK.2).
+                # Leave the action icon at its default; artwork belongs exclusively to SimHub.
+                "States": [{k: v for k, v in state(None).items() if k != "Image"}], "LinkedTitle": False,
                 "UUID": "com.wotever.simhubdynamicbutton", "ActionID": sid(key, "action"),
-                "EMPreview": {"formula": formula, "on_when": on_when, "on": p.image(on_svg) if on_svg and on_when else None}}
+                "EMPreview": {"off": p.image(off_svg), "formula": formula, "on_when": on_when, "on": p.image(on_svg) if on_svg and on_when else None}}
     return make
 
 
@@ -206,9 +203,8 @@ def live(title_prop, icon=None, label="", fam="w", r="", state_prop="", fmt="", 
         title_prop, active_when_on = "", True
     if title_prop:
         formula = f"format([{title_prop}], '0')" if fmt == ":0" else f"[{title_prop}]"
-    # Keep the original layout even for state-only keys; transparency is needed only for keys with text.
-    off = svg_key(icon, label, "", fam, kind, live=True, transparent=bool(formula))
-    on = svg_key(icon, label, "", fam, "active", live=True, transparent=bool(formula)) if active_when_on and state_prop else None
+    off = svg_key(icon, label, "", fam, kind, live=True)
+    on = svg_key(icon, label, "", fam, "active", live=True) if active_when_on and state_prop else None
     return dynamic(label + r + (state_prop or title_prop), off, r=r, formula=formula, on_svg=on, on_when=f"[{state_prop}]" if on else "",
                    size=150 if size >= 18 else 120)
 
@@ -445,7 +441,10 @@ def build():
             used = set()
             for a in (m["Controllers"][0]["Actions"] or {}).values():
                 for s in a["States"]:
-                    used.add(s["Image"])
+                    if a["UUID"] == "com.wotever.simhubdynamicbutton":
+                        assert "Image" not in s, (a["Name"], "custom Stream Deck icon")
+                    if s.get("Image"):
+                        used.add(s["Image"])
             for img in used:
                 z.writestr(folder_path + img, p.images[img])
     # A preview of each page for the docs and the PR (pages side by side), from the same key images.
@@ -474,11 +473,8 @@ def preview(p, manifests, path):
             c, r = map(int, pos.split(","))
             meta = p.preview.get(a["ActionID"], {})
             on = meta.get("on") and meta.get("on_when", "").strip("[]") in ON
-            decoration = Image.open(io.BytesIO(p.images[meta["on"] if on else a["States"][0]["Image"]])).convert("RGBA")
-            native_bg = "#3CB866" if on and meta.get("formula") else "#10171A" if meta.get("formula") else "#000000"
-            img = Image.new("RGBA", decoration.size, native_bg)
-            img.alpha_composite(decoration)
-            img = img.convert("RGB")
+            image_name = meta["on"] if on else meta.get("off") or a["States"][0]["Image"]
+            img = Image.open(io.BytesIO(p.images[image_name])).convert("RGB")
             prop = re.sub(r"^format\(\[|^\[|\].*$", "", meta.get("formula") or "")
             title = SAMPLE.get(prop, "")
             if title:
@@ -500,14 +496,5 @@ def preview(p, manifests, path):
 
 if __name__ == "__main__":
     prof, mans = build()
-    # Check the actual exported decoration, not only the preview: no opaque pixel where the live value belongs.
-    from PIL import Image
-    for action_id, meta in prof.preview.items():
-        if not meta.get("formula"):
-            continue
-        action = next(a for m in mans.values() for a in (m["Controllers"][0]["Actions"] or {}).values() if a["ActionID"] == action_id)
-        for name in filter(None, [action["States"][0]["Image"], meta.get("on")]):
-            alpha = Image.open(io.BytesIO(prof.images[name])).convert("RGBA").getchannel("A")
-            assert alpha.crop((20, 86, 124, 134)).getextrema() == (0, 0), (action["Name"], name)
     preview(prof, mans, os.path.join(HERE, "apercu.png"))
     print("écrit :", OUT)
