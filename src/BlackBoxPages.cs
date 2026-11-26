@@ -223,7 +223,7 @@ namespace EnduranceManager.SimHub
             // value was read only in the pits and stayed on 10). To check on other cars.
             double migration = (s.MigrationMax - s.Migration) * 0.5;
             Add(s.MigrationMax > 0, "Migration", "Répartition des freins", migration > 0 ? migration.ToString("0.0", Inv) + "% F" : "Disabled", "Migration.Rearward", "Migration.Forward");
-            Add(s.MotorMapMax > 0, "MotorMap", "Cartographie moteur", Telemetry.Cartography(s), "MotorMap.Previous", "MotorMap.Next");
+            Add(s.MotorMapMax > 0, "MotorMap", "Cartographie moteur", Telemetry.Cartography(s).Replace(" kW", "kW"), "MotorMap.Previous", "MotorMap.Next");
             string regen = s.Regen > 0 ? Math.Round(s.Regen).ToString("0", Inv) + "kW" : v?.RegenLevel is int level ? N(level) : "-";
             Add(s.MotorState != 0, "Regen", "Niveau de recharge", regen, "Regen.Previous", "Regen.Next");
             return list;
