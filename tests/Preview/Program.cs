@@ -115,6 +115,18 @@ namespace EnduranceManager.SimHub.Preview
                     ask.Headers.Add("X-EM", "1");
                     string state = http.SendAsync(ask).GetAwaiter().GetResult().Content.ReadAsStringAsync().GetAwaiter().GetResult();
                     screen = html.Contains("<title>Endurance Manager</title>") && (int)refused.StatusCode == 403 && state.Contains("\"modules\"") && state.Contains("Porsche 963");
+                    using (var dashAsk = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, server.LocalUrl + "etat?dash=1"))
+                    {
+                        dashAsk.Headers.Add("X-EM", "1");
+                        using (var response = http.SendAsync(dashAsk).GetAwaiter().GetResult())
+                        {
+                            var dashState = Newtonsoft.Json.Linq.JObject.Parse(response.Content.ReadAsStringAsync().GetAwaiter().GetResult());
+                            var catalog = dashState["dashboards"] as Newtonsoft.Json.Linq.JArray;
+                            screen &= response.IsSuccessStatusCode && catalog != null && catalog.Count == 3
+                                && new[] { "blackbox", "banner", "column" }.All(key => catalog.Any(row => (string)row["key"] == key))
+                                && html.Contains("Dashs & Overlays") && html.Contains("Commandes & Black box");
+                        }
+                    }
                     Console.WriteLine((screen ? "OK    " : "ÉCHEC ") + $"écran web : html {html.Length} o, /etat sans en-tête {(int)refused.StatusCode}, /etat {state.Length} o");
                 }
                 string browser = WallServer.Browser();
@@ -128,7 +140,7 @@ namespace EnduranceManager.SimHub.Preview
                     Directory.CreateDirectory(kept);
                     File.WriteAllText(Path.Combine(kept, "changements.json"), new Newtonsoft.Json.Linq.JObject { ["version"] = Updater.Current.ToString(3), ["changes"] = Newtonsoft.Json.Linq.JArray.Parse("[{type:'nouveau',text:'Le nouvel écran du plugin',page:'home'},{type:'nouveau',text:'Un guide pour bien démarrer',page:'guide'}]") }.ToString());
                     foreach (var (name, hash, w, h) in new[] { ("ecran-accueil", "#home", 1280, 820), ("ecran-reglages-voiture", "#profils", 1280, 820), ("ecran-mur-des-stands", "#mur", 1280, 820),
-                        ("ecran-overlay-relais", "#relais", 1280, 820), ("ecran-guide-modules", "#guide:1", 1280, 820), ("ecran-etroit", "#home", 860, 820), ("ecran-mises-a-jour", "#maj", 1280, 820),
+                        ("ecran-overlay-relais", "#relais", 1280, 820), ("ecran-dashs-etroit", "#relais", 860, 820), ("ecran-commandes", "#bb", 1280, 820), ("ecran-guide-modules", "#guide:1", 1280, 820), ("ecran-etroit", "#home", 860, 820), ("ecran-mises-a-jour", "#maj", 1280, 820),
                         ("fenetre-maj", "?fenetre=maj", 520, 600), ("fenetre-installee", "?fenetre=installee", 520, 600) })
                     {
                         string file = Path.GetFullPath(Path.Combine(dir, name + ".png"));
