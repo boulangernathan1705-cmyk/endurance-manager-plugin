@@ -31,7 +31,8 @@ namespace EnduranceManager.SimHub
             plugin.Updater.Check(code);
             var uploader = plugin.Uploader;
             string host = code == null ? "" : new Uri(code.Origin).Host;
-            int waiting = uploader?.Waiting ?? 0;
+            int waiting = uploader?.Waiting(code) ?? 0;
+            int held = uploader?.Held(code) ?? 0;
             string kept = waiting > 0 ? $" {waiting} séance{(waiting > 1 ? "s" : "")} en attente, rien n'est perdu." : "";
 
             (string state, string title, string detail) site;
@@ -54,7 +55,8 @@ namespace EnduranceManager.SimHub
             var server = plugin.WallServer;
             int files = Report.WaitingCount;
             string memo = !s.Enabled ? "Module coupé : aucune séance enregistrée." : plugin.LastSession is string recorded ? "Dernière séance : " + recorded : "Aucune séance depuis le lancement de SimHub.";
-            if (s.Enabled && code == null) memo += " Pas encore relié : les séances attendent sur ce PC.";
+            if (held > 0) memo += $" {held} séance(s) conservées sur ce PC, sans envoi avec ce code.";
+            if (waiting > 0) memo += kept;
             if (uploader?.LastRefusal is string refusal) memo += " Une séance a été refusée par le site " + refusal + ".";
             return new
             {
@@ -69,6 +71,7 @@ namespace EnduranceManager.SimHub
                 game = new { game.state, game.title, game.detail },
                 modules = new { relais = s.Overlays, profils = s.Profiles, bb = s.CompanionOn, mur = s.Wall, memo = s.Enabled, equipe = s.Share, dev = s.Report },
                 laps = s.StintLaps,
+                dashboards = (query ?? "").Contains("dash=1") ? Dashes.Catalog() : null,
                 bb = new { running = plugin.Companion.Running, pending = s.CompanionOn != plugin.Companion.StartAttempted, status = plugin.Companion.Status, page = plugin.Companion.Running && (query ?? "").Contains("bb=1") ? plugin.CompanionPage.State() : null, buttons = Repartir.State(plugin) },
                 mur = new
                 {
@@ -163,6 +166,14 @@ namespace EnduranceManager.SimHub
                     case "see": plugin.See((string)a["page"] ?? "home"); return Ok();
                     case "wall": plugin.OpenWall(on); return Ok();
                     case "copyWall": { var url = plugin.WallServer?.NetworkUrl; if (url != null) OnScreen(() => Clipboard.SetText(url)); return Ok(); }
+                    case "dashStudio": return OpenDashStudio();
+                    case "dashFolder":
+                        if (!System.IO.Directory.Exists(Dashes.Templates)) return new { ok = false, message = "Dossier Dash Studio introuvable." };
+                        Process.Start(new ProcessStartInfo(Dashes.Templates) { UseShellExecute = true }); return Ok();
+                    case "dashInstall":
+                        if (plugin.GameState == "track") return new { ok = false, message = "Attends d’être hors piste." };
+                        Dashes.Install(System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EnduranceManager", "Combos"));
+                        return Dashes.Catalog().All(d => d.present) ? Ok("Dashs disponibles sur le disque. Rouvre Dash Studio si nécessaire.") : new { ok = false, message = "Certains dashs sont absents. Vérifie le dossier et les droits SimHub." };
                     case "popup": plugin.PlacePopup(); return Ok();
                     case "rename": return Rename(i, (string)a["name"]);
                     case "cleanup": return Nettoyage.Run(plugin);
@@ -194,6 +205,29 @@ namespace EnduranceManager.SimHub
                 Report.Error("Écran", e);
                 return new { ok = false, message = (e as System.Reflection.TargetInvocationException)?.InnerException?.Message ?? e.Message };
             }
+        }
+
+        // Navigation native seulement : aucune ouverture de dash ou modification de layout via API privée.
+        object OpenDashStudio()
+        {
+            bool opened = false;
+            try
+            {
+                OnScreen(() =>
+                {
+                    var manager = plugin.PluginManager;
+                    if (manager == null) return;
+                    var type = AppDomain.CurrentDomain.GetAssemblies()
+                        .Select(a => a.GetType("SimHub.Plugins.OutputPlugins.GraphicalDash.GraphicalDashPlugin", false))
+                        .FirstOrDefault(t => t != null);
+                    var method = manager.GetType().GetMethods().FirstOrDefault(m => m.Name == "ShowPluginUI" && m.IsGenericMethodDefinition && m.GetGenericArguments().Length == 1 && m.GetParameters().Length == 0);
+                    if (type == null || method == null) return;
+                    method.MakeGenericMethod(type).Invoke(manager, null);
+                    opened = true;
+                });
+            }
+            catch (Exception e) { Report.Error("Ouverture Dash Studio", e); }
+            return opened ? Ok() : new { ok = false, message = "Ouvre Dash Studio dans le menu de SimHub. Raccourci indisponible sur cette version." };
         }
 
         static object Ok(string message = null) => new { ok = true, message };

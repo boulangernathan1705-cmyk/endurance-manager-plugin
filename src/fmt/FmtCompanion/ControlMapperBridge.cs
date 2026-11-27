@@ -243,16 +243,21 @@ internal sealed class ControlMapperBridge : IDisposable
 		return false;
 	}
 
-	public bool Test(FmtFunction f)
+	public bool Test(FmtFunction f) => TestCore(f, 200);
+
+	// The automatic profiles only issue LMU key commands and read back each change.
+	public bool TestProfile(FmtFunction f) => f.Kind == FunctionKind.LmuKey && TestCore(f, 60);
+
+	private bool TestCore(FmtFunction f, int milliseconds)
 	{
 		if (f.Kind == FunctionKind.LmuKey)
 		{
 			// No FMT button but the pilot's own one already bound in LMU (Préparer LMU): press that.
 			if (output.ButtonFor(f.Role) == 0 && settings.Reused != null && settings.Reused.TryGetValue(f.Role, out var own))
 			{
-				return output.Trigger(own, 200);
+				return output.Trigger(own, milliseconds);
 			}
-			return output.Trigger(f.Role, 200);
+			return output.Trigger(f.Role, milliseconds);
 		}
 		if (!handlers.TryGetValue(f.Role, out var value))
 		{

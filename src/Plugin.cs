@@ -123,6 +123,7 @@ namespace EnduranceManager.SimHub
         public Computed Computed { get; } = new Computed();
         // The game's live standings (penalties by kind, finish status) and Lovely's track and car files.
         Standings standings;
+        readonly PenaltyTracker penalties = new PenaltyTracker();
         Lovely lovely;
         string home;
         // What the game is doing, for the settings screen: closed, in the menus, or on track.
@@ -164,7 +165,7 @@ namespace EnduranceManager.SimHub
             foreach (var (name, get) in WallProperties.All) this.AttachDelegate(name, () => { wallSeen.Seen(); return get(wall.View); });
             lovely = new Lovely(home);
             // The game's live standings are for the race figures only: listened to while they are wanted.
-            standings = new Standings(() => Reading && courseWanted && GameState == "track", Path.Combine(home, "api", "ws-LiveStandings.json"));
+            standings = new Standings(() => Reading && (courseWanted || Settings.CompanionOn) && GameState == "track", Path.Combine(home, "api", "ws-LiveStandings.json"));
             standings.Start();
             Profiles = new Profiles(Path.GetDirectoryName(home), () => latest is Sample s ? s : (Sample?)null, () => PluginManager ?? pluginManager, () => Settings.Profiles);
             // One action per profile place, to map to a wheel button in SimHub (Contrôles et événements): a short press
@@ -191,7 +192,7 @@ namespace EnduranceManager.SimHub
             BlackBox = new BlackBox(() => Menu.Raw, () => { Menu.Read(); BlackBox.Update(Menu.Items); });
             BlackBoxPages = new BlackBoxPages(BlackBox, id => CompanionPage.Send(id));
             // The profiles too, when a Control Mapper role moves nothing (Profiles.Reach).
-            Profiles.SendFmt = id => ProfileCommand.Send(CompanionPage == null ? null : new Func<string, string>(CompanionPage.Send), id);
+            Profiles.SendFmt = id => ProfileCommand.Send(CompanionPage == null ? null : new Func<string, string>(CompanionPage.SendProfile), id);
             Profiles.FmtRunning = () => Companion.Running;
             // Black box sur boutons changes at SimHub's next launch (FMT companion starts with SimHub): so do its actions.
             bool blackBoxAtStart = Settings.CompanionOn;
@@ -292,6 +293,10 @@ namespace EnduranceManager.SimHub
             this.AttachDelegate("Ecrans", () => string.Join(", ", new[] { courseSeen.Now ? "chiffres" : null, blackBoxSeen.Now ? "black box" : null, wallSeen.Now ? "mur" : null }.Where(x => x != null)));
             // What LMU Drive reads of the car and the session (Telemetry.cs, plugin 2.5), from the last reading.
             foreach (var (name, get) in Telemetry.Properties) this.AttachDelegate(name, () => latest is Sample s ? get(s) : null);
+            this.AttachDelegate("StreamDeck.Penalty.Type", () => Settings.CompanionOn && GameState == "track" ? penalties.View.Type : "—");
+            this.AttachDelegate("StreamDeck.Penalty.Text", () => Settings.CompanionOn && GameState == "track" ? penalties.View.Text : "—");
+            this.AttachDelegate("StreamDeck.Penalty.Pending", () => Settings.CompanionOn && GameState == "track" && penalties.View.Pending);
+            this.AttachDelegate("StreamDeck.Penalty.EstimatedLaps", () => Settings.CompanionOn && GameState == "track" ? penalties.View.EstimatedLaps ?? -1 : -1);
             this.AttachDelegate("Voiture.TourOptimal", () => Computed.Optimal);
             this.AttachDelegate("Voiture.TourPrevu", () => Computed.Predicted);
             this.AttachDelegate("Voiture.ChocsRelais", () => Computed.Impacts);
@@ -512,6 +517,7 @@ namespace EnduranceManager.SimHub
 
         void ReadGame()
         {
+            LinkCode sessionDestination = null;
             var recorder = new Recorder(() => DateTime.Now, session =>
             {
                 laps += session.Laps.Count;
@@ -520,7 +526,8 @@ namespace EnduranceManager.SimHub
                 session.Service = api.Service;
                 session.Game = api.Game;
                 // Télémétrie Mémo off: the session is not kept (the other modules still read the game).
-                if (Settings.Enabled) try { uploader.Save(session); } catch { }
+                if (Settings.Enabled) try { uploader.Save(session, sessionDestination); }
+                catch (Exception e) { EnduranceManager.SimHub.Report.Error("Synchronisation mémo", e); }
             }, () => api.Setup, api.CurrentLight);
             var buffer = new byte[LmuMemory.Size];
             while (running)
@@ -528,6 +535,7 @@ namespace EnduranceManager.SimHub
                 if (!Reading)
                 {
                     GameState = "paused";
+                    penalties.Reset();
                     Practice.Hide();
                     recorder.Flush();
                     Thread.Sleep(1000);
@@ -539,6 +547,7 @@ namespace EnduranceManager.SimHub
                 {
                     // The game is closed: the session is over, send it now.
                     GameState = "closed";
+                    penalties.Reset();
                     Practice.Hide();
                     recorder.Flush();
                     Thread.Sleep(5000);
@@ -571,7 +580,9 @@ namespace EnduranceManager.SimHub
                             frozen = ok && sample.Realtime && sample.ET == lastEt ? frozen + 1 : 0;
                             lastEt = sample.ET;
                             bool driving = ok && sample.Realtime && frozen < 50;
+                            var previousSession = recorder.Current;
                             recorder.Feed(sample, driving);
+                            if (!ReferenceEquals(previousSession, recorder.Current)) sessionDestination = Link;
                             latest = driving ? (object)sample : null;
                             if (ok && Settings.Profiles) Profiles.Seen(sample);
                             // Each car's pit lane and our optimal and predicted lap (Computed.cs), ten times a second, while
@@ -581,6 +592,13 @@ namespace EnduranceManager.SimHub
                             // The wheel's black box pages (BlackBoxPages.cs), ten times a second while its dash is shown.
                             if (driving && blackBox) try { BlackBoxPages.Update(buffer, sample, Course.View, api.Game); } catch (Exception e) { EnduranceManager.SimHub.Report.Error("BlackBox", e); }
                             GameState = driving ? "track" : "menu";
+                            if (driving && Settings.CompanionOn)
+                            {
+                                var penaltyLine = standings?.Player;
+                                if (penaltyLine != null && DateTime.UtcNow - penaltyLine.ReceivedUtc > TimeSpan.FromSeconds(5)) penaltyLine = null;
+                                penalties.Observe(sample, penaltyLine);
+                            }
+                            else penalties.Reset();
                             // Once a second, the car and the field for the team's mur des stands (with a team code only).
                             if (driving && share) live.Frame(sample);
                             if (driving && share && tick % 10 == 0) live.Offer(buffer, sample, recorder, api, Computed);
@@ -709,7 +727,7 @@ namespace EnduranceManager.SimHub
             Thread.Sleep(10000);
             while (running)
             {
-                if (Settings.Enabled && GameState != "track") try { uploader.SendAll(Link); } catch { }
+                if (Settings.Enabled && GameState != "track") try { uploader.SendAll(Link, () => Link); } catch { }
                 if (GameState != "track") try { EnduranceManager.SimHub.Report.SendAll(Link); } catch { }
                 // A newer version on the site, looked for once an hour: offered on the plugin's screen.
                 updater.Check(Link);

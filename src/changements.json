@@ -1,15 +1,40 @@
 {
-  "version": "0.2.2",
+  "version": "0.3.0",
   "changes": [
     {
-      "type": "corrige",
-      "text": "Application des profils : une commande FMT réussie ne provoque plus un arrêt après le premier cran.",
+      "type": "mieux",
+      "text": "Application des profils accélérée : impulsions FMT de 60 ms et lecture des réglages toutes les 60 ms.",
       "page": "profils"
     },
     {
+      "type": "mieux",
+      "text": "Les commandes manuelles de la Black Box conservent leur fonctionnement.",
+      "page": "bb"
+    },
+    {
+      "type": "mieux",
+      "text": "Stream Deck : valeurs électroniques en direct issues du plugin (TC, ABS, cartographie et autres réglages).",
+      "page": "bb"
+    },
+    {
+      "type": "mieux",
+      "text": "Cartographie : puissance électrique ou mode Course/Safety Car suivant les réglages disponibles ; profil Stream Deck Racing et pénalités.",
+      "page": "bb"
+    },
+    {
+      "type": "mieux",
+      "text": "Pénalités : tours restants depuis le menu LMU quand disponibles ; estimation sur trois tours clairement signalée en secours. Identité Racing et logo Discord.",
+      "page": "bb"
+    },
+    {
       "type": "corrige",
-      "text": "Suppression de l'attente fixe ajoutée en 0.2.1 ; le réglage suivant attend toujours le retour de LMU.",
-      "page": "profils"
+      "text": "Mémo : séances conservées par liaison, envoi confirmé avant suppression locale.",
+      "page": "memo"
+    },
+    {
+      "type": "nouveau",
+      "text": "Centre cockpit : catalogue Dashs & Overlays et commandes regroupées avec Stream Deck.",
+      "page": "home"
     }
   ]
 }

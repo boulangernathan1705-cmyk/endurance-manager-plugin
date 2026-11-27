@@ -194,7 +194,33 @@ namespace EnduranceManager.SimHub
 
         // Into SimHub's DashTemplates, each in its own folder. Written when missing or still as the plugin last wrote it
         // (its fingerprint kept in dashes.json): one the pilot changed in Dash Studio stays his.
+        static readonly object installGate = new object();
+        public static string Templates => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "DashTemplates");
+
+        public sealed class DashboardStatus
+        {
+            public string key { get; set; }
+            public bool present { get; set; }
+        }
+
+        // Only file presence: not a claim that SimHub has loaded or started the dashboard.
+        public static DashboardStatus[] Catalog()
+        {
+            return new[] { ("blackbox", "Black box"), ("banner", "Bandeau"), ("column", "Colonne") }
+                .Select(item =>
+                {
+                    string name = "Endurance Manager · " + item.Item2;
+                    string file = Path.Combine(Templates, name, name + ".djson");
+                    return new DashboardStatus { key = item.Item1, present = File.Exists(file) && File.Exists(file + ".metadata") };
+                }).ToArray();
+        }
+
         public static void Install(string home)
+        {
+            lock (installGate) InstallCore(home);
+        }
+
+        static void InstallCore(string home)
         {
             try
             {

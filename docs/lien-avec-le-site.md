@@ -9,7 +9,7 @@ garde tout le côté serveur. Ce dépôt ne contient que le plugin.
 - Le pilote copie son code sur la page Télémétrie Mémo (fiches combo) du site :
   `EMCOMBO1 <adresse du site> <clé de 64 caractères> EMCOMBO1` (`Sync.cs`, `LinkCode`). Le plugin le détecte aussi dans
   le presse-papiers.
-- Chaque appel envoie `Authorization: Bearer <clé>`. Clé retirée (401) ou droit perdu (403) : le plugin oublie le code.
+- Chaque appel envoie `Authorization: Bearer <clé>`. Le 401 suspend la file de cette liaison. Le 403 et les échecs temporaires la conservent pour un nouvel essai.
 - Module du site : `combos` (privé, équipe FMT). Côté site : `server/combos.mjs`.
 
 ## Routes utilisées
@@ -25,6 +25,13 @@ garde tout le côté serveur. Ce dépôt ne contient que le plugin.
 
 `/pass` donne l'adresse du relais temps réel (Durable Object) pour quelques minutes, ou 404 : on se connecte alors au
 site lui-même.
+
+## Séances en attente
+
+La liaison est mémorisée au début de la séance. Les fichiers sont isolés par adresse et clé, dont seule l’empreinte sert
+de nom de dossier. Un changement de code, même sur le même site, conserve l’ancienne file à part. Les séances sans code
+et les anciens fichiers sans destination restent sur le PC. Un accusé JSON du serveur confirme une création (201) ou une
+réception antérieure (200). Les refus définitifs d’une séance restent dans le sous-dossier `refused` de sa file.
 
 ## Formats (contrat)
 

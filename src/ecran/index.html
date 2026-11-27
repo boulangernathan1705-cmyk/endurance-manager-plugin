@@ -196,12 +196,12 @@ const svg = (k) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" 
 
 // ── The modules ──────────────────────────────────────────────────────────────────────────────────────────────────
 const MOD = {
-  relais: { name: 'Overlay relais', line: 'Ton relais par-dessus le jeu.', group: 'Pour moi', n: '01' },
-  profils: { name: 'Réglages voiture en course', line: 'Un bouton du volant par profil.', group: 'Pour moi', n: '02' },
-  bb: { name: 'Black box sur boutons', line: 'La black box sur ton volant.', group: 'Pour moi', n: '03' },
+  relais: { name: 'Dashs & Overlays', line: 'Écrans et overlay relais.', group: 'Pour moi', n: '01' },
+  profils: { name: 'Profils voiture', line: 'Un bouton par profil, par voiture et circuit.', group: 'Pour moi', n: '02' },
+  bb: { name: 'Commandes & Black box', line: 'Volant, Stream Deck et Control Mapper.', group: 'Pour moi', n: '03' },
   mur: { name: 'Mur des stands', line: 'Sur un 2e écran ou une tablette.', group: 'Pour moi', n: '04' },
   memo: { name: 'Télémétrie Mémo', line: 'Tes tours dans les fiches de l’équipe.', group: 'Avec mon équipe', n: '01' },
-  equipe: { name: 'Mur des stands équipages', line: 'Ta voiture en direct pour l’équipe.', group: 'Avec mon équipe', n: '02' },
+  equipe: { name: 'Partage en direct', line: 'Mur des stands équipages.', group: 'Avec mon équipe', n: '02' },
   dev: { name: 'Aide au développement', line: 'Facultatif, aide à corriger le plugin.', group: 'Avec mon équipe', n: '03' },
 };
 const SOLO = ['relais', 'profils', 'bb', 'mur'], TEAM = ['memo', 'equipe', 'dev'];
@@ -244,7 +244,7 @@ function mesBoutons(b) {
 async function poll() {
   if (!document.hidden) {
     try {
-      const r = await fetch('/etat' + (UI.page === 'bb' && !WIN ? '?bb=1' : ''), { headers: { 'X-EM': '1' }, cache: 'no-store' });
+      const r = await fetch('/etat' + (!WIN && UI.page === 'bb' ? '?bb=1' : !WIN && UI.page === 'relais' ? '?dash=1' : ''), { headers: { 'X-EM': '1' }, cache: 'no-store' });
       if (r.ok) {
         const text = await r.text();
         if (text !== last) {
@@ -276,7 +276,7 @@ function toast(text, bad) {
 }
 
 // ── Building blocks ──────────────────────────────────────────────────────────────────────────────────────────────
-const sw = (key, label) => `<button type="button" class="sw" role="switch" aria-checked="${!!S.modules[key]}" aria-label="${esc(label || MOD[key].name)}" data-module="${key}"><span></span></button>`;
+const sw = (key, label) => `<button type="button" class="sw" role="switch" aria-checked="${!!S.modules[key]}" aria-label="${esc(label || (key === 'relais' ? 'Overlay relais' : MOD[key].name))}" data-module="${key}"><span></span></button>`;
 const tip = (id, label, text, right) => `<button type="button" class="q" aria-label="${esc(label)}" aria-expanded="${UI.tip === id}" data-tip="${id}">?</button>` +
   (UI.tip === id ? `<div class="tip${right ? ' r' : ''}" role="note">${text}</div>` : '');
 const head = (key, title, lead) => {
@@ -353,19 +353,39 @@ const PAGES = {
         </section>
       </div>
       <div><h2 class="sec">Mes modules</h2><div class="grid g4">
-        ${[...SOLO, ...TEAM].map((k) => `<button type="button" class="tile" data-go="${k}"><span class="top"><b>${MOD[k].name}</b><span class="pill${S.modules[k] ? ' on' : ''}">${S.modules[k] ? '✓ Activé' : 'Coupé'}</span></span><span class="mut small">${esc(MOD[k].line)}</span></button>`).join('')}
+        ${[...SOLO, ...TEAM].map((k) => `<button type="button" class="tile" data-go="${k}"><span class="top"><b>${MOD[k].name}</b><span class="pill${S.modules[k] ? ' on' : ''}">${k === 'relais' ? (S.modules[k] ? 'Relais activé' : 'Relais coupé') : S.modules[k] ? '✓ Activé' : 'Coupé'}</span></span><span class="mut small">${esc(MOD[k].line)}</span></button>`).join('')}
       </div></div>
     </div>`;
   },
 
   relais() {
     const per = (100 / S.laps).toFixed(1).replace('.', ',');
-    return `<div class="page">${head('relais', '', 'Après chaque tour : ton temps, ton énergie et l’usure des pneus face à ta cible.')}
+    const catalogue = S.dashboards || [];
+    const filter = UI.dashFilter || 'all';
+    const items = [
+      { key: 'blackbox', name: 'Black box', desc: 'Écran volant · 800 × 480', type: 'dash', page: 'bb' },
+      { key: 'banner', name: 'Overlay relais · Bandeau', desc: 'Format horizontal', type: 'overlay' },
+      { key: 'column', name: 'Overlay relais · Colonne', desc: 'Format vertical', type: 'overlay' }
+    ];
+    const shown = items.filter(x => filter === 'all' || x.type === filter);
+    const row = x => {
+      const installed = catalogue.find(d => d.key === x.key);
+      const status = !installed ? 'Vérification…' : installed.present ? 'Installé' : 'À installer';
+      return `<div class="row"><div class="t"><b>${esc(x.name)}</b><div class="mut small">${esc(x.desc)}</div></div><span class="pill${installed?.present ? ' on' : ''}">${status}</span>${x.page ? '<button type="button" class="btn s" data-go="bb">Commandes</button>' : ''}</div>`;
+    };
+    return `<div class="page">${plain('Pour moi · 01', 'Dashs & Overlays', 'Tes affichages Endurance Manager, au même endroit.')}
+      <section class="card stack">
+        <div class="tabs" role="tablist">${[['all','Tous'],['dash','Dashs'],['overlay','Overlays']].map(([k,n]) => `<button type="button" class="tab" role="tab" aria-selected="${filter === k}" data-dashfilter="${k}">${n}</button>`).join('')}</div>
+        ${shown.map(row).join('')}
+        <div class="btns"><button type="button" class="btn p" data-act="dashStudio">Ouvrir Dash Studio</button><button type="button" class="btn" data-act="dashInstall" ${S.game.state === 'ok' ? 'disabled' : ''}>Installer / mettre à jour</button><button type="button" class="btn" data-act="dashFolder">Dossier des dashs</button></div>
+        <p class="mut small">Le lancement, le placement et l’édition restent dans Dash Studio. Tes dashs personnalisés ne sont pas remplacés.</p>
+      </section>
+      <section class="card"><div class="row" style="border-top:0"><div class="t"><b>Overlay relais</b><div class="mut small">Temps, énergie et usure après chaque tour.</div></div>${sw('relais', 'Activer l’overlay relais')}</div></section>
       <div class="grid duo">
         <section class="card stack"><div class="tipw"><h2>Tours par relais</h2>${tip('laps', 'À quoi sert le nombre de tours', `Il donne l’énergie à tenir par tour : 100 % ÷ ${S.laps} tours = <b>${per} %</b>. En roulant : boutons A (+1) et B (−1) des dashs, ou les actions ToursParRelaisPlus et ToursParRelaisMoins.`)}</div>
           <div class="stepper"><button type="button" class="btn" style="width:44px;padding:0" aria-label="Un tour de moins" data-laps="-1">−</button><span class="n">${S.laps}</span>
           <button type="button" class="btn" style="width:44px;padding:0" aria-label="Un tour de plus" data-laps="1">+</button><span class="mut">Énergie à tenir : <b style="color:var(--accent)">${per} %</b> par tour</span></div></section>
-        <section class="card stack"><h2>Afficher l’overlay</h2><p class="mut">Dans SimHub, Dash Studio, Overlays : « Endurance Manager · Bandeau » ou « · Colonne ». Visible en essais et en course, au-dessus de LMU en mode fenêtré sans bordure.</p></section>
+        <section class="card stack"><h2>Mur des stands</h2><p class="mut">Le mur reste un affichage indépendant, sur ce PC ou une tablette.</p><div class="btns"><button type="button" class="btn" data-go="mur">Gérer le mur</button></div><p class="mut small">Les overlays sont visibles en essais et en course, avec LMU en mode fenêtré sans bordure.</p></section>
       </div></div>`;
   },
 
@@ -404,9 +424,20 @@ const PAGES = {
 
   bb() {
     const b = S.bb, g = b.page;
+    const mode = UI.commandMode || 'commands';
+    const tabs = `<div class="tabs" role="tablist">${[['commands','Commandes'],['deck','Stream Deck']].map(([k,n]) => `<button type="button" class="tab" role="tab" aria-selected="${mode === k}" data-commandmode="${k}">${n}</button>`).join('')}</div>`;
     const top = `<div class="page">${head('bb', '', 'Le menu des stands, la voiture, les caméras et le poste sur ton volant ou ton Stream Deck.')}
+      ${tabs}
+      <div class="btns"><button type="button" class="btn s" data-go="relais">Dash Black box</button><button type="button" class="btn s" data-go="profils">Profils voiture</button></div>
       ${b.pending ? stateCard('Au prochain lancement de SimHub', S.modules.bb ? 'Le module démarre quand SimHub redémarre.' : 'Le module s’arrête quand SimHub redémarre.', 'wait', 'En attente') : ''}
       ${S.modules.bb && !b.running && !b.pending ? stateCard('FMT companion bloqué', esc(b.status), 'bad', 'À corriger') : ''}`;
+    if (mode === 'deck') return top + `<section class="card stack"><h2>Stream Deck · Endurance Manager FMT</h2>
+      <p class="mut">Le profil fourni utilise les rôles du Control Mapper. Les touches et valeurs dynamiques restent modifiables dans les outils natifs.</p>
+      <div class="row"><div class="t"><b>Black box sur boutons</b><div class="mut small">Rôles FMT pour les commandes voiture et stands.</div></div>${sw('bb')}</div>
+      <div class="row"><div class="t"><b>Profils voiture</b><div class="mut small">Trois rôles EM - Profil.</div></div>${sw('profils')}</div>
+      <div class="btns"><button type="button" class="btn p" data-bb="bbDeck" ${b.running && g && !g.error ? '' : 'disabled'}>Exporter le profil Stream Deck</button><button type="button" class="btn" data-bb="bbMapper" ${b.running && g && !g.error && g.mapper.ready ? '' : 'disabled'}>Ouvrir Control Mapper</button></div>
+      <p class="mut small">Installe le plugin SimHub Dynamic Button dans le logiciel Stream Deck, puis importe le profil exporté. Garde une copie de ton profil personnalisé avant de le remplacer.</p>
+      <p class="mut small">${b.running ? 'Moteur FMT démarré.' : 'Active le module puis redémarre SimHub pour exporter le profil.'}</p></section></div>`;
     if (!b.running) return top + `<p class="mut small">${esc(b.status)}</p></div>`;
     if (!g) return top + '<div class="card empty">Lecture de FMT companion…</div></div>';
     if (g.error) return top + `${stateCard('Page indisponible', esc(g.error), 'bad', 'Erreur')}<div><button type="button" class="btn" data-act="companion">Ouvrir l’ancien écran de FMT companion</button></div></div>`;
@@ -437,8 +468,8 @@ const PAGES = {
           <p class="mut small">Pour Voiture, Caméra et Poste. Le stand marche tout de suite. Seule la colonne Secondaire de LMU est utilisée.</p>
           <div class="btns"><button type="button" class="btn p" data-bb="bbPrepare" ${pr.busy ? 'disabled' : ''}>Préparer LMU${todo ? ' · ' + todo : ''}</button></div></section>
         <section class="card stepc"><div class="top"><span class="num">3</span><h2>Relie tes boutons</h2></div>
-          <p class="mut small">Les rôles s’appellent « FMT - famille - commande ».</p>
-          <div class="btns"><button type="button" class="btn" data-bb="bbMapper">Ouvrir Control Mapper</button><button type="button" class="btn" data-bb="bbDeck">Profil Stream Deck</button></div></section>
+          <p class="mut small">Les rôles s’appellent « FMT - famille - commande ». Les associations ci-dessous sont lues dans Control Mapper, qui reste la seule source de configuration.</p>
+          <div class="btns"><button type="button" class="btn" data-bb="bbMapper">Ouvrir Control Mapper</button><button type="button" class="btn" data-commandmode="deck">Profil Stream Deck</button></div></section>
       </div>
       ${prep}
       <section class="card stack">${bbTabs(rows)}
@@ -524,7 +555,7 @@ const PAGES = {
 function renderGuide() {
   if (!UI.guide) { $('overlay').innerHTML = ''; return; }
   const names = ['Bienvenue', 'Modules', 'Site', 'C’est prêt'], k = UI.step;
-  const gm = (key) => `<div class="gm"><span><b>${MOD[key].name}</b> <span class="mut small">· ${esc(MOD[key].line)}</span></span>${sw(key)}</div>`;
+  const gm = (key) => `<div class="gm"><span><b>${key === 'relais' ? 'Overlay relais' : MOD[key].name}</b> <span class="mut small">· ${esc(MOD[key].line)}</span></span>${sw(key)}</div>`;
   const on = Object.values(S.modules).filter(Boolean).length;
   const body = [
     `<div class="eb">Bienvenue</div><h2 id="g-t" style="font-size:26px;line-height:1.2">Tes outils LMU, dans SimHub</h2><p class="mut">Deux minutes pour choisir ce que tu veux. Tout marche sans le site ; le site ajoute ce qui se partage avec l’équipe.</p>`,
@@ -596,6 +627,8 @@ document.addEventListener('click', async (e) => {
   if (d.later !== undefined) { act({ do: 'later' }, true); return; }
   if (d.see) { if (WIN) act({ do: 'see', page: d.see }, true); else { UI.page = d.see; save('page', d.see); render(); } return; }
   if (d.go) { UI.page = d.go; save('page', d.go); $('main').scrollTop = 0; render(); return; }
+  if (d.dashfilter) { UI.dashFilter = d.dashfilter; render(); return; }
+  if (d.commandmode) { UI.commandMode = d.commandmode; render(); return; }
   if (d.module) { S.modules[d.module] = !S.modules[d.module]; render(); await act({ do: 'module', key: d.module, on: S.modules[d.module] }); return; }
   if (d.laps) { S.laps = Math.max(1, Math.min(60, S.laps + +d.laps)); render(); act({ do: 'laps', value: S.laps }, true); return; }
   if (d.cleanup !== undefined) { if (!UI.cleanArm) { UI.cleanArm = true; render(); return; } UI.cleanArm = false; render(); act({ do: 'cleanup' }); return; }
