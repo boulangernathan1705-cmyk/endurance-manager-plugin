@@ -29,3 +29,12 @@ crème, petits titres or, fond à motif circuit, 4 bandes sous le bandeau, bouto
   un PowerShell caché le relance. Plus d'installeur en fenêtre noire.
 - **Photos** : `tests/Preview` les fait avec Edge sans fenêtre (`#profils`, `#guide:1`… ouvrent une page).
 - **Non vérifié sur un vrai PC** : présence de WebView2 dans le dossier de SimHub, rendu dans l'onglet du plugin.
+
+
+## Centre cockpit (27/11/2026, étape 1)
+
+- Les identifiants de pages et réglages `relais`, `bb`, `profils`, `mur` restent compatibles avec les anciennes versions et les liens de mise à jour.
+- Dashs & Overlays : catalogue des trois affichages actifs, état de présence sur disque, installation via le mécanisme existant et accès au dossier DashTemplates. Le raccourci Dash Studio est tenté par réflexion et indique explicitement si indisponible. Aucune commande de lancement/arrêt de dashboard inventée. Le switch relais ne commande que le moteur de calcul des overlays.
+- Commandes & Black box : les commandes, associations lues, tests et préparation LMU restent inchangés ; onglet Stream Deck distinct, export existant, raccourcis vers les profils et le dash Black box. Control Mapper demeure la source des associations. Aucun mapping parallèle.
+- Le mur personnel et le partage équipe gardent leur moteur et leurs pages, sans modification du rendu.
+- Suite après validation et inventaire des API réelles de SimHub : lancement/arrêt/écran des dashs, capture/édition de liaison via Control Mapper (y compris Fn, rotary, conflits), sans modifier les mécanismes de commandes validés ; audit spécifique du mur séparément. Garder le secours WPF fonctionnel ; cette étape modifie seulement la page web et les nouveaux accès de gestion des dashs.
