@@ -409,7 +409,7 @@ namespace EnduranceManager.SimHub
 
         // One way only (Nathan 24/11, choice A): FMT companion's own command, as the black box's Électronique page sends
         // it. It knows which button LMU listens to, its own or the pilot's one that « Préparer LMU » reused, and holds it
-        // 200 ms; nothing to link in the Control Mapper for the profiles. The game is read, the clicks needed are sent one
+        // 60 ms for profiles; nothing to link in the Control Mapper. The game is read, the clicks needed are sent one
         // by one (6 → 4 = two « − »), each read back; a click that moves nothing twice stops, said with the values.
         string Reach(Setting setting, double target)
         {
@@ -427,7 +427,7 @@ namespace EnduranceManager.SimHub
                 if (why != null) return setting.Label + " (" + why + ")";
                 // Wait for LMU to show the new value before sending the next command (up to 1.2 s).
                 double? after = now;
-                for (int wait = 0; wait < 15 && after == now; wait++) { Thread.Sleep(80); after = latest() is Sample t ? setting.Read(t) : null; }
+                for (int wait = 0; wait < 20 && after == now; wait++) { Thread.Sleep(60); after = latest() is Sample t ? setting.Read(t) : null; }
                 if (!after.HasValue) return setting.Label + " (lecture interrompue)";
                 still = after == now ? still + 1 : 0;
                 if (after is double moved && Math.Abs(moved - target) > Math.Abs(now - target)) swapped = !swapped;

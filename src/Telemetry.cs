@@ -14,6 +14,23 @@ namespace EnduranceManager.SimHub
 
         static double? R(double value, int digits) => double.IsNaN(value) || double.IsInfinity(value) ? (double?)null : Math.Round(value, digits, MidpointRounding.AwayFromZero);
 
+        // The selected electronics levels (not the intervention flags), for Stream Deck and other displays.
+        // A missing setting is not zero; zero is a valid level.
+        static string Level(int value, int max) => max > 0 && value >= 0 && value <= max ? value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "—";
+
+        // The hybrid deployment map on LMU uses 0..10 (20 kW per step).
+        // The thermal map uses 0=Safety Car and 1=Race (LMU June/September 2024 release notes).
+        // Do not assign a label to an unrecognised map range.
+        internal static string Cartography(Sample s)
+        {
+            if (s.MotorMapMax <= 0 || s.MotorMap < 0 || s.MotorMap > s.MotorMapMax) return "—";
+            if (s.MotorMapMax >= 10 && s.MotorMap <= 10) return (s.MotorMap * 20).ToString(System.Globalization.CultureInfo.InvariantCulture) + " kW";
+            if (s.MotorMapMax <= 2 && s.MotorMap <= 1) return s.MotorMap == 0 ? "SAFETY CAR" : "COURSE";
+            return Level(s.MotorMap, s.MotorMapMax);
+        }
+
+        static string Arb(int value, int max) => max > 0 && value >= 0 && value <= max ? (value == 0 ? "OFF" : "P" + value.ToString(System.Globalization.CultureInfo.InvariantCulture)) : "—";
+
         // Every property under « Voiture. » and « Seance. », and how it reads the last sample (null when nobody drives).
         public static readonly (string Name, Func<Sample, object> Get)[] Properties = Build();
 
@@ -47,6 +64,16 @@ namespace EnduranceManager.SimHub
             }
             list.AddRange(new (string, Func<Sample, object>)[]
             {
+                ("Voiture.Reglages.TC", s => Level(s.TC, s.TCMax)),
+                ("Voiture.Reglages.CoupureTC", s => Level(s.TCCut, s.TCCutMax)),
+                ("Voiture.Reglages.GlisseTC", s => Level(s.TCSlip, s.TCSlipMax)),
+                ("Voiture.Reglages.ABS", s => Level(s.ABS, s.ABSMax)),
+                ("Voiture.Reglages.Carto", s => Cartography(s)),
+                ("Voiture.Reglages.Migration", s => Level(s.Migration, s.MigrationMax)),
+                ("Voiture.Reglages.AntiroulisAV", s => Arb(s.AntiSwayFront, s.AntiSwayFrontMax)),
+                ("Voiture.Reglages.AntiroulisAR", s => Arb(s.AntiSwayRear, s.AntiSwayRearMax)),
+                ("Voiture.Reglages.Repartition", s => s.RearBrakeBias > 0 && s.RearBrakeBias < 1 ? ((1 - s.RearBrakeBias) * 100).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "%" : "—"),
+                ("Voiture.Reglages.Regen", s => s.MotorState != 0 && s.Regen > 0 && !double.IsInfinity(s.Regen) ? Math.Round(s.Regen).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + " kW" : "—"),
                 ("Voiture.ABSActif", s => s.AbsOn),
                 ("Voiture.TCActif", s => s.TcOn),
                 ("Voiture.LimiteurStands", s => s.PitLimiter),

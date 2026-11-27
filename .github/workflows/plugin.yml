@@ -153,7 +153,7 @@ jobs:
       # Une PR : son zip en pré-version « pr-N » (remplacée à chaque envoi, supprimée à la fermeture de la PR), pour
       # l'essayer depuis Releases sans fouiller dans Actions. Jamais « latest » : les pilotes ne la voient pas.
       - name: Publier le zip de test de la PR
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'fix/memo-session-sync'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.zip.outputs.version }}
@@ -248,3 +248,64 @@ jobs:
           if ($LASTEXITCODE -eq 0) { "Photos inchangées."; exit 0 }
           git commit -m "Photos de l'écran du plugin [skip ci]"
           git push origin "HEAD:refs/heads/$env:HEAD_REF"
+
+  streamdeck:
+    name: Générer et vérifier le profil Stream Deck
+    needs: plugin
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install cairosvg pillow
+      - name: Générer le profil et son aperçu
+        run: python streamdeck/build.py
+      - name: Vérifier les dix valeurs électroniques
+        run: |
+          python - <<'PY'
+          import json, zipfile
+          from pathlib import Path
+          expected = {'TC','CoupureTC','GlisseTC','ABS','Carto','Migration','AntiroulisAV','AntiroulisAR','Repartition','Regen'}
+          with zipfile.ZipFile('streamdeck/Endurance Manager FMT.streamDeckProfile') as z:
+              assert z.testzip() is None
+              values = set()
+              for name in z.namelist():
+                  if not name.endswith('manifest.json'):
+                      continue
+                  manifest = json.loads(z.read(name))
+                  for controller in manifest.get('Controllers', []):
+                      for action in (controller.get('Actions') or {}).values():
+                          for state in action.get('Settings', {}).get('StreamDeckButtonSetting', {}).get('States', []):
+                              for label in state.get('RichLabel', []):
+                                  expr = label.get('Formula', {}).get('Expression', '')
+                                  prefix = '[EnduranceManagerPlugin.Voiture.Reglages.'
+                                  if expr.startswith(prefix):
+                                      values.add(expr[len(prefix):-1])
+                          for state in action.get('States', []):
+                              if state.get('Image'):
+                                  assert str(Path(name).parent / state['Image']) in z.namelist()
+              assert values == expected, (values, expected)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: streamdeck-profile-${{ github.sha }}
+          path: |
+            streamdeck/Endurance Manager FMT.streamDeckProfile
+            streamdeck/apercu.png
+      - name: Ranger le profil généré sur la branche
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add 'streamdeck/Endurance Manager FMT.streamDeckProfile' streamdeck/apercu.png
+          git diff --cached --quiet && exit 0
+          git commit -m 'Régénérer le profil Stream Deck [skip ci]'
+          git push origin "HEAD:refs/heads/$HEAD_REF"

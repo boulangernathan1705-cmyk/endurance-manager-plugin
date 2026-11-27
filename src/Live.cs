@@ -40,6 +40,7 @@ namespace EnduranceManager.SimHub
         public string Track, Car, Class, Driver;
         public double TrackTemp, AirTemp, Rain, Wet;
         public short LapsDone;
+        public int OutstandingPenalties;
         public double LastLap, LastSector1, LastSector2;
         public bool InPits;
         public byte PitState;
@@ -138,7 +139,7 @@ namespace EnduranceManager.SimHub
                 // How wet the racing line is, between its driest and wettest point (mMinPathWetness, mMaxPathWetness,
                 // right after the wind). To check in game: 0 on a dry track, close to 1 after heavy rain.
                 Wet = (F64(b, ScoringInfo + 268) + F64(b, ScoringInfo + 276)) / 2,
-                LapsDone = I16(b, v + 100), LastLap = F64(b, v + 168),
+                LapsDone = I16(b, v + 100), OutstandingPenalties = I16(b, v + 194), LastLap = F64(b, v + 168),
                 // Where the last lap's first and second sectors ended (mLastSector1, mLastSector2: from the line, -1 when unknown).
                 LastSector1 = F64(b, v + 152), LastSector2 = F64(b, v + 160), InPits = b[v + 198] != 0, PitState = b[v + 457],
                 Speed = Math.Sqrt(vx * vx + vy * vy + vz * vz) * 3.6,

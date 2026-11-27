@@ -4,6 +4,8 @@ Ce que Nathan a décidé, avec la date. Les idées refusées ne sont pas à repr
 
 ## Manière de travailler
 
+- 26/11/2026 : ChatGPT, Claude, GitHub Copilot ou toute autre IA autorisée utilisent une base de connaissances commune sur GitHub, sans communication automatisée entre elles. Nathan pilote le produit par demandes et itérations, sans coder ; les agents prennent en charge la réalisation technique. Voir [ai-workflow.md](ai-workflow.md).
+
 - Nouvelle fonction ou nouvel écran : proposer et dessiner ensemble d'abord (efficace, joli, ergonomique), coder après
   accord. Petites corrections : directement.
 - Toujours spécifique à LMU, jamais de règle iRacing.
@@ -62,3 +64,10 @@ Ce que Nathan a décidé, avec la date. Les idées refusées ne sont pas à repr
 - Couleurs selon la performance sur la piste à plat.
 - Mur « tout autour de la time line » et mur v1 (« ressemble à ce qu'on a déjà fait »).
 - Un dash Dash Studio qui ne ressemble pas à la maquette validée.
+
+
+## Centre cockpit (27/11/2026)
+
+- Organisation validée : Dashs & Overlays, Commandes & Black box (Stream Deck inclus), Profils voiture, Mur des stands, Mémo et partage équipe. Conserver la DA actuelle du site et les fonctionnalités existantes.
+- Dash Studio et Control Mapper restent les référentiels natifs ; pas de moteur d'affichage ni de mapping parallèle. Objectif de gestion directe depuis le plugin uniquement après vérification de la compatibilité avec SimHub réel. Remplace le principe antérieur selon lequel l'association des boutons ne devait se faire que dans Control Mapper, sans autoriser d'écriture non vérifiée.
+- Mur des stands : chantier d'audit indépendant, pas de refonte visuelle dans la réorganisation.

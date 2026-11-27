@@ -255,7 +255,12 @@ namespace EnduranceManager.SimHub
 
         // One of FMT companion's commands by its id (« TC.Next »…), as its Tester does, for the wheel's black box
         // (BlackBoxPages.cs, page Électronique): null when sent, otherwise a short reason for the dash's title bar.
-        public string Send(string id)
+        public string Send(string id) => SendCore(id, "Test");
+
+        // Automatic profiles use shorter impulses; the manual tester and black box stay unchanged.
+        public string SendProfile(string id) => SendCore(id, "TestProfile");
+
+        string SendCore(string id, string method)
         {
             if (P == null) return "FMT companion absent";
             string why = null;
@@ -265,7 +270,7 @@ namespace EnduranceManager.SimHub
                 {
                     var mapper = Get(P, "Mapper");
                     if (mapper == null) { why = "Control Mapper pas prêt"; return; }
-                    if (!(bool)Call(mapper, "Test", Function(id))) why = "Préparer LMU dans FMT";
+                    if (!(bool)Call(mapper, method, Function(id))) why = "Préparer LMU dans FMT";
                 });
             }
             catch (Exception e) { why = Message(e); }

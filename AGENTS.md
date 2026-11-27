@@ -16,6 +16,13 @@ suprême » : écran le plus simple, textes courts.
   l'ont qu'après cette PR fusionnée dans `dev` puis la mise en production du site** (étapes 3-4 de
   [`docs/publier.md`](docs/publier.md)) : le rappeler à Nathan après chaque Release.
 
+## Base commune aux IA
+
+- Lire [la méthode de travail commune](docs/ai-workflow.md), puis l'index et les documents utiles au sujet. Nathan ne code pas : il exprime ses besoins, échange par itérations, valide les propositions et teste ; l'agent prend en charge toute la réalisation technique.
+- Consulter les PR ouvertes, leur diff et les résultats CI avant de reprendre un chantier. Ne pas écraser ni recommencer le travail d'un autre agent. Respecter la règle d'un seul chantier fonctionnel à la fois.
+- Mettre à jour la documentation du module et les [décisions validées](docs/decisions.md) si nécessaire ; décrire les contrôles et leurs limites dans la PR. Aucun dialogue, attribution ou relance automatique entre IA.
+- Ne pas demander ni ajouter de secrets ou d'accès de production pour les agents. Ne jamais fusionner dans `main` sans validation de Nathan.
+
 ## Avant de coder
 
 - Lire [`docs/README.md`](docs/README.md) puis le fichier `docs/` du sujet.

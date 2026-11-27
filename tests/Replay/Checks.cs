@@ -8,6 +8,10 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -32,7 +36,7 @@ namespace EnduranceManager.SimHub.Replay
 
         public static bool RunAll(List<string> fixtures, string outDir)
         {
-            bool allOk = Recorder() & BlackBoxLines() & ProfileCommands();
+            bool allOk = Recorder() & BlackBoxLines() & ProfileCommands() & SessionQueue() & PenaltyAndCartography();
             foreach (var file in fixtures)
             {
                 var f = Fixture.Load(file);
@@ -52,6 +56,81 @@ namespace EnduranceManager.SimHub.Replay
                 allOk &= report.Failures.Count == 0;
             }
             return allOk;
+        }
+
+        sealed class SyncTransport : HttpMessageHandler
+        {
+            public readonly Queue<HttpStatusCode> Answers = new Queue<HttpStatusCode>();
+            public readonly List<string> Tokens = new List<string>();
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                Tokens.Add(request.Headers.Authorization.Parameter);
+                var status = Answers.Dequeue();
+                return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(
+                    status == HttpStatusCode.OK ? "{\"created\":false}" : "{\"error\":\"test\"}") });
+            }
+        }
+
+        static bool SessionQueue()
+        {
+            var home = Path.Combine(Path.GetTempPath(), "em-sync-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                var a = new LinkCode { Origin = "https://a.example", Token = new string('a', 64) };
+                var b = new LinkCode { Origin = "https://b.example", Token = new string('b', 64) };
+                var transport = new SyncTransport();
+                var uploader = new Uploader(home, transport);
+                File.WriteAllText(Path.Combine(uploader.Folder, "legacy.json"), "{}");
+                var session = new LiveSession { At = 1790000000000, Track = "Spa", Car = "Ferrari" };
+                uploader.Save(session, a);
+                uploader.Save(session, null);
+                uploader.SendAll(b, () => b);
+                bool ok = uploader.Waiting(a) == 1 && uploader.Held(b) == 3 && transport.Tokens.Count == 0;
+                uploader.SendAll(a, () => b);
+                ok &= transport.Tokens.Count == 0;
+                transport.Answers.Enqueue((HttpStatusCode)429);
+                transport.Answers.Enqueue(HttpStatusCode.Forbidden);
+                transport.Answers.Enqueue(HttpStatusCode.OK);
+                uploader.SendAll(a, () => a);
+                ok &= uploader.Waiting(a) == 1 && uploader.Reached == false;
+                uploader.SendAll(a, () => a);
+                ok &= uploader.Waiting(a) == 1 && uploader.Refused != null;
+                uploader.SendAll(a, () => a);
+                ok &= uploader.Waiting(a) == 0 && uploader.Refused == null && uploader.LastSent.HasValue &&
+                    transport.Tokens.SequenceEqual(Enumerable.Repeat(a.Token,3)) && uploader.Held(a) == 2;
+                Console.WriteLine((ok ? "OK    " : "ÉCHEC ") + "Synchronisation : file isolée, refus temporaire et accusé de réception.");
+                return ok;
+            }
+            finally { if (Directory.Exists(home)) Directory.Delete(home, true); }
+        }
+
+        static bool PenaltyAndCartography()
+        {
+            var tracker = new PenaltyTracker();
+            var s = new Sample { Realtime = true, Control = 0, LapsDone = 12, ET = 100, OutstandingPenalties = 0 };
+            var line = new Standings.Line { SG = 1, DT = 0, Time = 0 };
+            tracker.Observe(s, null);
+            s.ET++; s.OutstandingPenalties = 1; tracker.Observe(s, line);
+            bool ok = tracker.View.EstimatedLaps == 3 && tracker.View.Type == "SG";
+            s.ET++; s.LapsDone++; tracker.Observe(s, line);
+            ok &= tracker.View.EstimatedLaps == 2;
+            s.ET++; s.LapsDone++; tracker.Observe(s, line);
+            ok &= tracker.View.EstimatedLaps == 1;
+            s.ET++; s.OutstandingPenalties = 0; tracker.Observe(s, null);
+            ok &= tracker.View.Type == "RAS" && !tracker.View.Pending;
+            tracker.Reset(); s.OutstandingPenalties = 1; tracker.Observe(s, line);
+            ok &= tracker.View.EstimatedLaps == null && tracker.View.Pending;
+            s.ET++; s.OutstandingPenalties = 2; tracker.Observe(s, new Standings.Line { SG = 1, DT = 1 });
+            ok &= tracker.View.EstimatedLaps == null;
+            ok &= Telemetry.Cartography(new Sample { MotorMap = 10, MotorMapMax = 10 }) == "200 kW"
+                && Telemetry.Cartography(new Sample { MotorMap = 0, MotorMapMax = 1 }) == "SAFETY CAR"
+                && Telemetry.Cartography(new Sample { MotorMap = 1, MotorMapMax = 1 }) == "COURSE";
+            ok &= FmtCompanion.StopGoDisplay.Laps("YES (3)") == 3
+                && FmtCompanion.StopGoDisplay.Laps("NON (1 tour)") == 1
+                && FmtCompanion.StopGoDisplay.Laps("YES (10 seconds)") == -1
+                && FmtCompanion.StopGoDisplay.Laps("NO") == -1;
+            Console.WriteLine((ok ? "OK    " : "ÉCHEC ") + "Stream Deck : délai natif, estimation prudente, cartographies");
+            return ok;
         }
 
         // The profiles' FMT adapter must preserve null as success, not treat it as a missing companion.
